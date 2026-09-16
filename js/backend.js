@@ -38,10 +38,10 @@ window.NASCAR = window.NASCAR || {};
     esquema: 'rest',
   };
 
-  /* Qué empresa se muestra cuando se entra por el dominio de pruebas, sin
-     subdominio y sin ?empresa=. Es una vitrina: en producción cada negocio
-     entra por el suyo. Vacío = se pide la empresa en vez de suponerla. */
-  const EMPRESA_VITRINA = 'empresa_nascar';
+  /* Qué empresa se muestra si la dirección no dice ninguna. Vacío a
+     propósito: sin empresa la página lo dice en vez de suponer una. Cada
+     negocio entra por su ruta (/nascar/panel) o por su subdominio. */
+  const EMPRESA_VITRINA = '';
 
   /* ---- Subdominios con nombre propio ------------------------------------
      Sólo hace falta anotar aquí los que NO siguen la regla
@@ -83,13 +83,39 @@ window.NASCAR = window.NASCAR || {};
     return RESERVADOS.indexOf(sub) >= 0 ? '' : sub;
   }
 
-  function empresaDe(host, busqueda) {
+  /* Las páginas del negocio, tal como se escriben en la dirección. El panel
+     de Taseca no está aquí: no es de ninguna empresa. */
+  const PAGINAS = { '': 'index.html', panel: 'empleados.html', mesa: 'mesa.html', cierre: 'cierre.html' };
+
+  /* empresa_pizzeria_del_parque  ⇄  pizzeria-del-parque */
+  function aRanura(codigo) {
+    return String(codigo || '').replace(/^empresa_/, '').replace(/_/g, '-');
+  }
+
+  function aCodigo(ranura) {
+    if (!ranura) return '';
+    return EMPRESAS[ranura] || 'empresa_' + ranura.replace(/-/g, '_');
+  }
+
+  /* El primer tramo de la ruta, si nombra una empresa: /nascar/panel → nascar.
+     Los nombres de página y de archivo no cuentan como empresa. */
+  function ranuraDe(camino) {
+    const tramo = String(camino || '').split('/')[1] || '';
+    if (!tramo || tramo.indexOf('.') >= 0) return '';
+    if (tramo === 'taseca' || Object.prototype.hasOwnProperty.call(PAGINAS, tramo)) return '';
+    return tramo.toLowerCase();
+  }
+
+  function empresaDe(host, busqueda, camino) {
     host = (host || '').toLowerCase();
     const pedida = new URLSearchParams(busqueda || '').get('empresa');
     if (pedida) return pedida;
 
+    const ranura = ranuraDe(camino);
+    if (ranura) return aCodigo(ranura);
+
     const sub = subdominioDe(host);
-    if (sub) return EMPRESAS[sub] || 'empresa_' + sub.replace(/-/g, '_');
+    if (sub) return aCodigo(sub);
 
     // En el equipo del negocio se trabaja con la empresa instalada
     if (esDeEsteEquipo(host)) return NASCAR.EMPRESA_POR_DEFECTO || '';
@@ -97,12 +123,50 @@ window.NASCAR = window.NASCAR || {};
     return EMPRESA_VITRINA;
   }
 
-  NASCAR.Backend = { empresaDe: empresaDe, subdominioDe: subdominioDe, esDeEsteEquipo: esDeEsteEquipo };
+  /* La dirección de una página PARA una empresa:
+       rutaDe('panel')                        → /nascar/panel   (la de esta visita)
+       rutaDe('panel', 'empresa_pizzeria')    → /pizzeria/panel
+     Con subdominio propio la empresa ya va delante, así que no se repite. */
+  function rutaDe(pagina, codigo) {
+    const cod = codigo || NASCAR.BACKEND.empresa || '';
+    const hoja = pagina === 'publico' ? '' : pagina;
+    if (subdominioDe((location.hostname || '').toLowerCase()) && !codigo) {
+      return '/' + hoja;
+    }
+    const ranura = aRanura(cod);
+    return ranura ? '/' + ranura + (hoja ? '/' + hoja : '/') : '/' + (hoja || '');
+  }
+
+  NASCAR.Backend = {
+    empresaDe: empresaDe, subdominioDe: subdominioDe, esDeEsteEquipo: esDeEsteEquipo,
+    ranuraDe: ranuraDe, aRanura: aRanura, aCodigo: aCodigo, PAGINAS: PAGINAS,
+  };
+  NASCAR.rutaDe = rutaDe;
+
+  /* Los enlaces del HTML siguen escritos como archivos (empleados.html) para
+     que el archivo de un solo fichero se pueda seguir generando. Aquí se
+     traducen a la dirección con empresa, ya en el navegador. */
+  function traducirEnlaces() {
+    const deArchivo = { 'index.html': 'publico', 'empleados.html': 'panel',
+                        'mesa.html': 'mesa', 'cierre.html': 'cierre' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      const href = a.getAttribute('href');
+      const m = /^([a-z-]+\.html)(\?.*)?$/i.exec(href || '');
+      if (!m) return;
+      if (m[1] === 'taseca-admin.html') {
+        a.setAttribute('href', '/taseca' + (m[2] || ''));
+        return;
+      }
+      const pagina = deArchivo[m[1].toLowerCase()];
+      if (!pagina) return;
+      a.setAttribute('href', rutaDe(pagina) + (m[2] || ''));
+    });
+  }
 
   const host = (location.hostname || '').toLowerCase();
   const enEsteEquipo = esDeEsteEquipo(host);
 
-  const empresa = empresaDe(host, location.search);
+  const empresa = empresaDe(host, location.search, location.pathname);
 
   if (!enEsteEquipo && NUBE.url) {
     NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, NUBE, { empresa: empresa });
@@ -118,4 +182,9 @@ window.NASCAR = window.NASCAR || {};
   }
 
   if (empresa) NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, { empresa: empresa });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', traducirEnlaces);
+  } else {
+    traducirEnlaces();
+  }
 })();

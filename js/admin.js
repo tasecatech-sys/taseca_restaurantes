@@ -2336,7 +2336,9 @@
     for (let i = 1; i <= suc.mesas; i++) {
       const url = SOLO_ARCHIVO
         ? base + '#mesa/' + sucId + '/' + i
-        : base + 'mesa.html?suc=' + sucId + '&mesa=' + i;
+        : location.origin +
+          (NASCAR.rutaDe ? NASCAR.rutaDe('mesa') : '/mesa.html') +
+          '?suc=' + sucId + '&mesa=' + i;
       html +=
         '<tr><td style="width:70px"><b>Mesa ' + i + '</b></td>' +
         '<td class="mini tenue" style="word-break:break-all">' + U.esc(url) + '</td>' +

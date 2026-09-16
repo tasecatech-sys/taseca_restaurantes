@@ -1,14 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/", "destination": "/nascar", "permanent": false }
+  ],
   "rewrites": [
     {
       "source": "/",
       "has": [{ "type": "host", "value": "admin.taseca.tech" }],
-      "destination": "/taseca-admin"
+      "destination": "/taseca-admin.html"
     },
-    { "source": "/panel", "destination": "/empleados" },
-    { "source": "/taseca", "destination": "/taseca-admin" }
+    { "source": "/taseca", "destination": "/taseca-admin.html" },
+    { "source": "/:empresa/panel", "destination": "/empleados.html" },
+    { "source": "/:empresa/mesa", "destination": "/mesa.html" },
+    { "source": "/:empresa/cierre", "destination": "/cierre.html" },
+    { "source": "/:empresa", "destination": "/index.html" }
   ]
 }

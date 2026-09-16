@@ -686,7 +686,9 @@
     } catch (err) {
       return U.toast(err.message, 'error');
     }
-    location.href = (NASCAR.PORTALES || {}).operativo.panel;
+    location.href = NASCAR.rutaDe
+      ? NASCAR.rutaDe('panel', empresaId)
+      : (NASCAR.PORTALES || {}).operativo.panel;
   }
 
   /* =================================================================
