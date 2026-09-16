@@ -39,7 +39,9 @@ SET search_path = core, public;
    En una instalación normal pgcrypto vive en `public`. Supabase lo instala en
    `extensions`, así que `public.crypt(...)` no existiría y el login fallaría.
    En vez de mover la extensión —de la que dependen cosas internas de
-   Supabase— se dejan tres atajos en `public` que llaman a donde esté.
+   Supabase— se dejan en `public` atajos que llaman a donde esté: los tres
+   del PIN (crypt, gen_salt, gen_random_bytes) y los dos de la firma de los
+   tokens (hmac, digest).
    ============================================================================ */
 
 DO $$
@@ -75,6 +77,17 @@ BEGIN
     EXECUTE format($f$
         CREATE OR REPLACE FUNCTION public.gen_random_bytes(INTEGER) RETURNS BYTEA
         LANGUAGE sql VOLATILE STRICT AS 'SELECT %I.gen_random_bytes($1)';
+    $f$, v_esquema);
+
+    -- Firma de los tokens (core.fn_jwt_firmar)
+    EXECUTE format($f$
+        CREATE OR REPLACE FUNCTION public.hmac(BYTEA, BYTEA, TEXT) RETURNS BYTEA
+        LANGUAGE sql IMMUTABLE STRICT AS 'SELECT %I.hmac($1, $2, $3)';
+    $f$, v_esquema);
+
+    EXECUTE format($f$
+        CREATE OR REPLACE FUNCTION public.digest(BYTEA, TEXT) RETURNS BYTEA
+        LANGUAGE sql IMMUTABLE STRICT AS 'SELECT %I.digest($1, $2)';
     $f$, v_esquema);
 
     RAISE NOTICE 'Atajos de pgcrypto creados en public (la extensión vive en %).', v_esquema;
