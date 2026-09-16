@@ -499,8 +499,8 @@ NASCAR.Remoto = (function () {
     const codigo = codigoEmpresa();
     if (!codigo) {
       throw new Error(
-        'Falta decir de qué empresa es esta página: entra por el subdominio del ' +
-        'negocio (por ejemplo nascar.taseca.tech) o agrega ?empresa=… a la dirección.'
+        'Falta decir de qué negocio es esta página. Entra por su dirección: ' +
+        '/nascar/panel, o nascar.taseca.tech si ya tiene su propio subdominio.'
       );
     }
     const e = obtener('/empresas?codigo=eq.' + encodeURIComponent(codigo), false);
