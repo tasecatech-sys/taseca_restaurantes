@@ -678,6 +678,23 @@ sus propios roles y guarda `pgcrypto` en el esquema `extensions`:
 7. En la aplicación, llenar `js/backend.js` con la dirección del proyecto y su
    clave publicable.
 
+### El ingreso: por qué hace falta PostgREST propio
+
+El Data API que trae Supabase valida los tokens con las claves **del proyecto**.
+En los proyectos nuevos esas claves son asimétricas (ES256) y PostgreSQL no
+puede firmar así: el login se emitiría bien, pero la portería lo rechazaría con
+`PGRST301 · "No suitable key or wrong key type"`.
+
+Probado en un proyecto real: poner la clave heredada HS256 como *clave actual*,
+revocar la ECC y reiniciar el proyecto **no** basta; el Data API sigue sin
+validar la clave compartida.
+
+La salida es alojar **nuestro** PostgREST contra esa misma base, que es lo que
+hace `postgrest-nube/`. Entonces todo vuelve a su diseño: la base firma con su
+secreto y PostgREST lo lee al arrancar con `core.fn_postgrest_pre_config`. El
+Data API de Supabase queda sin usar —o sirve sólo para lo público— y el paso 3
+del `18` (pegar el JWT secret) deja de hacer falta.
+
 ---
 
 ## Pendiente (fase 2)

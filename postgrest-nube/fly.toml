@@ -1,0 +1,38 @@
+# ============================================================================
+#  PostgREST de Taseca en Fly.io
+#  Es el MISMO programa que corre en el computador del negocio, apuntando a la
+#  base que vive en Supabase. Así el login sigue funcionando como se diseñó:
+#  la base firma sus tokens y PostgREST los valida con el secreto de la base.
+#
+#  No hay contraseñas en este archivo: la cadena de conexión se guarda como
+#  secreto con `fly secrets set`, y sólo la ve el servidor.
+# ============================================================================
+
+app = "taseca-api"
+primary_region = "bog"          # Bogotá. Alternativas: gig (São Paulo), mia (Miami)
+
+[build]
+  image = "postgrest/postgrest:v12.2.12"
+
+[env]
+  # Sólo se publica el esquema rest: core y api nunca salen a internet
+  PGRST_DB_SCHEMAS = "rest"
+  PGRST_DB_ANON_ROLE = "taseca_anon"
+  # PostgREST lee el secreto de los tokens desde la propia base al arrancar
+  PGRST_DB_PRE_CONFIG = "core.fn_postgrest_pre_config"
+  PGRST_DB_POOL = "10"
+  # Con el pooler de Supabase en modo transacción hay que apagar esto
+  PGRST_DB_PREPARED_STATEMENTS = "false"
+  PGRST_SERVER_PORT = "3000"
+  PGRST_LOG_LEVEL = "error"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "suspend"   # se duerme sin tráfico y despierta solo
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
