@@ -1,0 +1,22 @@
+# ============================================================================
+#  Qué NO sube a GitHub
+# ============================================================================
+
+# La contraseña de la base de datos vive aquí: NUNCA se publica.
+# En su lugar se sube postgrest/postgrest.conf.ejemplo, sin contraseña.
+postgrest/postgrest.conf
+
+# El ejecutable de PostgREST se descarga aparte (pesa varios MB)
+postgrest/postgrest.exe
+
+# Respaldos y copias de trabajo
+_RESPALDO_*/
+*.bak
+respaldo-*.json
+
+# Basura del sistema y de los editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

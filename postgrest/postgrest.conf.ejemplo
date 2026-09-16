@@ -1,0 +1,37 @@
+# ============================================================================
+#  TASECA · Configuración de PostgREST  ·  PLANTILLA
+#
+#  Copia este archivo como  postgrest.conf  (sin ".ejemplo") y escribe ahí la
+#  contraseña. Ese archivo NO se sube a GitHub: lo excluye .gitignore, porque
+#  lleva la contraseña de la base de datos.
+#
+#  Antes del primer arranque:
+#    1. En DBeaver, conectado a taseca_db, ejecuta database/09_postgrest.sql
+#    2. Ponle contraseña al usuario de conexión (en DBeaver):
+#         ALTER ROLE taseca_rest PASSWORD 'tu-contraseña-segura';
+#    3. Escribe esa misma contraseña abajo, en db-uri, en lugar de
+#       CAMBIA_ESTA_CONTRASEÑA.
+#
+#  El secreto de los tokens (JWT) NO va aquí: lo genera y guarda la base, y
+#  PostgREST lo lee al arrancar con db-pre-config.
+# ============================================================================
+
+# Conexión (formato de palabras clave: la contraseña no necesita codificarse)
+db-uri = "host=localhost port=5435 dbname=taseca_db user=taseca_rest password=CAMBIA_ESTA_CONTRASEÑA"
+
+# Sólo se publica el esquema rest (capa sobre api). core nunca se expone.
+db-schemas = "rest"
+
+# Rol de quien no ha iniciado sesión (el cliente del portal)
+db-anon-role = "taseca_anon"
+
+# Lee el secreto del JWT desde la base al arrancar y al recargar
+db-pre-config = "core.fn_postgrest_pre_config"
+
+db-pool = 10
+
+# "*" = escucha en todas las interfaces: los celulares del Wi-Fi también llegan.
+server-host = "*"
+server-port = 3000
+
+log-level = "info"
