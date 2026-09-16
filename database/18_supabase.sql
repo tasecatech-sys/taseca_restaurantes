@@ -96,6 +96,8 @@ $$;
    ============================================================================ */
 
 DO $$
+DECLARE
+    v_rol TEXT;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
         RAISE NOTICE 'No existe el rol authenticator: esto no parece un proyecto de Supabase. Se salta el paso 2.';
@@ -122,10 +124,11 @@ BEGIN
     /* Quien instala (el editor SQL entra como `postgres`, que en Supabase NO
        es superusuario) también tiene que poder asumir los roles: es lo que
        hacen las pruebas con SET LOCAL ROLE, y hace falta para mantenimiento. */
-    EXECUTE format('GRANT taseca_app, taseca_anon TO %I', current_user);
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'taseca_lectura') THEN
-        EXECUTE format('GRANT taseca_lectura TO %I', current_user);
-    END IF;
+    FOREACH v_rol IN ARRAY ARRAY['taseca_app', 'taseca_anon', 'taseca_lectura'] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_rol) THEN
+            EXECUTE format('GRANT %I TO %I', v_rol, current_user);
+        END IF;
+    END LOOP;
 
     RAISE NOTICE 'Roles conectados: authenticator puede asumir taseca_app y taseca_anon; anon hereda taseca_anon.';
     RAISE NOTICE 'El usuario % también puede asumirlos (lo necesitan las pruebas).', current_user;
