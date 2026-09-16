@@ -73,16 +73,28 @@ BEGIN
 END;
 $$;
 
-/* Otra empresa con una unidad, para comprobar que nada se cruza. */
-CREATE TEMP TABLE otra_empresa AS SELECT * FROM core.empresas WHERE codigo = 'empresa_nascar';
-UPDATE otra_empresa SET id = nextval(pg_get_serial_sequence('core.empresas', 'id')),
-                        codigo = 'empresa_prueba_12', nombre_comercial = 'Empresa de prueba 12';
-INSERT INTO core.empresas SELECT * FROM otra_empresa;
-CREATE TEMP TABLE otra_unidad AS SELECT * FROM core.unidades WHERE nombre = 'NASCAR-Comidas';
-UPDATE otra_unidad SET id = nextval(pg_get_serial_sequence('core.unidades', 'id')),
-                       empresa_id = (SELECT id FROM otra_empresa), nombre = 'Unidad de otra empresa',
-                       nombre_corto = 'Otra';
-INSERT INTO core.unidades SELECT * FROM otra_unidad;
+/* Otra empresa con una unidad, para comprobar que nada se cruza.
+
+   Sin tablas temporales a propósito: en un editor SQL en la nube cada
+   sentencia puede caer en una conexión distinta y las temporales se pierden. */
+DO $$
+DECLARE
+    v_emp INTEGER;
+BEGIN
+    INSERT INTO core.empresas (codigo, nombre_comercial, razon_social, estado,
+                               zona_horaria, hora_corte_operativa)
+    SELECT 'empresa_prueba_12', 'Empresa de prueba 12', e.razon_social, e.estado,
+           e.zona_horaria, e.hora_corte_operativa
+      FROM core.empresas e WHERE e.codigo = 'empresa_nascar'
+    RETURNING id INTO v_emp;
+
+    INSERT INTO core.unidades (empresa_id, tipo_negocio_id, nombre, nombre_corto, estado,
+                               direccion, ciudad, telefono, horario, color)
+    SELECT v_emp, u.tipo_negocio_id, 'Unidad de otra empresa', 'Otra', u.estado,
+           u.direccion, u.ciudad, u.telefono, u.horario, u.color
+      FROM core.unidades u WHERE u.nombre = 'NASCAR-Comidas';
+END;
+$$;
 
 DO $$
 DECLARE
