@@ -51,6 +51,8 @@ Con la conexión **`taseca_db`** seleccionada, abre cada archivo y ejecútalo co
 | 16 | `16_pruebas_pagos_en_caja.sql` | *(Opcional)* 5 pruebas de pagos en caja; se deshacen solas con ROLLBACK |
 | 17 | `17_integridad_multiempresa.sql` | Chequeo de relaciones (`api.fn_chequeo_integridad()`) y triggers que impiden cruzar empresas o unidades |
 | 17 | `17_pruebas_integridad.sql` | *(Opcional)* 5 pruebas de integridad; la primera revisa TUS datos |
+| 18 | `18_supabase.sql` | *(Sólo en la nube)* Adapta la base a un proyecto de Supabase: cifrado, roles y tokens |
+| 19 | `19_rls.sql` | Enciende la seguridad a nivel de fila (RLS) en todas las tablas de `core` |
 
 En `08_pruebas.sql` los resultados salen en la pestaña **Salida / Output**:
 una línea ✔ por prueba y al final *TODAS LAS PRUEBAS PASARON*.
@@ -633,6 +635,48 @@ y `bases_caja`, venga el dato de donde venga.
 **Resultado del primer chequeo** sobre la base con los datos de NASCAR: **0
 errores**; sólo avisos informativos (insumos sin receta y unidades cuyo personal
 es el administrador, que no se asigna a una unidad).
+
+---
+
+## Seguridad a nivel de fila (`19_rls.sql`)
+
+Enciende **RLS sin políticas** en las 56 tablas de `core`. Nadie puede tocar una
+tabla directamente; el **dueño queda exento**, y el dueño es quien ejecuta las
+vistas de `api` y los procedimientos `SECURITY DEFINER`. La aplicación no nota
+la diferencia: las 69 pruebas siguen pasando con RLS encendida.
+
+Es el segundo candado. El primero ya estaba: `taseca_app` y `taseca_anon` no
+tienen ningún permiso sobre las tablas de `core`, y a la API sólo se publica el
+esquema `rest`. En Supabase, además, calla el aviso *"esta consulta crea tablas
+sin habilitar la seguridad a nivel de fila"*.
+
+Para revisarlo en cualquier momento:
+
+```sql
+SELECT * FROM api.fn_estado_rls() WHERE NOT rls OR con_permisos <> '—';
+```
+
+Sin filas, todo en orden.
+
+---
+
+## Instalar en Supabase (base en la nube)
+
+El orden **no es el mismo** que en local, porque Supabase trae su propia base,
+sus propios roles y guarda `pgcrypto` en el esquema `extensions`:
+
+1. **`18_supabase.sql`** — antes que nada. Deja en `public` los atajos de
+   cifrado; sin ellos el `02` falla con *function public.crypt does not exist*.
+   En esta primera vuelta avisa que faltan los roles: es normal.
+2. **`01` … `17`**, en orden. El `00` no aplica. Cuando Supabase pregunte por
+   RLS, responder **"Ejecuta y habilita RLS"**.
+3. **`19_rls.sql`** — para que ninguna tabla quede sin el candado.
+4. **`18_supabase.sql` otra vez** — ahora sí conecta los roles con
+   `authenticator` y `anon`, y escribe la revisión final.
+5. Pegar el **JWT secret** del proyecto donde lo indica el paso 3 del `18`.
+6. *Settings → API → Exposed schemas*: agregar **`rest`**.
+7. En la aplicación, llenar `js/backend.js` con la dirección del proyecto y su
+   clave publicable.
 
 ---
 

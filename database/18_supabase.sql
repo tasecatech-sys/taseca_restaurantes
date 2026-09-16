@@ -7,13 +7,21 @@
 
    Qué hay que hacer, en orden:
 
-     1. En el editor SQL del proyecto, ejecutar los scripts de siempre:
-        01 … 17. El 00 NO aplica: Supabase ya trae la base creada.
-     2. Ejecutar ESTE archivo (18) y leer los avisos que imprime al final.
-     3. En el panel de Supabase, Settings → API → Exposed schemas: agregar
+     1. Ejecutar ESTE archivo (18) PRIMERO, antes que ningún otro. Deja en
+        `public` los atajos de cifrado que Supabase guarda en otro sitio; sin
+        ellos, el script 02 falla con «function public.crypt does not exist».
+        En esta primera vuelta avisará que faltan los roles: es normal.
+     2. Ejecutar los scripts de siempre: 01 … 17. El 00 NO aplica: Supabase
+        ya trae la base creada. Cuando pregunte por RLS, responde
+        «Ejecuta y habilita RLS».
+     3. Ejecutar ESTE archivo otra vez y leer la revisión del final.
+     4. En el panel de Supabase, Settings → API → Exposed schemas: agregar
         «rest» (y dejarlo de primero si se quiere ahorrar una cabecera).
-     4. En la aplicación, llenar js/backend.js con la dirección del proyecto
+     5. En la aplicación, llenar js/backend.js con la dirección del proyecto
         y su clave publicable.
+
+   Se ejecuta dos veces a propósito: la primera prepara el terreno y la
+   segunda conecta los roles, que sólo existen después del 07 y el 09.
 
    NO se pega aquí ninguna contraseña de base de datos. Lo único secreto que
    se escribe es el JWT secret del proyecto, en el paso 3 de abajo, y se hace
@@ -43,7 +51,10 @@ BEGIN
      WHERE e.extname = 'pgcrypto';
 
     IF v_esquema IS NULL THEN
-        RAISE EXCEPTION 'Falta la extensión pgcrypto: ejecuta primero 01_estructura.sql.';
+        -- Aún no está instalada: se instala en public y no hacen falta atajos
+        CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+        RAISE NOTICE 'pgcrypto instalada en public.';
+        RETURN;
     END IF;
 
     IF v_esquema = 'public' THEN
@@ -88,6 +99,12 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
         RAISE NOTICE 'No existe el rol authenticator: esto no parece un proyecto de Supabase. Se salta el paso 2.';
+        RETURN;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'taseca_app') THEN
+        RAISE NOTICE 'Todavía no existen los roles de Taseca (los crean 07 y 09).';
+        RAISE NOTICE 'Sigue con los scripts 01 … 17 y vuelve a ejecutar este archivo al final.';
         RETURN;
     END IF;
 
@@ -151,6 +168,11 @@ DECLARE
 BEGIN
     RAISE NOTICE '--- Revisión de la instalación en Supabase ---';
 
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'taseca_app') THEN
+        RAISE NOTICE '· Primera vuelta: faltan los scripts 01 … 17. Vuelve a ejecutar este archivo al terminarlos.';
+        RETURN;
+    END IF;
+
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator')
        AND pg_has_role('authenticator', 'taseca_app', 'MEMBER') THEN
         RAISE NOTICE '✔ authenticator puede asumir taseca_app';
@@ -160,6 +182,8 @@ BEGIN
     END IF;
 
     SELECT secreto INTO v_secreto FROM core.jwt_config ORDER BY id DESC LIMIT 1;
+    -- (si el 09 no se ha ejecutado, core.jwt_config no existe y el bloque
+    --  entero se salta con el aviso de "primera vuelta" de arriba)
     IF v_secreto IS NULL OR length(v_secreto) < 32 THEN
         RAISE NOTICE '✗ Falta el JWT secret del proyecto (paso 3): nadie podrá iniciar sesión';
         v_falta := TRUE;

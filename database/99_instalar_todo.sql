@@ -65,5 +65,7 @@
 \i 17_integridad_multiempresa.sql
 \echo '== 17 · Pruebas de integridad (se deshacen con ROLLBACK)'
 \i 17_pruebas_integridad.sql
+\echo '== 19 · Seguridad a nivel de fila en todas las tablas'
+\i 19_rls.sql
 
 \echo '== Listo: taseca_db instalada.'
