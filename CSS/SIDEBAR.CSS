@@ -1,0 +1,566 @@
+/* ==========================================================================
+   sidebar.css · COMPONENTE COMPARTIDO DE NAVEGACIÓN
+
+   Un solo sidebar para los dos paneles: el de Taseca y el de cada
+   empresa. Aquí vive la ESTRUCTURA —el grid, el colapso, el drawer
+   móvil, las transiciones— y nada de marca.
+
+   La PIEL la pone cada panel rellenando estas variables:
+
+     · Panel de empresa  -> css/styles.css   (colores del tema del cliente)
+     · Panel de Taseca   -> css/taseca.css   (variables --platform-*)
+
+   Así no hay dos sidebars que mantener, y ninguno se lleva por delante
+   la identidad del otro. Ver §10 y §18 de la fase 12.
+
+   Índice:
+     01. Variables del componente
+     02. Estructura: shell + contenido
+     03. Barra lateral
+     04. Marca
+     05. Botón de colapso
+     06. Menú y elementos
+     06b. Grupos del menú
+     07. Tooltips en estado colapsado
+     08. Cabecera del contenido
+     09. Tablet y móvil (drawer)
+     10. Impresión
+   ========================================================================== */
+
+/* ==================== 01. VARIABLES DEL COMPONENTE ======================= */
+.app-shell {
+  /* Anchos. Los rellena cada piel si quiere otros. */
+  --side-ancho: 236px;
+  --side-ancho-min: 64px;
+
+  /* Colores neutros: cada panel los sobrescribe con los suyos. */
+  --side-fondo: rgba(255, 255, 255, 0.02);
+  --side-borde: rgba(255, 255, 255, 0.09);
+  --side-texto: #98a2b3;
+  --side-texto-activo: #ffffff;
+  --side-activo: rgba(255, 255, 255, 0.07);
+  --side-activo-borde: currentColor;
+  --side-radio: 10px;
+
+  /* Cuánto tarda el colapso. Suave, sin aspavientos. */
+  --side-t: 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ================== 02. ESTRUCTURA: SHELL + CONTENIDO ==================== */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--side-ancho) minmax(0, 1fr);
+  align-items: start;
+  min-height: 100vh;
+  transition: grid-template-columns var(--side-t);
+}
+
+/* Colapsado: la columna se encoge de verdad, no se esconde detrás de un
+   hueco reservado. Ése es el punto de toda la fase — el contenido tiene
+   que ganar el ancho que suelta el menú. */
+.app-shell.is-colapsado {
+  grid-template-columns: var(--side-ancho-min) minmax(0, 1fr);
+}
+
+/* `minmax(0, 1fr)` y no `1fr` a secas: sin eso, una tabla ancha empuja
+   la columna y el grid deja de encoger. */
+.app-main {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Dentro del panel el contenido usa TODO el ancho: el límite de 1200px
+   es para la página pública, donde se lee texto, no para un tablero con
+   tablas y tarjetas. */
+.app-main .contenedor {
+  max-width: none;
+}
+
+/* ========================= 03. BARRA LATERAL ============================= */
+.app-side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 12px;
+  background: var(--side-fondo);
+  border-right: 1px solid var(--side-borde);
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: padding var(--side-t);
+}
+.app-shell.is-colapsado .app-side {
+  padding-inline: 8px;
+  align-items: center;
+}
+
+/* ============================ 04. MARCA ================================== */
+.app-side__marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+}
+/* El isotipo nunca se deforma: conserva su caja y su proporción. */
+.app-side__iso {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+}
+.app-side__iso svg,
+.app-side__iso img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.app-side__nombre {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  white-space: nowrap;
+  transition: opacity var(--side-t);
+}
+
+/* Colapsado: se queda el isotipo, se va el texto. */
+.app-shell.is-colapsado .app-side__nombre {
+  display: none;
+}
+
+/* ====================== 05. BOTÓN DE COLAPSO ============================= */
+.app-side__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid var(--side-borde);
+  border-radius: var(--side-radio);
+  background: transparent;
+  color: var(--side-texto);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--side-t), color var(--side-t), border-color var(--side-t);
+}
+.app-side__toggle:hover {
+  color: var(--side-texto-activo);
+  background: var(--side-activo);
+}
+.app-side__toggle:focus-visible {
+  outline: 2px solid var(--side-activo-borde);
+  outline-offset: 2px;
+}
+.app-side__toggle i {
+  font-style: normal;
+  font-size: 15px;
+  line-height: 1;
+}
+.app-shell.is-colapsado .app-side__toggle span {
+  display: none;
+}
+
+/* ====================== 06. MENÚ Y ELEMENTOS ============================= */
+.app-side__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.app-side__titulo {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--side-texto);
+  opacity: 0.7;
+  padding: 0 10px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.app-shell.is-colapsado .app-side__titulo {
+  display: none;
+}
+
+/* El elemento del menú. En el panel de empresa estos botones conservan
+   su clase `.tab` y su `data-tab` para que la lógica de permisos siga
+   funcionando sin tocarla: aquí sólo se les cambia el aspecto, de
+   pestaña horizontal a fila de menú. */
+.app-side__item,
+.app-side .tab {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-bottom: 1px solid transparent; /* anula el subrayado de .tab */
+  border-radius: var(--side-radio);
+  background: none;
+  color: var(--side-texto);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--side-t), color var(--side-t), border-color var(--side-t);
+}
+.app-side__item:hover,
+.app-side .tab:hover {
+  background: var(--side-activo);
+  color: var(--side-texto-activo);
+}
+.app-side__item:focus-visible,
+.app-side .tab:focus-visible {
+  outline: 2px solid var(--side-activo-borde);
+  outline-offset: -2px;
+}
+
+/* Activo: fondo + barra lateral. No se distingue sólo por color — hay
+   un indicador de forma, para quien no distinga los tonos (§17). */
+.app-side__item.is-activo,
+.app-side .tab.is-activo {
+  background: var(--side-activo);
+  color: var(--side-texto-activo);
+  border-color: var(--side-borde);
+  box-shadow: inset 3px 0 0 var(--side-activo-borde);
+}
+
+/* El icono siempre ocupa lo mismo: así los iconos quedan alineados
+   entre sí al colapsar. */
+.app-side__item i,
+.app-side .tab i {
+  font-style: normal;
+  font-size: 17px;
+  line-height: 1;
+  width: 22px;
+  flex: 0 0 22px;
+  text-align: center;
+}
+.app-side__item span:not(.pill),
+.app-side .tab span:not(.pill) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Contadores: pegados al icono cuando el menú está encogido. */
+.app-side .tab .pill {
+  margin-left: auto;
+}
+.app-shell.is-colapsado .app-side__item span:not(.pill),
+.app-shell.is-colapsado .app-side .tab span:not(.pill) {
+  display: none;
+}
+.app-shell.is-colapsado .app-side .tab .pill {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  margin: 0;
+  font-size: 10px;
+  padding: 0 5px;
+}
+.app-shell.is-colapsado .app-side__item,
+.app-shell.is-colapsado .app-side .tab {
+  position: relative;
+  justify-content: center;
+  padding: 11px 0;
+}
+
+/* ===================== 06b. GRUPOS DEL MENÚ ============================= */
+/* Segundo nivel: las opciones se ordenan por contexto de trabajo y cada
+   grupo se pliega. La cabecera es deliberadamente discreta —pequeña, en
+   mayúsculas y apagada— para no competir con las opciones. */
+.app-side__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+.app-side__grupo:not(.oculto) ~ .app-side__grupo {
+  margin-top: 10px;
+}
+
+.app-side__grupo-cab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 11px 4px;
+  border: 0;
+  border-radius: var(--side-radio);
+  background: none;
+  color: var(--side-texto);
+  opacity: 0.72;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--side-t), color var(--side-t);
+}
+.app-side__grupo-cab:hover {
+  opacity: 1;
+  color: var(--side-texto-activo);
+}
+.app-side__grupo-cab:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--side-activo-borde);
+  outline-offset: -2px;
+}
+.app-side__grupo-cab i {
+  font-style: normal;
+  flex: 0 0 12px;
+  width: 12px;
+  font-size: 9px;
+  text-align: center;
+  transition: transform var(--side-t);
+}
+.app-side__grupo-cab span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* ▾ abierto · ▸ cerrado */
+.app-side__grupo.is-cerrado .app-side__grupo-cab i {
+  transform: rotate(-90deg);
+}
+
+.app-side__grupo-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.app-side__grupo.is-cerrado .app-side__grupo-items {
+  display: none;
+}
+
+/* Grupo cerrado con la sección actual dentro: la cabecera lo avisa con la
+   misma barra que marca la opción activa. */
+.app-side__grupo.is-cerrado.tiene-activo .app-side__grupo-cab {
+  opacity: 1;
+  color: var(--side-texto-activo);
+  box-shadow: inset 3px 0 0 var(--side-activo-borde);
+}
+
+/* Barra ENCOGIDA: no hay sitio para títulos. Se ven todos los iconos a
+   los que el perfil tiene acceso —también los de un grupo cerrado, para
+   que la navegación siga funcionando— y cada grupo se separa con una
+   línea fina. Al expandir, cada grupo vuelve a como estaba. */
+.app-shell.is-colapsado .app-side__grupo-cab {
+  display: none;
+}
+.app-shell.is-colapsado .app-side__grupo.is-cerrado .app-side__grupo-items {
+  display: flex;
+}
+.app-shell.is-colapsado .app-side__grupo:not(.oculto) ~ .app-side__grupo {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--side-borde);
+}
+
+.app-side__pie {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--side-borde);
+}
+.app-shell.is-colapsado .app-side__pie .app-side__nota {
+  display: none;
+}
+
+/* ================ 07. TOOLTIPS EN ESTADO COLAPSADO ======================= */
+/* Sin el texto al lado, el icono solo no basta: al pasar el ratón se
+   dice qué es. Se pinta con CSS desde `data-titulo` para no depender del
+   `title` nativo, que tarda y no se puede peinar. */
+.app-shell.is-colapsado .app-side [data-titulo]::after {
+  content: attr(data-titulo);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #10151f;
+  border: 1px solid var(--side-borde);
+  color: var(--side-texto-activo);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms;
+  z-index: 90;
+}
+.app-shell.is-colapsado .app-side [data-titulo]:hover::after,
+.app-shell.is-colapsado .app-side [data-titulo]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* =================== 08. CABECERA DEL CONTENIDO ========================== */
+.app-top {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 11px 22px;
+  border-bottom: 1px solid var(--side-borde);
+  background: var(--side-fondo);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* El botón que abre el menú en móvil. En escritorio no existe: allí el
+   colapso se hace desde la propia barra. */
+.app-top__menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 1px solid var(--side-borde);
+  border-radius: var(--side-radio);
+  background: transparent;
+  color: var(--side-texto-activo);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+/* Tapa el contenido cuando el drawer está abierto (sólo móvil). */
+.app-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 79;
+  opacity: 0;
+  transition: opacity var(--side-t);
+}
+
+/* ==================== 09. TABLET Y MÓVIL (DRAWER) ======================== */
+@media (max-width: 900px) {
+  /* Ya no hay dos columnas: el menú pasa a ser un cajón que entra por la
+     izquierda y el contenido ocupa TODO el ancho. */
+  .app-shell,
+  .app-shell.is-colapsado {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-side {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(280px, 84vw);
+    height: 100dvh;
+    padding-inline: 12px;
+    align-items: stretch;
+    z-index: 80;
+    transform: translateX(-100%);
+    transition: transform var(--side-t);
+    background: #0b0f16;
+  }
+  .app-shell.is-abierto .app-side {
+    transform: translateX(0);
+  }
+  .app-shell.is-abierto .app-backdrop {
+    display: block;
+    opacity: 1;
+  }
+
+  /* En el cajón el menú siempre va completo: el colapso es cosa de
+     escritorio. Se anula todo lo que lo encogía. */
+  .app-shell.is-colapsado .app-side__nombre,
+  .app-shell.is-colapsado .app-side__titulo,
+  .app-shell.is-colapsado .app-side__item span:not(.pill),
+  .app-shell.is-colapsado .app-side .tab span:not(.pill),
+  .app-shell.is-colapsado .app-side__toggle span,
+  .app-shell.is-colapsado .app-side__pie .app-side__nota {
+    display: revert;
+  }
+  .app-shell.is-colapsado .app-side__item,
+  .app-shell.is-colapsado .app-side .tab {
+    justify-content: flex-start;
+    padding: 10px 11px;
+  }
+  .app-shell.is-colapsado .app-side .tab .pill {
+    position: static;
+    margin-left: auto;
+    font-size: 12px;
+    padding: 1px 8px;
+  }
+  /* En el cajón vuelven las cabeceras y los grupos se pliegan igual que
+     con la barra expandida. */
+  .app-shell.is-colapsado .app-side__grupo-cab {
+    display: flex;
+  }
+  .app-shell.is-colapsado .app-side__grupo.is-cerrado .app-side__grupo-items {
+    display: none;
+  }
+  .app-shell.is-colapsado .app-side__grupo:not(.oculto) ~ .app-side__grupo {
+    margin-top: 10px;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* Sin tooltips: en táctil no hay hover. */
+  .app-shell.is-colapsado .app-side [data-titulo]::after {
+    content: none;
+  }
+
+  /* El botón de colapsar no pinta nada aquí; se cierra con el ☰ o
+     tocando fuera. */
+  .app-side__toggle {
+    display: none;
+  }
+
+  .app-top__menu {
+    display: flex;
+  }
+  .app-top {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-top {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+}
+
+/* ========================== 10. IMPRESIÓN =============================== */
+@media print {
+  .app-side,
+  .app-top,
+  .app-backdrop {
+    display: none !important;
+  }
+  .app-shell,
+  .app-shell.is-colapsado {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

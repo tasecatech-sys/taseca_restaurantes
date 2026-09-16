@@ -1,0 +1,470 @@
+/* ==========================================================================
+   TASECA · taseca.css
+   Identidad visual del PANEL DE PLATAFORMA.
+
+   ─────────────────────────────────────────────────────────────────────────
+   AISLAMIENTO — leer antes de tocar nada
+   ─────────────────────────────────────────────────────────────────────────
+   Este archivo lo carga ÚNICAMENTE `taseca-admin.html`. Ninguna página de
+   una empresa cliente (index, mesa, cierre, admin) lo enlaza, así que no
+   puede afectarlas ni por accidente.
+
+   Además, TODA regla de aquí cuelga de `.taseca`, que es la clase del
+   <body> del panel de plataforma. Doble candado: aunque alguien enlazara
+   esta hoja desde otra página, sin ese `.taseca` no se aplicaría nada.
+
+   Y va DESPUÉS de css/styles.css a propósito: reutiliza su estructura
+   —.kpi, .tabla, .caja, .badge, .btn, .campo— y sólo le cambia la piel.
+   No se duplican componentes ni se toca el archivo de NASCAR.
+
+   ─────────────────────────────────────────────────────────────────────────
+   LA MARCA
+   ─────────────────────────────────────────────────────────────────────────
+   Tomada de taseca.tech: dorado y cian sobre azul casi negro, Orbitron
+   para los títulos, Inter para el cuerpo y JetBrains Mono para los datos.
+   Estética de consola técnica, coherente con «software · automatización ·
+   analítica predictiva».
+
+   Índice:
+     01. Variables de plataforma
+     02. Base y tipografía
+     03. Marca y logotipo
+     04. Login
+     05. Estructura: barra lateral + contenido
+     06. Menú
+     07. Tarjetas de métrica
+     08. Componentes heredados repintados
+     09. Responsive
+   ========================================================================== */
+
+/* ==================== 01. VARIABLES DE PLATAFORMA ======================== */
+/* Un solo sitio para el color. Ningún valor se repite suelto por la hoja:
+   si mañana cambia la marca, se cambia aquí y ya. */
+.taseca {
+  /* Marca */
+  --platform-primary: #d4a437; /* dorado Taseca */
+  --platform-primary-soft: #f5d97f;
+  --platform-secondary: #00e5ff; /* cian de datos */
+  --platform-secondary-soft: #6ee8ff;
+  --platform-accent: #6ec5ff;
+
+  /* Fondos y superficies */
+  --platform-background: #05070f;
+  --platform-background-2: #0a0e1a;
+  --platform-surface: #0f1424;
+  --platform-surface-2: #131a2e;
+
+  /* Texto */
+  --platform-text: #e8ecf5;
+  --platform-muted: #8a93a8;
+
+  /* Bordes */
+  --platform-border: rgba(0, 229, 255, 0.18);
+  --platform-border-gold: rgba(212, 164, 55, 0.22);
+  --platform-border-soft: rgba(255, 255, 255, 0.07);
+
+  /* Estado */
+  --platform-success: #28c840;
+  --platform-warning: #f5a524;
+  --platform-danger: #ff6b6b;
+
+  /* Tipografía */
+  --platform-font-display: 'Orbitron', 'Barlow Condensed', system-ui, sans-serif;
+  --platform-font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --platform-font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  /* Medidas */
+  --platform-radius: 12px;
+  --platform-radius-sm: 8px;
+  --platform-sidebar: 248px;
+  --platform-glow: 0 0 24px rgba(212, 164, 55, 0.18);
+  --platform-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+/* ======================= 02. BASE Y TIPOGRAFÍA =========================== */
+
+/* `body.taseca` y no `.taseca` a secas: css/styles.css tiene una regla
+   `body.admin { background: var(--negro-900) }` que, por llevar el
+   elemento delante, gana a un selector de clase suelto. Se iguala la
+   especificidad en LA HOJA DE TASECA en vez de bajar la de NASCAR:
+   tocar styles.css sería arriesgar el aspecto de las empresas. */
+body.taseca {
+  background:
+    radial-gradient(900px 480px at 82% -8%, rgba(212, 164, 55, 0.09), transparent 62%),
+    radial-gradient(760px 420px at 8% 4%, rgba(0, 229, 255, 0.07), transparent 60%),
+    var(--platform-background);
+  color: var(--platform-text);
+  font-family: var(--platform-font-body);
+  min-height: 100vh;
+}
+
+.taseca h1,
+.taseca h2,
+.taseca h3,
+.taseca h4 {
+  font-family: var(--platform-font-display);
+  letter-spacing: 0.02em;
+  color: var(--platform-text);
+}
+
+.taseca .num,
+.taseca .mono,
+.taseca .kpi__valor {
+  font-family: var(--platform-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.taseca .tenue { color: var(--platform-muted); }
+.taseca .ambar { color: var(--platform-warning); }
+.taseca a { color: var(--platform-secondary-soft); }
+.taseca a:hover { color: var(--platform-secondary); }
+
+/* Etiqueta de sección en clave de terminal: < texto /> */
+.tsc-kicker {
+  font-family: var(--platform-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--platform-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+.tsc-kicker::before { content: '< '; opacity: 0.55; }
+.tsc-kicker::after { content: ' />'; opacity: 0.55; }
+
+/* ========================= 03. MARCA Y LOGOTIPO ========================== */
+.tsc-marca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.tsc-marca__logo {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 10px rgba(212, 164, 55, 0.35));
+}
+.tsc-marca__texto { display: flex; flex-direction: column; line-height: 1.1; }
+.tsc-marca__nombre {
+  font-family: var(--platform-font-display);
+  font-weight: 900;
+  font-size: 21px;
+  letter-spacing: 0.28em;
+  color: var(--platform-text);
+}
+.tsc-marca__sub {
+  font-family: var(--platform-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--platform-primary);
+}
+
+/* ============================== 04. LOGIN ================================ */
+.taseca .login-caja {
+  background: linear-gradient(180deg, var(--platform-surface), var(--platform-background-2));
+  border: 1px solid var(--platform-border-gold);
+  border-radius: var(--platform-radius);
+  box-shadow: var(--platform-shadow), var(--platform-glow);
+}
+.tsc-login-marca {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.tsc-login-marca .tsc-marca__logo { width: 64px; height: 64px; }
+.tsc-login-marca .tsc-marca__nombre { font-size: 26px; }
+
+/* Píldora «sistema en línea», como en el sitio corporativo */
+.tsc-pill {
+  display: inline-block;
+  font-family: var(--platform-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--platform-secondary);
+  border: 1px solid var(--platform-border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  background: rgba(0, 229, 255, 0.05);
+}
+
+/* ============ 05. PIEL DEL SIDEBAR · panel de plataforma ================= */
+/* La estructura la pone css/sidebar.css. Aquí sólo se rellenan sus
+   variables con la marca de Taseca — dorado y cian sobre azul casi
+   negro— para que el mismo componente se vea como la plataforma y no
+   como una empresa. */
+.taseca .app-shell {
+  --side-ancho: 244px;
+  --side-ancho-min: 68px;
+  --side-fondo: linear-gradient(180deg, var(--platform-background-2), var(--platform-background));
+  --side-borde: var(--platform-border-soft);
+  --side-texto: var(--platform-muted);
+  --side-texto-activo: var(--platform-primary-soft);
+  --side-activo: rgba(212, 164, 55, 0.14);
+  --side-activo-borde: var(--platform-primary);
+  --side-radio: var(--platform-radius-sm);
+}
+
+.taseca .app-side {
+  background: var(--side-fondo);
+}
+.taseca .app-top {
+  background: rgba(10, 14, 26, 0.86);
+  border-color: var(--platform-border-soft);
+}
+
+.taseca .app-side__item {
+  font-family: var(--platform-font-body);
+}
+.taseca .app-side__titulo {
+  font-family: var(--platform-font-mono);
+}
+
+/* El isotipo conserva su caja cuadrada y su resplandor; nunca se
+   estira ni cambia de proporción al colapsar. */
+.taseca .app-side__iso .tsc-marca__logo {
+  width: 34px;
+  height: 34px;
+}
+.app-shell.is-colapsado .taseca .app-side__iso,
+.taseca .app-shell.is-colapsado .app-side__iso {
+  margin-inline: auto;
+}
+
+.taseca .app-side__pie .btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: flex-start;
+}
+.taseca .app-side__pie .btn i {
+  font-style: normal;
+  width: 22px;
+  flex: 0 0 22px;
+  text-align: center;
+}
+
+.taseca .app-main > main {
+  padding: 26px 30px 70px;
+}
+
+/* Cabecera del contenido: quién eres y qué empresa administras */
+.tsc-usuario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--platform-surface);
+  border: 1px solid var(--platform-border-gold);
+  border-radius: 999px;
+  padding: 7px 16px 7px 10px;
+}
+.tsc-usuario i {
+  font-style: normal;
+  font-size: 18px;
+}
+.tsc-usuario b {
+  display: block;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.tsc-usuario span {
+  font-family: var(--platform-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--platform-primary);
+}
+
+/* Empresa que se está administrando ahora mismo */
+.tsc-contexto {
+  border: 1px solid var(--platform-border);
+  border-radius: var(--platform-radius-sm);
+  background: rgba(0, 229, 255, 0.05);
+  padding: 8px 14px;
+}
+.tsc-contexto__label {
+  font-family: var(--platform-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--platform-muted);
+  display: block;
+}
+.tsc-contexto__valor {
+  font-family: var(--platform-font-display);
+  font-weight: 700;
+  color: var(--platform-secondary-soft);
+}
+
+/* ======================= 07. TARJETAS DE MÉTRICA ========================= */
+.taseca .kpi {
+  background: linear-gradient(180deg, var(--platform-surface), var(--platform-background-2));
+  border: 1px solid var(--platform-border-soft);
+  border-radius: var(--platform-radius);
+}
+.taseca .kpi::after { background: var(--platform-primary); }
+.taseca .kpi--verde::after { background: var(--platform-success); }
+.taseca .kpi--ambar::after { background: var(--platform-warning); }
+.taseca .kpi--rojo::after { background: var(--platform-danger); }
+.taseca .kpi__label {
+  font-family: var(--platform-font-mono);
+  color: var(--platform-muted);
+  letter-spacing: 0.16em;
+}
+.taseca .kpi__valor {
+  font-family: var(--platform-font-display);
+  color: var(--platform-text);
+}
+.taseca .kpi__extra { color: var(--platform-muted); }
+
+/* ============= 08. COMPONENTES HEREDADOS, REPINTADOS ===================== */
+.taseca .caja,
+.taseca .caja-datos,
+.taseca .tabla-wrap {
+  background: var(--platform-surface);
+  border-color: var(--platform-border-soft);
+  border-radius: var(--platform-radius);
+}
+.taseca .caja h3 { color: var(--platform-text); }
+.taseca .caja-datos .linea { border-color: var(--platform-border-soft); }
+
+.taseca .tabla thead th {
+  background: var(--platform-background-2);
+  font-family: var(--platform-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--platform-muted);
+  border-color: var(--platform-border-soft);
+}
+.taseca .tabla td { border-color: var(--platform-border-soft); }
+.taseca .tabla tbody tr:hover td { background: rgba(0, 229, 255, 0.04); }
+
+.taseca .input,
+.taseca .select {
+  background: var(--platform-background-2);
+  border-color: var(--platform-border-soft);
+  color: var(--platform-text);
+  font-family: var(--platform-font-body);
+  border-radius: var(--platform-radius-sm);
+}
+.taseca .input:focus,
+.taseca .select:focus {
+  border-color: var(--platform-secondary);
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.14);
+}
+.taseca .campo > span {
+  font-family: var(--platform-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--platform-muted);
+}
+
+/* Botones: el primario de plataforma es dorado, no el azul de NASCAR */
+.taseca .btn {
+  border-radius: var(--platform-radius-sm);
+  font-family: var(--platform-font-body);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.taseca .btn--azul,
+.taseca .btn--rojo {
+  background: linear-gradient(135deg, var(--platform-primary), #b8862a);
+  border-color: var(--platform-primary);
+  color: #1a1204;
+}
+.taseca .btn--azul:hover,
+.taseca .btn--rojo:hover {
+  background: linear-gradient(135deg, var(--platform-primary-soft), var(--platform-primary));
+}
+.taseca .btn--fantasma {
+  border-color: var(--platform-border);
+  color: var(--platform-secondary-soft);
+  background: transparent;
+}
+.taseca .btn--fantasma:hover {
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--platform-secondary);
+}
+
+.taseca .badge {
+  font-family: var(--platform-font-mono);
+  letter-spacing: 0.1em;
+  border-radius: var(--platform-radius-sm);
+}
+.taseca .badge--verde { color: var(--platform-success); border-color: rgba(40, 200, 64, 0.4); }
+.taseca .badge--azul {
+  color: var(--platform-secondary);
+  border-color: var(--platform-border);
+  background: rgba(0, 229, 255, 0.08);
+}
+.taseca .badge--linea { color: var(--platform-muted); border-color: var(--platform-border-soft); }
+.taseca .badge--rojo { color: var(--platform-danger); border-color: rgba(255, 107, 107, 0.4); }
+
+.taseca .vacio {
+  border-color: var(--platform-border-soft);
+  color: var(--platform-muted);
+}
+
+.taseca .modal {
+  background: var(--platform-surface);
+  border: 1px solid var(--platform-border-gold);
+  border-radius: var(--platform-radius);
+}
+.taseca .modal__head h3 { font-family: var(--platform-font-display); font-size: 17px; }
+
+/* Ficha de identidad de una empresa cliente: se pinta con SUS colores,
+   no con los de Taseca. Aquí es donde se ve la diferencia entre la
+   plataforma y el cliente. */
+.tsc-identidad {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--platform-radius);
+  border: 1px solid var(--platform-border-soft);
+  background: var(--platform-background-2);
+}
+.tsc-identidad__marca {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: var(--platform-radius-sm);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+/* Avatar pequeño de empresa para la tabla */
+.tsc-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--platform-radius-sm);
+  display: inline-grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+/* ============================ 09. RESPONSIVE =============================
+
+   El comportamiento responsive del menú —tira horizontal, cajón móvil,
+   colapso— lo lleva css/sidebar.css, que es el mismo componente para
+   los dos paneles. Aquí sólo queda lo que es de la piel de Taseca.
+   ========================================================================= */
+@media (max-width: 900px) {
+  .taseca .app-main > main { padding: 20px 16px 60px; }
+}
+
+@media (max-width: 640px) {
+  .taseca .app-top { gap: 10px; }
+}
