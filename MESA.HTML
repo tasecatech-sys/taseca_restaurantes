@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>NASCAR · Pedido de mesa</title>
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#06080c">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2306080c'/><rect x='4' y='4' width='8' height='8' fill='%23fff'/><rect x='20' y='4' width='8' height='8' fill='%23fff'/><rect x='12' y='12' width='8' height='8' fill='%23fff'/><rect x='4' y='20' width='8' height='8' fill='%23fff'/><rect x='20' y='20' width='8' height='8' fill='%23fff'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="mesa">
+
+<header class="mesa-top">
+  <div class="franja"></div>
+  <div class="contenedor mesa-top__barra">
+    <a href="index.html" class="logo">
+      <span class="logo__cuadros cuadros cuadros--fina"></span>
+      <span><span class="logo__marca">NAS<em>CAR</em></span></span>
+    </a>
+
+    <div class="mesa-chapa crece" style="flex:0 0 auto;margin-left:auto">
+      <div>
+        <span>Mesa</span>
+        <b id="numMesa">—</b>
+      </div>
+      <div style="border-left:1px solid rgba(255,255,255,.3);padding-left:12px">
+        <span>Sucursal</span>
+        <b style="font-size:16px" id="nomSucursal">—</b>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="contenedor mesa-main">
+
+  <div id="cabeceraMesa"></div>
+
+  <!-- Menú del día de esta sucursal -->
+  <section class="mt-24" id="bloqueDia">
+    <div class="titulo-seccion" style="margin-bottom:20px">
+      <span class="titulo-seccion__kicker">Solo hoy</span>
+      <!-- Título y mensaje configurables, los mismos del portal -->
+      <h2 style="font-size:30px" id="tituloDia"></h2>
+      <p class="mini tenue" id="mensajeDia"></p>
+    </div>
+    <div class="platos-dia" id="listaDia"></div>
+  </section>
+
+  <!-- Carta. Se oculta sola en los locales que sólo trabajan menú del día. -->
+  <section class="mt-32" id="seccionCarta">
+    <div class="titulo-seccion" style="margin-bottom:20px">
+      <span class="titulo-seccion__kicker">Siempre disponible</span>
+      <h2 style="font-size:30px">Carta</h2>
+    </div>
+    <div class="filtros" id="filtrosCarta"></div>
+    <div class="carta" id="listaCarta"></div>
+  </section>
+
+</main>
+
+<!-- Barra fija con el total -->
+<div class="barra-total" id="barraTotal">
+  <div class="contenedor barra-total__inner">
+    <div>
+      <div class="mini tenue" id="btResumen">0 productos</div>
+      <div class="precio barra-total__cifra" id="btTotal">$ 0</div>
+    </div>
+    <div class="fila">
+      <button class="btn btn--fantasma btn--sm" data-accion="ver-pedido">Ver pedido</button>
+      <button class="btn btn--rojo" data-accion="enviar">🏁 Enviar a cocina</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/remoto.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/menu-dia.js"></script>
+<script src="js/tema.js"></script>
+<script src="js/mesa.js"></script>
+</body>
+</html>

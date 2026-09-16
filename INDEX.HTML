@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NASCAR · Restaurante — Parrilla, tradicional y domicilios</title>
+<meta name="description" content="Restaurante NASCAR: carta a la parrilla, almuerzos del día y domicilios en cuatro locales de Bogotá. Pide en línea en minutos.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#06080c">
+
+<meta property="og:title" content="NASCAR · Cocina de alta velocidad">
+<meta property="og:description" content="Menú del día, arepas, comidas rápidas y bar en cuatro locales de Bogotá.">
+<meta property="og:type" content="website">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2306080c'/><rect x='4' y='4' width='8' height='8' fill='%23fff'/><rect x='20' y='4' width='8' height='8' fill='%23fff'/><rect x='12' y='12' width='8' height='8' fill='%23fff'/><rect x='4' y='20' width='8' height='8' fill='%23fff'/><rect x='20' y='20' width='8' height='8' fill='%23fff'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+<!-- ====================== CABECERA ====================== -->
+<header class="cabecera">
+  <div class="franja"></div>
+  <div class="contenedor cabecera__barra">
+    <a href="index.html" class="logo">
+      <span class="logo__cuadros cuadros cuadros--fina"></span>
+      <span>
+        <span class="logo__marca">NAS<em>CAR</em></span>
+        <span class="logo__sub">Restaurante</span>
+      </span>
+    </a>
+
+    <nav class="nav" id="nav">
+      <a href="#dia">Platos del día</a>
+      <a href="#carta">Carta</a>
+      <a href="#sucursales">Sucursales</a>
+      <a href="#pedir">Cómo pedir</a>
+      <a href="#" data-accion="seguir">Seguir pedido</a>
+    </nav>
+
+    <div class="cabecera__acciones">
+      <button class="btn btn--rojo btn--sm btn-carrito" data-accion="abrir-carrito">
+        🛒 Pedido
+        <span class="btn-carrito__n oculto" id="carritoN">0</span>
+      </button>
+      <button class="menu-burger" id="burger" aria-label="Menú"><span></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ========================= HERO ========================= -->
+<section class="hero">
+  <div class="contenedor hero__inner">
+    <div>
+      <span class="hero__etiqueta">
+        <i class="cuadros cuadros--fina"></i> Cuatro locales en Bogotá
+      </span>
+
+      <h1>
+        Cocina de<br>
+        <span class="linea-rojo">alta</span> <span class="linea-contorno">velocidad</span>
+      </h1>
+
+      <p class="hero__texto" id="heroTexto">
+        Parrilla al carbón, comida tradicional y almuerzos que cambian todos los días.
+        Pide para llevar a tu mesa o a domicilio en menos de dos minutos.
+      </p>
+
+      <div class="hero__cta">
+        <a href="#dia" class="btn btn--rojo">🏁 Ver platos de hoy</a>
+        <a href="#carta" class="btn btn--fantasma">Ver la carta</a>
+      </div>
+
+      <div class="hero__datos">
+        <div class="hero__dato">
+          <b id="statPlatos">30+</b>
+          <span>Platos en carta</span>
+        </div>
+        <div class="hero__dato">
+          <!-- Lo llena app.js con las unidades activas -->
+          <b id="statLocales">—</b>
+          <span>Locales</span>
+        </div>
+        <div class="hero__dato">
+          <b>35'</b>
+          <span>Domicilio promedio</span>
+        </div>
+        <div class="hero__dato">
+          <b>11–22h</b>
+          <span>Todos los días</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="hero__tarjeta">
+      <div class="hero__tarjeta-top">
+        <h3>Pedir es así de rápido</h3>
+        <span class="badge badge--rojo">4 pasos</span>
+      </div>
+      <div class="hero__tarjeta-body">
+        <div class="paso">
+          <span class="paso__n">1</span>
+          <div><b>Elige el local</b><p>Cada uno tiene su carta y su menú del día.</p></div>
+        </div>
+        <div class="paso">
+          <span class="paso__n">2</span>
+          <div><b>Arma tu pedido</b><p>De la carta fija o del menú del día. Puedes dejar notas por plato.</p></div>
+        </div>
+        <div class="paso">
+          <span class="paso__n">3</span>
+          <div><b>Datos y pago</b><p>Efectivo contra entrega, datáfono o transferencia (Nequi / Bancolombia).</p></div>
+        </div>
+        <div class="paso">
+          <span class="paso__n">4</span>
+          <div><b>Sigue tu pedido</b><p>Te damos un código para consultar el estado en cualquier momento.</p></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ==================== PLATOS DEL DÍA ==================== -->
+<section class="seccion seccion--oscura" id="dia">
+  <div class="contenedor">
+    <div class="titulo-seccion reveal">
+      <span class="titulo-seccion__kicker">Cambia todos los días</span>
+      <!-- El título y el mensaje los escribe el administrador por unidad
+           (Panel → Menú del día). Aquí no va ningún texto fijo. -->
+      <h2 id="tituloDia"></h2>
+      <p id="mensajeDia"></p>
+    </div>
+
+    <div class="barra-dia reveal">
+      <div>
+        <span class="titulo-seccion__kicker" style="margin:0">Hoy</span>
+        <div class="barra-dia__fecha" id="fechaHoy">—</div>
+      </div>
+      <div class="fila">
+        <label class="campo" style="margin:0">
+          <span>¿Dónde quieres pedir?</span>
+          <select class="select" id="filtroSucursalDia"></select>
+        </label>
+      </div>
+    </div>
+
+    <div class="platos-dia" id="listaDia"></div>
+  </div>
+</section>
+
+<!-- ========================= CARTA ========================= -->
+<section class="seccion" id="carta">
+  <div class="contenedor">
+    <div class="titulo-seccion reveal">
+      <span class="titulo-seccion__kicker">Siempre disponible</span>
+      <h2>Nuestra carta</h2>
+      <p>La carta de <b id="unidadPortalNombre">—</b>. Cada local tiene la suya: cámbialo arriba, en el menú del día, o en «Nuestros locales».</p>
+    </div>
+
+    <div class="filtros reveal" id="filtrosCarta"></div>
+    <div class="carta" id="listaCarta"></div>
+  </div>
+</section>
+
+<!-- ====================== SUCURSALES ====================== -->
+<section class="seccion seccion--oscura" id="sucursales">
+  <div class="contenedor">
+    <div class="titulo-seccion reveal">
+      <span class="titulo-seccion__kicker">Dónde estamos</span>
+      <h2>Nuestros locales</h2>
+      <p>Cada local con su propia carta y su propia operación. Elige dónde quieres pedir.</p>
+    </div>
+    <div class="sucursales" id="listaSucursales"></div>
+  </div>
+</section>
+
+<!-- ======================= CÓMO PEDIR ====================== -->
+<section class="seccion" id="pedir">
+  <div class="contenedor">
+    <div class="titulo-seccion titulo-seccion--centro reveal">
+      <span class="titulo-seccion__kicker">Servicios</span>
+      <h2>Tres formas de comer NASCAR</h2>
+    </div>
+
+    <div class="sucursales reveal" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      <article class="sucursal sucursal--rojo">
+        <div class="sucursal__cinta"></div>
+        <div class="sucursal__cuerpo">
+          <span class="sucursal__num">01</span>
+          <h3>En la mesa</h3>
+          <p class="tenue">Escanea el código QR de tu mesa y pide desde el celular sin esperar al mesero. El pedido entra directo a cocina con el número de mesa.</p>
+          <a href="mesa.html?suc=1&amp;mesa=1" class="btn btn--fantasma btn--sm">Ver pantalla de mesa</a>
+        </div>
+      </article>
+
+      <article class="sucursal sucursal--azul">
+        <div class="sucursal__cinta"></div>
+        <div class="sucursal__cuerpo">
+          <span class="sucursal__num">02</span>
+          <h3>Domicilio</h3>
+          <p class="tenue">Tú mismo eliges los platos, la zona y el método de pago. Si pagas por transferencia, confirmamos y salimos de inmediato.</p>
+          <button class="btn btn--rojo btn--sm" data-accion="abrir-carrito">Pedir a domicilio</button>
+        </div>
+      </article>
+
+      <article class="sucursal sucursal--azul">
+        <div class="sucursal__cinta"></div>
+        <div class="sucursal__cuerpo">
+          <span class="sucursal__num">03</span>
+          <h3>Para recoger</h3>
+          <p class="tenue">Haz el pedido, te avisamos cuando esté listo y lo recoges en el punto sin fila. Ideal a la hora del almuerzo.</p>
+          <button class="btn btn--fantasma btn--sm" data-accion="seguir">Consultar un pedido</button>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= PIE ========================= -->
+<footer class="pie">
+  <div class="contenedor">
+    <div class="pie__cols">
+      <div>
+        <div class="logo mb-16">
+          <span class="logo__cuadros cuadros cuadros--fina"></span>
+          <span><span class="logo__marca">NAS<em>CAR</em></span><span class="logo__sub">Restaurante</span></span>
+        </div>
+        <p class="tenue mini">Parrilla, comida tradicional y burgers servidas a ritmo de carrera. Dos boxes, un mismo sabor.</p>
+        <p class="tenue mini" id="pieNit"></p>
+      </div>
+
+      <div>
+        <h4>Menú</h4>
+        <ul>
+          <li><a href="#dia">Platos del día</a></li>
+          <li><a href="#carta">Carta</a></li>
+          <li><a href="#sucursales">Sucursales</a></li>
+          <li><a href="#pedir">Cómo pedir</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4>Sucursales</h4>
+        <ul id="pieSucursales"></ul>
+      </div>
+
+      <!-- PORTAL CLIENTE. Aquí NO va ningún acceso interno: ni panel, ni
+           login de empleados, ni plataforma. Quien trabaja en el negocio
+           entra por su propia dirección, y desde aquí no se llega a ella
+           ni siquiera escribiéndola a mano sin credenciales.
+           Ver NASCAR.PORTALES en js/data.js. -->
+      <div>
+        <h4>Tu pedido</h4>
+        <ul>
+          <li><a href="#" data-accion="seguir">Seguir un pedido</a></li>
+          <li><a href="#carta">Ver la carta</a></li>
+          <li><a href="#sucursales">Nuestras sucursales</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pie__legal">
+      <span>© <span data-anio></span> NASCAR Restaurante. Todos los derechos reservados.</span>
+      <span>Hecho con 🏁 en Bogotá</span>
+    </div>
+  </div>
+  <div class="franja"></div>
+</footer>
+
+<!-- ======================== CARRITO ======================== -->
+<div class="carrito-fondo" id="carritoFondo"></div>
+
+<aside class="carrito" id="carrito" aria-label="Tu pedido">
+  <div class="carrito__head">
+    <h3 id="carritoTitulo">Tu pedido</h3>
+    <button class="carrito__x" data-accion="cerrar-carrito" aria-label="Cerrar">&times;</button>
+  </div>
+  <div class="carrito__items" id="carritoItems"></div>
+  <div class="carrito__pie" id="carritoPie"></div>
+</aside>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/remoto.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/menu-dia.js"></script>
+<script src="js/tema.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

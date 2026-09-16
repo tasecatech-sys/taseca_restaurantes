@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NASCAR · Registrar cierre de inventario</title>
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#06080c">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2306080c'/><rect x='4' y='4' width='8' height='8' fill='%23fff'/><rect x='20' y='4' width='8' height='8' fill='%230b5fff'/><rect x='12' y='12' width='8' height='8' fill='%23fff'/><rect x='4' y='20' width='8' height='8' fill='%230b5fff'/><rect x='20' y='20' width='8' height='8' fill='%23fff'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="cierre">
+
+<header class="inv-top">
+  <div class="franja"></div>
+  <div class="contenedor inv-top__barra">
+    <a href="empleados.html" class="logo">
+      <span class="logo__cuadros cuadros cuadros--fina"></span>
+      <span>
+        <span class="logo__marca">NAS<em>CAR</em></span>
+        <span class="logo__sub">Cierre de inventario</span>
+      </span>
+    </a>
+    <div class="crece"></div>
+    <a href="empleados.html" class="btn btn--fantasma btn--sm">Panel</a>
+  </div>
+</header>
+
+<!-- El formulario lo monta js/inventario.js. Es exactamente el mismo que
+     usa la pestaña 📦 Cierre del panel, así no hay dos versiones que
+     mantener por separado.
+
+     PORTAL OPERATIVO: hay que identificarse. Si no hay sesión, lo que se
+     pinta aquí es el login —el mismo del sistema— y el cierre queda
+     firmado por quien entró. La mesera usa su propio usuario, el mismo
+     con el que toma los pedidos. -->
+<main class="contenedor inv-main" data-vista-cierre></main>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/remoto.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/tema.js"></script>
+<script src="js/inventario.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    NASCAR.Inventario.iniciarRegistro(document.querySelector('[data-vista-cierre]'));
+  });
+</script>
+</body>
+</html>

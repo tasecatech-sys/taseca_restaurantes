@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acceso para empleados</title>
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#06080c">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2306080c'/><rect x='4' y='4' width='8' height='8' fill='%23e4002b'/><rect x='20' y='4' width='8' height='8' fill='%23fff'/><rect x='12' y='12' width='8' height='8' fill='%23fff'/><rect x='4' y='20' width='8' height='8' fill='%23fff'/><rect x='20' y='20' width='8' height='8' fill='%230b5fff'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/sidebar.css">
+</head>
+
+<body class="admin">
+
+<!-- ===================== LOGIN ===================== -->
+<div id="pantallaLogin">
+  <div class="franja"></div>
+  <div class="contenedor">
+    <div class="login-caja">
+      <div class="logo">
+        <span class="logo__cuadros cuadros cuadros--fina"></span>
+        <span><span class="logo__marca">NAS<em>CAR</em></span><span class="logo__sub">Panel interno</span></span>
+      </div>
+
+      <p class="tenue mini mb-24">
+        <b>Acceso para el equipo del negocio.</b> Entra con tu usuario para ver lo que
+        te corresponde según tu rol.
+      </p>
+      <div id="avisoAcceso"></div>
+
+      <label class="campo" style="text-align:left">
+        <span>Usuario</span>
+        <input class="input" id="usuarioAcceso" placeholder="admin" autocomplete="username" autocapitalize="off">
+      </label>
+
+      <label class="campo" style="text-align:left">
+        <span>PIN</span>
+        <input class="pin-input" id="pin" type="password" inputmode="numeric"
+               maxlength="6" placeholder="••••" autocomplete="current-password">
+      </label>
+
+      <button class="btn btn--rojo btn--bloque mt-8" id="btnEntrar">Entrar</button>
+
+      <p class="mini tenue mt-24" style="margin-bottom:4px">Acceso rápido para probar cada perfil</p>
+      <div class="acceso-rapido" id="accesoRapido"></div>
+
+      <p class="mini ambar mt-16" style="margin-bottom:0">
+        Los PIN son de demostración: viajan en el código y no protegen nada.
+      </p>
+      <p class="mini tenue mt-8" style="margin-bottom:0">
+        <a href="index.html">← Volver al sitio público</a>
+      </p>
+      <!-- Aquí NO va ningún acceso al panel de Taseca. Éste es el portal
+           de la empresa, y el nivel plataforma no se alcanza pasando por
+           una empresa: taseca-admin.html tiene su propia dirección. -->
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PANEL ===================== -->
+<div id="pantallaPanel" class="oculto">
+
+  <!-- Barra de contexto de plataforma.
+
+       Sólo aparece cuando quien entró es de Taseca. Dice qué empresa
+       está administrando y que sigue siendo él: entrar a una empresa
+       cambia el CONTEXTO, no la identidad. Para un usuario de la empresa
+       esta barra no existe. -->
+  <div id="barraPlataforma" class="barra-plataforma oculto">
+    <div class="contenedor fila fila--entre">
+      <div class="fila" style="gap:14px;flex-wrap:wrap">
+        <span><b>Taseca</b> · administrando</span>
+        <span class="badge badge--azul" id="bpEmpresa">—</span>
+      </div>
+      <a class="btn btn--fantasma btn--xs" href="taseca-admin.html">← Volver a Taseca</a>
+    </div>
+  </div>
+
+  <div class="app-shell" data-sidebar-shell>
+
+    <!-- ================= BARRA LATERAL =================
+         Mismo componente que el panel de Taseca (css/sidebar.css +
+         js/sidebar.js) con la piel de ESTA empresa: sus colores y su
+         tipografía salen de su `theme`, nunca de los de Taseca.
+
+         Los botones conservan su `data-tab` y su clase `.tab`, así que
+         aplicarPermisos() sigue decidiendo cuáles se ven exactamente
+         igual que cuando eran pestañas horizontales. Este cambio es
+         sólo de presentación. -->
+    <aside class="app-side">
+      <a href="index.html" class="app-side__marca logo">
+        <span class="app-side__iso logo__cuadros cuadros cuadros--fina"></span>
+        <span class="app-side__nombre">
+          <span class="logo__marca">NAS<em>CAR</em></span>
+          <span class="logo__sub">Panel interno</span>
+        </span>
+      </a>
+
+      <button class="app-side__toggle" data-sidebar-toggle
+              aria-label="Contraer menú" aria-expanded="true" title="Contraer menú">
+        <i>←</i><span>Contraer menú</span>
+      </button>
+
+      <nav class="app-side__menu" id="tabs" aria-label="Secciones del panel">
+        <!-- Opciones agrupadas por contexto de trabajo. Los grupos SÓLO
+             ordenan: qué opción ve cada perfil lo sigue decidiendo
+             aplicarPermisos() sobre cada .tab, y un grupo que se queda sin
+             opciones visibles se esconde entero (Sidebar.actualizarGrupos).
+             «Registrar cierre» y «Cierres de inventario» son de inventario:
+             el conteo físico no lleva dinero. -->
+        <div class="app-side__grupo" data-grupo="operacion">
+          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoOperacion"><i aria-hidden="true">▾</i><span>Operación</span></button>
+          <div class="app-side__grupo-items" id="grupoOperacion" role="group" aria-label="Operación">
+            <button class="tab" data-tab="mesero"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
+            <button class="tab" data-tab="pedidos"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
+            <button class="tab" data-tab="cocina"><i>👨‍🍳</i><span>Cocina</span></button>
+            <button class="tab" data-tab="entregas"><i>🛵</i><span>Entregas</span></button>
+          </div>
+        </div>
+        <div class="app-side__grupo" data-grupo="ventas">
+          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoVentas"><i aria-hidden="true">▾</i><span>Ventas y caja</span></button>
+          <div class="app-side__grupo-items" id="grupoVentas" role="group" aria-label="Ventas y caja">
+            <button class="tab" data-tab="ventas"><i>📈</i><span>Ventas</span></button>
+            <button class="tab" data-tab="pagos"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
+            <button class="tab" data-tab="informe"><i>📊</i><span>Cruce de caja</span></button>
+            <button class="tab" data-tab="gastos"><i>💰</i><span>Gastos</span><span class="pill oculto" id="pillGastos">0</span></button>
+          </div>
+        </div>
+        <div class="app-side__grupo" data-grupo="productos">
+          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoProductos"><i aria-hidden="true">▾</i><span>Productos e inventario</span></button>
+          <div class="app-side__grupo-items" id="grupoProductos" role="group" aria-label="Productos e inventario">
+            <button class="tab" data-tab="dia"><i>📅</i><span>Menú del día</span></button>
+            <button class="tab" data-tab="carta"><i>🍔</i><span>Carta</span></button>
+            <button class="tab" data-tab="stock"><i>📦</i><span>Stock</span></button>
+            <button class="tab" data-tab="entradas"><i>📥</i><span>Entradas</span></button>
+            <button class="tab" data-tab="cierre"><i>📝</i><span>Registrar cierre</span></button>
+            <button class="tab" data-tab="inventario"><i>🔄</i><span>Cierres de inventario</span><span class="pill oculto" id="pillCierres">0</span></button>
+          </div>
+        </div>
+        <div class="app-side__grupo" data-grupo="administracion">
+          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoAdministracion"><i aria-hidden="true">▾</i><span>Administración</span></button>
+          <div class="app-side__grupo-items" id="grupoAdministracion" role="group" aria-label="Administración">
+            <button class="tab" data-tab="unidades"><i>🏪</i><span>Unidades / Locales</span></button>
+            <button class="tab" data-tab="usuarios"><i>👥</i><span>Usuarios</span></button>
+            <button class="tab" data-tab="config"><i>⚙️</i><span>Configuración</span></button>
+            <button class="tab" data-tab="ajustes"><i>🔧</i><span>Ajustes</span></button>
+          </div>
+        </div>
+      </nav>
+
+      <div class="app-side__pie">
+        <button class="btn btn--fantasma btn--sm" id="btnSalir"><i>⎋</i><span>Salir</span></button>
+      </div>
+    </aside>
+
+    <div class="app-backdrop" data-sidebar-fondo></div>
+
+    <div class="app-main">
+      <header class="app-top">
+        <button class="app-top__menu" data-sidebar-abrir
+                aria-label="Abrir menú" aria-expanded="false">☰</button>
+
+        <div class="usuario-chip" id="usuarioChip">
+          <i>👤</i><div><b>—</b><span>—</span></div>
+        </div>
+
+        <div class="crece"></div>
+
+        <label class="campo" style="margin:0" id="campoSucursalGlobal">
+          <span>Unidad / Local</span>
+          <select class="select" id="sucursalGlobal" style="padding:8px 12px"></select>
+        </label>
+        <button class="btn btn--fantasma" id="btnAvisos" type="button"
+                style="font-size:18px;padding:6px 12px" aria-pressed="true"
+                title="Avisos sonoros">🔔</button>
+        <div class="derecha">
+          <div class="mini tenue" id="relojFecha">—</div>
+          <div class="num" style="font-size:19px" id="reloj">—</div>
+        </div>
+      </header>
+
+      <main class="contenedor">
+
+    <!-- ---------- VISTA MESERO ---------- -->
+    <section class="panel" data-panel="mesero">
+      <div class="titulo-seccion" style="margin-bottom:18px">
+        <span class="titulo-seccion__kicker">Salón</span>
+        <h2 style="font-size:30px">Mesas</h2>
+      </div>
+
+      <nav class="sub-tabs">
+        <button class="sub-tab is-activo" id="mSubMesas">🍽️ Tomar pedido</button>
+        <button class="sub-tab" id="mSubListos">✅ Listos para llevar</button>
+      </nav>
+
+      <div id="vistaMesas">
+        <div class="inv-contexto" id="mesaContexto"></div>
+        <p class="mini tenue mb-16">Toca una mesa para tomarle el pedido.</p>
+        <div class="mesa-grid" id="mesaGrid"></div>
+      </div>
+
+      <div id="vistaListos" class="oculto">
+        <div class="op-lista" id="listaListos"></div>
+      </div>
+    </section>
+
+    <!-- ---------- REGISTRAR CIERRE (mesero y administración) ----------
+         El formulario lo monta js/inventario.js, el mismo que usa la
+         página cierre.html: una sola plantilla para las dos pantallas. -->
+    <section class="panel" data-panel="cierre">
+      <div data-registro-cierre></div>
+    </section>
+
+    <!-- ---------- VISTA COCINA ---------- -->
+    <section class="panel" data-panel="cocina">
+      <div class="titulo-seccion" style="margin-bottom:18px">
+        <span class="titulo-seccion__kicker">Cocina</span>
+        <h2 style="font-size:30px">Por preparar</h2>
+        <p>Los más antiguos aparecen primero. Se marcan en rojo si llevan más de 20 minutos.</p>
+      </div>
+
+      <div class="kpis" id="kpisCocina"></div>
+
+      <div class="barra-herramientas">
+        <!-- La cocina ve siempre sólo su unidad: ya no hay "todas". -->
+        <label class="fila mini tenue oculto" style="gap:6px">
+          <input type="checkbox" id="cocinaSoloMias" checked
+                 style="accent-color:var(--rojo);width:17px;height:17px">
+          Sólo esta unidad
+        </label>
+      </div>
+
+      <div class="op-lista" id="listaCocina"></div>
+    </section>
+
+    <!-- ---------- VISTA ENTREGAS ---------- -->
+    <section class="panel" data-panel="entregas">
+      <div class="titulo-seccion" style="margin-bottom:18px">
+        <span class="titulo-seccion__kicker">Domicilios</span>
+        <h2 style="font-size:30px">Entregas</h2>
+        <p>Pedidos listos para salir y los que ya van en camino.</p>
+      </div>
+
+      <div class="kpis" id="kpisEntregas"></div>
+      <div class="op-lista" id="listaEntregas"></div>
+    </section>
+
+    <!-- ---------- PEDIDOS ---------- -->
+    <section class="panel is-activo" data-panel="pedidos">
+      <div class="kpis" id="kpisPedidos"></div>
+
+      <div class="barra-herramientas">
+        <label class="campo"><span>Tipo</span>
+          <select class="select" id="fTipoPedido">
+            <option value="">Mesa y domicilio</option>
+            <option value="mesa">Solo mesa</option>
+            <option value="domicilio">Solo domicilio</option>
+          </select>
+        </label>
+        <label class="campo"><span>Fecha</span>
+          <input class="input" type="date" id="fFechaPedido">
+        </label>
+        <div class="crece"></div>
+        <label class="fila mini tenue" style="gap:6px">
+          <input type="checkbox" id="fSoloActivos" checked style="accent-color:var(--rojo);width:17px;height:17px">
+          Ocultar entregados y cancelados
+        </label>
+        <button class="btn btn--fantasma btn--sm" id="btnRefrescar">↻ Refrescar</button>
+      </div>
+
+      <div class="tablero" id="tablero"></div>
+    </section>
+
+    <!-- ---------- PAGOS ---------- -->
+    <section class="panel" data-panel="pagos">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Caja</span>
+        <h2 style="font-size:32px">Confirmación de pagos</h2>
+        <p>Todos los pedidos, de mesa y a domicilio, llegan aquí para cobrarse: entregar no es cobrar.
+          Confirma sólo cuando el dinero esté efectivamente recibido y registra con qué pagó el cliente.</p>
+      </div>
+
+      <div class="kpis" id="kpisPagos"></div>
+
+      <div class="barra-herramientas">
+        <label class="campo"><span>Tipo</span>
+          <select class="select" id="fTipoPago">
+            <option value="">Mesa y domicilio</option>
+            <option value="mesa">Mesa</option>
+            <option value="domicilio">Domicilio</option>
+          </select>
+        </label>
+        <label class="campo"><span>Estado del pago</span>
+          <select class="select" id="fEstadoPago">
+            <option value="por-confirmar">Por confirmar</option>
+            <option value="todos">Todos</option>
+            <option value="confirmado">Confirmados</option>
+            <option value="rechazado">Rechazados</option>
+          </select>
+        </label>
+        <label class="campo"><span>Desde</span><input class="input" type="date" id="fPagoDesde"></label>
+        <label class="campo"><span>Hasta</span><input class="input" type="date" id="fPagoHasta"></label>
+      </div>
+
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Pedido</th><th>Cliente</th><th>Método</th>
+              <th>Referencia</th><th class="derecha">Total</th><th>Pago</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tablaPagos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- MENÚ DEL DÍA ---------- -->
+    <section class="panel" data-panel="dia">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Cambia cada día</span>
+        <h2 style="font-size:32px">Menú del día</h2>
+        <p>Elige la sucursal y la fecha, decide si ese día ofreces un <b>menú armado</b> o el <b>menú del chef</b> y arma el menú. Lo que publiques aparece de inmediato en la página pública y en las pantallas de mesa de esa sucursal.</p>
+      </div>
+
+      <div class="barra-herramientas">
+        <label class="campo"><span>Unidad</span><select class="select" id="fSucDia"></select></label>
+        <label class="campo"><span>Fecha</span><input class="input" type="date" id="fFechaDia"></label>
+        <button class="btn btn--fantasma btn--sm" id="btnCopiarAyer">📋 Copiar el de ayer</button>
+        <button class="btn btn--fantasma btn--sm" id="btnCopiarManana">📅 Copiar a mañana</button>
+      </div>
+
+      <div id="listaDiaAdmin"></div>
+    </section>
+
+    <!-- ---------- CARTA (administrable) ---------- -->
+    <section class="panel" data-panel="carta">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Lo que ve el cliente</span>
+        <h2 style="font-size:32px">Carta</h2>
+        <p>Todo lo que cambies aquí se ve de inmediato en la página pública, en el pedido a domicilio y en las pantallas de mesa.</p>
+      </div>
+
+      <nav class="sub-tabs">
+        <button class="sub-tab is-activo" data-sub="productos">🍽 Productos</button>
+        <button class="sub-tab" data-sub="categorias">🗂 Categorías</button>
+      </nav>
+
+      <!-- ····· Productos ····· -->
+      <div data-sub-panel="productos">
+        <div class="kpis" id="kpisCarta"></div>
+
+        <div class="barra-herramientas">
+          <label class="campo"><span>Buscar</span>
+            <input class="input" id="fBuscarProducto" placeholder="Nombre o código…"></label>
+          <label class="campo"><span>Categoría</span>
+            <select class="select" id="fCatProducto"></select></label>
+          <label class="campo"><span>Estado</span>
+            <select class="select" id="fEstadoProducto">
+              <option value="">Todos</option>
+              <option value="activos">Visibles</option>
+              <option value="agotados">Agotados</option>
+              <option value="inactivos">Ocultos</option>
+            </select></label>
+          <div class="crece"></div>
+          <button class="btn btn--rojo btn--sm" id="btnNuevoProducto">+ Nuevo producto</button>
+          <button class="btn btn--fantasma btn--sm" id="btnResetCarta">↺ Restaurar</button>
+        </div>
+
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Producto</th><th>Categoría</th><th class="derecha">Precio</th>
+                <th class="col-num">Orden</th><th>Sucursales</th><th>Estado</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaProductos"></tbody>
+          </table>
+        </div>
+
+        <p class="mini tenue mt-16">
+          <b>Agotado</b> lo esconde del pedido pero lo deja en la carta.
+          <b>Oculto</b> lo saca de la carta por completo. Un producto que ya tiene ventas
+          no se borra: se oculta, para no dañar los pedidos anteriores.
+        </p>
+      </div>
+
+      <!-- ····· Categorías ····· -->
+      <div data-sub-panel="categorias" class="oculto">
+        <div class="barra-herramientas">
+          <div class="crece"></div>
+          <button class="btn btn--rojo btn--sm" id="btnNuevaCategoria">+ Nueva categoría</button>
+        </div>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr><th></th><th>Categoría</th><th class="col-num">Orden</th>
+                  <th class="col-num">Productos</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody id="tablaCategorias"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- STOCK ---------- -->
+    <section class="panel" data-panel="stock">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Inventario físico</span>
+        <h2 style="font-size:32px">Stock</h2>
+        <p>
+          Este es el catálogo que usan los cierres de inventario: una sola lista para todo.
+          Lo que agregues aquí aparece en el próximo cierre; lo que desactives deja de pedirse,
+          pero <b>no cambia los cierres ya registrados</b>.
+        </p>
+      </div>
+
+      <div class="kpis" id="kpisStock"></div>
+
+      <!-- Filtros rápidos por estado de abastecimiento. Reemplazan al
+           antiguo desplegable: se ve de un golpe cuántos hay de cada
+           cosa y se filtra con un clic. -->
+      <div class="fila mt-16 mb-16" id="chipsStock" style="gap:8px;flex-wrap:wrap"></div>
+
+      <div class="barra-herramientas">
+        <label class="campo"><span>Buscar</span>
+          <input class="input" id="fBuscarStock" placeholder="Código o nombre…"></label>
+        <label class="campo"><span>Área</span><select class="select" id="fAreaStock"></select></label>
+        <div class="crece"></div>
+        <button class="btn btn--rojo btn--sm" id="btnNuevoStock">+ Nuevo producto</button>
+        <button class="btn btn--fantasma btn--sm" id="btnResetStock">↺ Restaurar</button>
+      </div>
+
+      <p class="mini tenue" id="fuenteStock" style="margin:-6px 0 14px"></p>
+
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Código</th><th>Producto</th><th>Categoría</th><th>Área</th>
+              <th>Unidad</th><th class="derecha">Stock actual</th>
+              <th class="col-num">Mínimo</th><th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tablaStock"></tbody>
+        </table>
+      </div>
+
+      <!-- 🛒 Productos por pedir. Es una LISTA DE REFERENCIA: no genera
+           órdenes de compra ni descuenta nada. La cantidad sugerida es
+           sólo lo que falta para volver al mínimo. -->
+      <div id="porPedirStock" class="mt-24"></div>
+
+      <div class="caja mt-24">
+        <h3>Qué significa cada número</h3>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead><tr><th>Concepto</th><th>Qué es</th><th>De dónde sale</th></tr></thead>
+            <tbody>
+              <tr><td><b>Stock actual</b></td><td>Lo que hay hoy, según el último ajuste</td><td>Se digita aquí</td></tr>
+              <tr><td><b>Saldo inicial (IN)</b></td><td>Con cuánto empezó la jornada</td><td>Saldo físico del cierre anterior</td></tr>
+              <tr><td><b>Entradas (EN)</b></td><td>Lo que entró ese día</td><td>Cierres → Entradas</td></tr>
+              <tr><td><b>Ventas (Z)</b></td><td>Lo que se vendió esa jornada</td><td>Automático, de los pedidos</td></tr>
+              <tr><td><b>Saldo físico (SD)</b></td><td>Lo que se contó de verdad</td><td>La mesera, en el cierre</td></tr>
+              <tr><td><b>Saldo calculado (SLDC)</b></td><td>Lo que debería haber</td><td><code>IN + EN − Z</code></td></tr>
+              <tr><td><b>Diferencia (DF)</b></td><td>Lo que sobra o falta</td><td><code>SD − SLDC</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mini tenue mt-16" style="margin-bottom:0">
+          El <b>stock actual</b> no se descuenta solo con cada venta: para eso haría falta un módulo
+          de recetas que diga cuánto insumo consume cada plato. Por ahora se actualiza a mano,
+          o de una vez al terminar un cierre desde <b>Cierres → Cruce</b>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ---------- GASTOS ---------- -->
+    <section class="panel" data-panel="gastos">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Salidas de dinero</span>
+        <h2 style="font-size:32px">Gastos</h2>
+        <p>
+          Todo lo que sale de caja: compras, nómina, vales, servicios.
+          Se lleva aparte de las ventas — no las modifica ni se resta de ellas.
+        </p>
+      </div>
+
+      <div class="kpis" id="kpisGastos"></div>
+
+      <div class="rejilla-cajas mb-24">
+        <div class="caja">
+          <h3>Por categoría</h3>
+          <div id="gastosPorCategoria"></div>
+        </div>
+        <div class="caja">
+          <h3>Por sucursal y método de pago</h3>
+          <div id="gastosPorSucursal"></div>
+        </div>
+      </div>
+
+      <div class="barra-herramientas">
+        <label class="campo"><span>Desde</span><input class="input" type="date" id="gaDesde"></label>
+        <label class="campo"><span>Hasta</span><input class="input" type="date" id="gaHasta"></label>
+        <label class="campo"><span>Categoría</span><select class="select" id="gaCategoria"></select></label>
+        <label class="campo"><span>Estado</span><select class="select" id="gaEstado"></select></label>
+        <label class="campo"><span>Método</span><select class="select" id="gaMetodo"></select></label>
+        <label class="campo"><span>Buscar</span>
+          <input class="input" id="gaBuscar" placeholder="Concepto, proveedor…"></label>
+        <div class="crece"></div>
+        <button class="btn btn--rojo btn--sm" id="btnNuevoGasto">+ Nuevo gasto</button>
+        <button class="btn btn--fantasma btn--sm" id="btnGastosCSV">⬇ CSV</button>
+      </div>
+
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Categoría</th><th>Concepto</th><th>Sucursal</th>
+              <th class="derecha">Valor</th><th>Método</th><th>Usuario</th>
+              <th>Estado</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tablaGastos"></tbody>
+        </table>
+      </div>
+
+      <p class="mini tenue mt-16">
+        Un gasto <b>anulado</b> no se borra: se conserva con el motivo y quién lo anuló,
+        y deja de sumar en los totales.
+      </p>
+    </section>
+
+    <!-- ---------- USUARIOS ---------- -->
+    <section class="panel" data-panel="usuarios">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Quién puede entrar</span>
+        <h2 style="font-size:32px">Usuarios</h2>
+        <p>Cada persona entra con su usuario y ve solamente lo que le corresponde según su rol.</p>
+      </div>
+
+      <div class="kpis" id="kpisUsuarios"></div>
+
+      <div class="barra-herramientas">
+        <div class="crece"></div>
+        <button class="btn btn--rojo btn--sm" id="btnNuevoUsuario">+ Nuevo usuario</button>
+      </div>
+
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr><th>Persona</th><th>Rol</th><th>Sucursal</th><th>PIN</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody id="tablaUsuarios"></tbody>
+        </table>
+      </div>
+
+      <div class="caja mt-24">
+        <h3>Qué puede hacer cada rol</h3>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead><tr><th>Rol</th><th>Para qué sirve</th></tr></thead>
+            <tbody id="tablaRoles"></tbody>
+          </table>
+        </div>
+        <p class="mini ambar mt-16" style="margin-bottom:0">
+          Esto separa perfiles para poder operar y demostrar el sistema, pero no es seguridad real:
+          los PIN están dentro del código que llega al navegador. Para control de accesos de verdad
+          hace falta un servidor con login.
+        </p>
+      </div>
+    </section>
+
+    <!-- ---------- UNIDADES / LOCALES ----------
+         Los puntos de operación de la empresa. Cada uno con su tipo de
+         negocio y su propia operación: carta, menú, pedidos, ventas,
+         gastos, stock y cierres no se mezclan entre unidades. -->
+    <section class="panel" data-panel="unidades">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Puntos de operación de la empresa</span>
+        <h2 style="font-size:32px">Unidades / Locales</h2>
+        <p>Cada unidad trabaja por separado: su carta, su menú del día, sus pedidos, ventas, gastos, stock y cierres son sólo suyos. El tipo de negocio la identifica; no cambia qué funciones tiene.</p>
+      </div>
+
+      <div class="barra-herramientas">
+        <div class="crece" id="resumenUnidades"></div>
+        <button class="btn btn--rojo btn--sm" id="btnNuevaSucursal">+ Nueva unidad</button>
+      </div>
+      <div class="unidades" id="listaSucursalesAdmin"></div>
+    </section>
+
+    <!-- ---------- CONFIGURACIÓN ---------- -->
+    <section class="panel" data-panel="config">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Datos del negocio</span>
+        <h2 style="font-size:32px">Configuración</h2>
+        <p>Lo que cambies aquí se refleja en la página pública, en los pedidos y en los mensajes de WhatsApp. No hay que tocar código.</p>
+      </div>
+
+      <nav class="sub-tabs">
+        <button class="sub-tab is-activo" data-sub="general">🏪 El restaurante</button>
+        <button class="sub-tab" data-sub="pagos">💳 Métodos de pago</button>
+        <button class="sub-tab" data-sub="plan">🧩 Tu plan</button>
+      </nav>
+
+      <div data-sub-panel="general">
+        <div id="avisoPermisoConfig"></div>
+        <div class="caja">
+          <div id="formConfig"></div>
+          <button class="btn btn--rojo mt-16" id="btnGuardarConfig">Guardar cambios</button>
+        </div>
+      </div>
+
+      <div data-sub-panel="pagos" class="oculto">
+        <div class="caja">
+          <h3>Cómo puede pagar el cliente un domicilio</h3>
+          <div class="opciones-pago" id="listaMetodosPago"></div>
+        </div>
+      </div>
+
+      <!-- Sólo de lectura: los módulos los contrata la empresa y los
+           habilita el SuperAdmin, no el administrador del restaurante. -->
+      <div data-sub-panel="plan" class="oculto">
+        <div id="listaModulos"></div>
+      </div>
+    </section>
+
+    <!-- ---------- CRUCE DE INFORMACIÓN ----------
+         Informe de caja de la jornada. Es una CAPA DE CONSULTA: lee
+         ventas, gastos y cierres, no los modifica. Lo único que se
+         registra desde aquí es la base de caja.
+
+         Ojo: no confundir con el "Cruce" de la pestaña 🔄 Cierres, que
+         es de INVENTARIO. Éste es de DINERO. -->
+    <section class="panel" data-panel="informe">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Informe general de operación y caja</span>
+        <h2 style="font-size:32px">Cruce de información</h2>
+        <p>Cómo va el dinero de la jornada: con cuánto se abrió, cuánto entró, cuánto salió y cuánto debería quedar en el cajón.</p>
+      </div>
+
+      <div class="barra-herramientas">
+        <label class="campo" style="margin:0">
+          <span>Jornada</span>
+          <input class="input" type="date" id="inFecha">
+        </label>
+        <label class="campo" style="margin:0">
+          <span>Unidad</span>
+          <select class="select" id="inSucursal"></select>
+        </label>
+        <div class="crece"></div>
+        <div class="derecha mini tenue" id="inEmpresa">—</div>
+        <button class="btn btn--fantasma btn--sm" id="btnInformeCSV">↓ CSV</button>
+        <button class="btn btn--fantasma btn--sm" id="btnInformeImprimir">🖨 Imprimir</button>
+      </div>
+
+      <!-- Base de caja -->
+      <div id="inBase" class="mb-24"></div>
+
+      <!-- Tarjetas del informe -->
+      <div class="kpis" id="inKpis"></div>
+
+      <!-- Las dos cuentas: efectivo y transferencias -->
+      <div class="rejilla-2 mt-24" id="inFormulas"></div>
+
+      <!-- Desglose por concepto y método -->
+      <h3 class="mt-24">Desglose</h3>
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th class="derecha">Efectivo</th>
+              <th class="derecha">Transferencia</th>
+              <th class="derecha">Otros</th>
+              <th class="derecha">Total</th>
+            </tr>
+          </thead>
+          <tbody id="inDesglose"></tbody>
+        </table>
+      </div>
+
+      <!-- Detalle por método de pago, tal como están configurados -->
+      <div id="inMetodos" class="mt-24"></div>
+
+      <!-- Acceso al cierre de inventario de la misma jornada -->
+      <div id="inCierre" class="mt-24"></div>
+    </section>
+
+    <!-- ---------- VENTAS ---------- -->
+    <section class="panel" data-panel="ventas">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Control</span>
+        <h2 style="font-size:32px">Ventas</h2>
+        <p>Los pedidos cancelados no se cuentan. El total incluye el valor del domicilio.</p>
+      </div>
+
+      <div class="barra-herramientas">
+        <button class="btn btn--fantasma btn--sm" data-rango="hoy">Hoy</button>
+        <button class="btn btn--fantasma btn--sm" data-rango="ayer">Ayer</button>
+        <button class="btn btn--fantasma btn--sm" data-rango="7">Últimos 7 días</button>
+        <button class="btn btn--fantasma btn--sm" data-rango="30">Últimos 30 días</button>
+        <div class="crece"></div>
+        <label class="campo"><span>Desde</span><input class="input" type="date" id="vDesde"></label>
+        <label class="campo"><span>Hasta</span><input class="input" type="date" id="vHasta"></label>
+        <button class="btn btn--azul btn--sm" id="btnVerVentas">Ver</button>
+        <button class="btn btn--fantasma btn--sm" id="btnCSV">⬇ CSV</button>
+      </div>
+
+      <div class="kpis" id="kpisVentas"></div>
+
+      <div class="rejilla-cajas mb-24">
+        <div class="caja">
+          <h3>Ventas por día</h3>
+          <div id="ventasPorDia"></div>
+        </div>
+        <div class="caja">
+          <h3>Platos más vendidos</h3>
+          <div id="topPlatos"></div>
+        </div>
+      </div>
+
+      <div class="rejilla-cajas mb-24">
+        <div class="caja">
+          <h3>Por método de pago</h3>
+          <div id="porPago"></div>
+        </div>
+        <div class="caja">
+          <h3>Por sucursal y tipo</h3>
+          <div id="porSucursal"></div>
+        </div>
+      </div>
+
+      <div class="caja">
+        <h3>Detalle de pedidos</h3>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr><th>Código</th><th>Hora</th><th>Tipo</th><th>Sucursal</th>
+                  <th>Cliente</th><th>Pago</th><th class="derecha">Total</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="tablaVentas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- INVENTARIO Y CIERRE DE CAJA ---------- -->
+    <section class="panel" data-panel="inventario">
+
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Inventario</span>
+        <h2 style="font-size:32px">Cierres de inventario</h2>
+        <p>
+          Las meseras registran los saldos físicos desde
+          <a href="cierre.html" target="_blank" rel="noopener">cierre.html</a>.
+          Aquí se consultan, se cruzan contra las ventas y se registran las entradas de mercancía.
+        </p>
+      </div>
+
+      <nav class="sub-tabs">
+        <button class="sub-tab is-activo" data-sub="cierres">📋 Cierres registrados</button>
+        <button class="sub-tab" data-sub="cruce">🔄 Cruce de inventario</button>
+      </nav>
+
+      <!-- ····· Sub-pestaña: CIERRES ····· -->
+      <div data-sub-panel="cierres">
+        <div class="kpis" id="kpisCierres"></div>
+
+        <div class="barra-herramientas">
+          <label class="campo"><span>Desde</span><input class="input" type="date" id="ciDesde"></label>
+          <label class="campo"><span>Hasta</span><input class="input" type="date" id="ciHasta"></label>
+          <label class="campo"><span>Área</span><select class="select" id="ciArea"></select></label>
+          <label class="campo"><span>Estado</span><select class="select" id="ciEstado"></select></label>
+          <div class="crece"></div>
+          <a class="btn btn--fantasma btn--sm" href="cierre.html" target="_blank" rel="noopener">
+            + Registrar un cierre
+          </a>
+        </div>
+
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Sucursal</th><th>Área</th>
+                <th>Registrado por</th><th>Hora</th><th>Estado</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaCierres"></tbody>
+          </table>
+        </div>
+
+        <p class="mini tenue mt-16">
+          La <b>Fecha</b> es la jornada a la que corresponde el cierre. La <b>Hora</b> es cuándo se
+          registró realmente — pueden ser días distintos si el conteo se hizo de madrugada.
+        </p>
+      </div>
+
+      <!-- ····· Sub-pestaña: CRUCE ····· -->
+      <div data-sub-panel="cruce" class="oculto">
+
+        <div class="barra-herramientas">
+          <label class="campo"><span>Jornada del cierre</span><input class="input" type="date" id="crFecha"></label>
+          <label class="campo"><span>Área</span><select class="select" id="crArea"></select></label>
+          <div class="crece"></div>
+          <button class="btn btn--azul btn--sm oculto" id="btnAplicarStock">📦 Llevar saldos al stock</button>
+          <button class="btn btn--fantasma btn--sm" id="btnCruceCSV">⬇ Exportar CSV</button>
+          <button class="btn btn--fantasma btn--sm" id="btnCruceImprimir">🖨 Imprimir</button>
+        </div>
+
+        <div id="crAvisoSucursal"></div>
+        <div id="crVeredicto"></div>
+        <div class="kpis" id="kpisCruce"></div>
+
+        <div class="caja mb-24">
+          <h3>Cruce de inventario y ventas</h3>
+          <p class="mini tenue" style="margin-top:-8px">
+            <b>SLDC = IN + EN − Z</b> &nbsp;·&nbsp; <b>DF = SD − SLDC</b><br>
+            IN saldo inicial (cierre anterior) · EN entradas · Z ventas de caja ·
+            SD saldo físico contado · SLDC saldo calculado · DF diferencia
+          </p>
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>CD</th><th>Producto</th>
+                  <th class="col-num">IN</th><th class="col-num">EN</th><th class="col-num">Z</th>
+                  <th class="col-num">SD</th><th class="col-num">SLDC</th><th class="col-num">DF</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCruce"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="caja">
+          <h3 id="crTituloDif">Productos con diferencias</h3>
+          <div class="tabla-wrap">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Código</th><th>Producto</th>
+                  <th class="col-num">Esperado</th><th class="col-num">Físico</th>
+                  <th class="col-num">Diferencia</th><th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tablaDiferencias"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ---------- ENTRADAS DE MERCANCÍA ---------- -->
+    <section class="panel" data-panel="entradas">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Lo que entra</span>
+        <h2 style="font-size:32px">Entradas</h2>
+        <p>
+          La mercancía que llega al punto. Alimenta el campo <b>EN</b> del cruce de
+          inventario de esa jornada. Si no registras nada, EN queda en 0: el sistema
+          nunca inventa cantidades.
+        </p>
+      </div>
+
+      <div class="kpis" id="kpisEntradas"></div>
+
+      <div class="caja mb-24">
+        <h3>Registrar una entrada</h3>
+        <p class="mini tenue" style="margin-top:-8px">
+          Se registra en <b id="enSucursalActual">—</b>.
+        </p>
+
+        <div class="rejilla-2">
+          <label class="campo"><span>Jornada <i class="req">*</i></span>
+            <input class="input" type="date" id="enFecha"></label>
+          <label class="campo"><span>Área <i class="req">*</i></span>
+            <select class="select" id="enArea"></select></label>
+          <label class="campo"><span>Producto <i class="req">*</i></span>
+            <select class="select" id="enProducto"></select></label>
+          <label class="campo"><span>Cantidad <i class="req">*</i></span>
+            <input class="input" type="number" min="1" step="1" id="enCantidad" placeholder="Ej. 24"></label>
+          <label class="campo"><span>Tipo de entrada</span>
+            <select class="select" id="enTipo"></select></label>
+          <label class="campo"><span>Observación</span>
+            <input class="input" id="enObs" placeholder="Factura, proveedor…"></label>
+        </div>
+
+        <button class="btn btn--rojo btn--sm" id="btnGuardarEntrada">+ Registrar entrada</button>
+      </div>
+
+      <div class="barra-herramientas">
+        <label class="campo"><span>Desde</span><input class="input" type="date" id="enFiltroDesde"></label>
+        <label class="campo"><span>Hasta</span><input class="input" type="date" id="enFiltroHasta"></label>
+        <label class="campo"><span>Área</span><select class="select" id="enFiltroArea"></select></label>
+        <label class="campo crece"><span>Buscar</span>
+          <input class="input" id="enBuscar" placeholder="Producto, código, factura…"></label>
+      </div>
+
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Jornada</th><th>Sucursal</th><th>CD</th><th>Producto</th>
+              <th class="col-num">Cantidad</th><th>Tipo</th><th>Registró</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tablaEntradas"></tbody>
+        </table>
+      </div>
+
+      <p class="mini tenue mt-16">
+        Una entrada se puede corregir mientras el cierre de esa jornada no haya sido
+        <b>revisado</b>. Después queda marcada como <b>Cerrada</b>: cambiarla alteraría
+        un cruce que administración ya dio por bueno.
+      </p>
+    </section>
+
+    <!-- ---------- AJUSTES ---------- -->
+    <section class="panel" data-panel="ajustes">
+      <div class="titulo-seccion" style="margin-bottom:22px">
+        <span class="titulo-seccion__kicker">Configuración</span>
+        <h2 style="font-size:32px">Ajustes y datos</h2>
+      </div>
+
+      <div class="rejilla-cajas mb-24">
+        <div class="caja">
+          <h3>Enlaces de mesa (QR)</h3>
+          <p class="mini tenue">Genera un QR con cada enlace y pégalo en la mesa. El cliente escanea y pide desde su celular.</p>
+          <label class="campo"><span>Sucursal</span><select class="select" id="qrSucursal"></select></label>
+          <div id="listaQR" style="max-height:300px;overflow:auto"></div>
+        </div>
+
+        <div class="caja">
+          <h3>Respaldo de información</h3>
+          <p class="mini tenue">Los datos viven en este navegador. Descarga una copia con frecuencia; si borras el historial del navegador, se pierden.</p>
+          <button class="btn btn--azul btn--bloque mb-8" id="btnExportar">⬇ Descargar respaldo (.json)</button>
+          <label class="btn btn--fantasma btn--bloque mb-8" style="cursor:pointer">
+            ⬆ Restaurar respaldo
+            <input type="file" id="fileImportar" accept="application/json,.json" class="oculto">
+          </label>
+          <button class="btn btn--fantasma btn--bloque" id="btnBorrar"
+                  style="border-color:var(--rojo);color:var(--rojo-claro)">🗑 Borrar todos los datos</button>
+        </div>
+
+        <div class="caja">
+          <h3>Avisos sonoros</h3>
+          <p class="mini tenue">A cada quien le suena lo suyo, según su rol. La preferencia es de
+            <b>este equipo</b>: cada tablet o computador se configura aparte.</p>
+          <label class="fila" style="gap:8px;align-items:center;margin:12px 0">
+            <input type="checkbox" id="avSonido"> <span>Sonar cuando pase algo que me toca</span>
+          </label>
+          <label class="fila" style="gap:8px;align-items:center;margin:0 0 12px">
+            <input type="checkbox" id="avSistema"> <span>Avisar también con la pestaña en segundo plano</span>
+          </label>
+          <button class="btn btn--fantasma btn--bloque mb-8" id="btnAvisoProbar">🔔 Probar el sonido</button>
+          <div class="caja-datos">
+            <div class="linea"><span class="tenue">👨‍🍳 Cocina</span><b>Pedido nuevo</b></div>
+            <div class="linea"><span class="tenue">🍽️ Mesero</span><b>Mesa lista para llevar</b></div>
+            <div class="linea"><span class="tenue">🛵 Domiciliario</span><b>Domicilio listo para salir</b></div>
+            <div class="linea"><span class="tenue">💵 Caja</span><b>Entregado sin cobrar · pago reportado</b></div>
+            <div class="linea"><span class="tenue">👑 Administración</span><b>Cada pedido y lo que falta por cobrar</b></div>
+          </div>
+        </div>
+
+        <!-- Limpieza después de las pruebas. Sólo Admin; se confirma escribiendo BORRAR. -->
+        <div class="caja">
+          <h3>Facturas de prueba</h3>
+          <p class="mini tenue">Antes de operar de verdad, borra los pedidos que se hicieron probando. No se tocan cierres, gastos, stock ni menús. Descarga un respaldo antes si quieres conservarlos.</p>
+          <p class="mini" id="facturasPruebaInfo">—</p>
+          <button class="btn btn--fantasma btn--bloque mb-8" data-borrar-facturas="anteriores">🧾 Borrar las del formato anterior (N1-260828-001)</button>
+          <button class="btn btn--fantasma btn--bloque" data-borrar-facturas="todas"
+                  style="border-color:var(--rojo);color:var(--rojo-claro)">🗑 Borrar todas y empezar en 00001</button>
+        </div>
+      </div>
+
+      <div class="caja">
+        <h3>Cómo cambiar la información fija</h3>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead><tr><th>Qué</th><th>Dónde</th></tr></thead>
+            <tbody>
+              <tr><td>Platos de la carta, precios base y descripciones</td><td><code>js/data.js</code> → <code>NASCAR.CARTA</code></td></tr>
+              <tr><td>Direcciones, teléfonos, horarios y zonas de domicilio</td><td><code>js/data.js</code> → <code>NASCAR.SUCURSALES</code></td></tr>
+              <tr><td>PIN del panel, cuentas de Nequi/Bancolombia, NIT</td><td><code>js/data.js</code> → <code>NASCAR.CONFIG</code></td></tr>
+              <tr><td>Colores y tipografías</td><td><code>css/styles.css</code> → sección <code>01. TOKENS</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mini tenue mt-16" style="margin-bottom:0">
+          <b class="ambar">Ten en cuenta:</b> el PIN vive en el código que llega al navegador, así que sirve para
+          evitar entradas por curiosidad, no como seguridad real. Para control de accesos de verdad hace falta
+          un servidor con usuarios y contraseñas.
+        </p>
+      </div>
+    </section>
+
+      </main>
+    </div><!-- /.app-main -->
+  </div><!-- /.app-shell -->
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/remoto.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/menu-dia.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/tema.js"></script>
+<script src="js/inventario.js"></script>
+<script src="js/gestion.js"></script>
+<script src="js/operacion.js"></script>
+<script src="js/gastos.js"></script>
+<script src="js/informe.js"></script>
+<script src="js/avisos.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

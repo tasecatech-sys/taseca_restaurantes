@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taseca Platform · Administración</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#05070f">
+
+<!-- Favicon: el triángulo de Taseca, no el cuadriculado de NASCAR. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='%2305070f'/><polygon points='100,25 175,165 25,165' fill='none' stroke='%23d4a437' stroke-width='10'/><circle cx='100' cy='115' r='20' fill='%23d4a437'/><circle cx='100' cy='115' r='9' fill='%2305070f'/><circle cx='100' cy='115' r='4' fill='%2300e5ff'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Tipografías de la marca Taseca: Orbitron (títulos), Inter (cuerpo),
+     JetBrains Mono (datos). Son las mismas de taseca.tech. -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+
+<!-- styles.css aporta la ESTRUCTURA de componentes (.kpi, .tabla, .caja,
+     .btn…) y taseca.css la PIEL de la plataforma. Ver la nota de
+     aislamiento al principio de css/taseca.css. -->
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/sidebar.css">
+<link rel="stylesheet" href="css/taseca.css">
+</head>
+
+<body class="admin taseca">
+
+<!-- ===================== LOGOTIPO CORPORATIVO =====================
+     El de taseca.tech: triángulo dorado, ojo de analítica y barras de
+     datos. Se define una vez y se referencia con <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="tscOro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5d97f"/>
+      <stop offset="55%" stop-color="#d4a437"/>
+      <stop offset="100%" stop-color="#b8862a"/>
+    </linearGradient>
+    <symbol id="tsc-logo" viewBox="0 0 200 200">
+      <polygon points="100,15 180,170 20,170" fill="none" stroke="url(#tscOro)" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="100,40 160,158 40,158" fill="none" stroke="#00e5ff" stroke-width="1" stroke-opacity=".5" stroke-dasharray="3,3"/>
+      <circle cx="100" cy="15" r="3" fill="#00e5ff"/><circle cx="180" cy="170" r="3" fill="#00e5ff"/><circle cx="20" cy="170" r="3" fill="#00e5ff"/>
+      <path d="M 55 105 Q 100 70 145 105 Q 100 140 55 105 Z" fill="#05070f" stroke="url(#tscOro)" stroke-width="2.5"/>
+      <circle cx="100" cy="105" r="18" fill="url(#tscOro)"/>
+      <circle cx="100" cy="105" r="13" fill="none" stroke="#05070f" stroke-width=".8"/>
+      <circle cx="100" cy="105" r="8" fill="#05070f"/>
+      <circle cx="100" cy="105" r="3" fill="#00e5ff"/>
+      <circle cx="104" cy="101" r="2" fill="#f5d97f"/>
+      <line x1="100" y1="80" x2="100" y2="65" stroke="#00e5ff" stroke-width="1.2" stroke-opacity=".7"/>
+      <line x1="78" y1="95" x2="68" y2="88" stroke="#00e5ff" stroke-width="1.2" stroke-opacity=".7"/>
+      <line x1="122" y1="95" x2="132" y2="88" stroke="#00e5ff" stroke-width="1.2" stroke-opacity=".7"/>
+      <rect x="70" y="148" width="8" height="8" fill="#00e5ff" opacity=".7"/>
+      <rect x="82" y="142" width="8" height="14" fill="url(#tscOro)" opacity=".85"/>
+      <rect x="94" y="138" width="8" height="18" fill="url(#tscOro)"/>
+      <rect x="106" y="144" width="8" height="12" fill="url(#tscOro)" opacity=".85"/>
+      <rect x="118" y="140" width="8" height="16" fill="#00e5ff" opacity=".7"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ===================== LOGIN DE PLATAFORMA =====================
+     Puerta aparte de la del restaurante. js/taseca-admin.js comprueba el
+     SCOPE y el permiso antes de dibujar nada: un usuario de empresa que
+     acierte esta dirección ve el aviso de acceso denegado, no el panel. -->
+<div id="pantallaLogin">
+  <div class="contenedor" style="padding-top:52px">
+    <div class="login-caja">
+      <div class="tsc-login-marca">
+        <svg class="tsc-marca__logo" aria-label="Taseca"><use href="#tsc-logo"></use></svg>
+        <span class="tsc-marca__texto" style="align-items:center">
+          <span class="tsc-marca__nombre">TASECA</span>
+          <span class="tsc-marca__sub">Platform</span>
+        </span>
+        <span class="tsc-pill">◈ Administración de plataforma</span>
+      </div>
+
+      <p class="tenue mini mb-24">
+        Software · automatización · analítica. Desde aquí se administran las
+        empresas que usan el sistema. <b>No es la entrada de ningún negocio.</b>
+      </p>
+
+      <div id="avisoAcceso"></div>
+
+      <label class="campo" style="text-align:left">
+        <span>Usuario</span>
+        <input class="input" id="usuarioAcceso" placeholder="super" autocomplete="username" autocapitalize="off">
+      </label>
+
+      <label class="campo" style="text-align:left">
+        <span>PIN</span>
+        <input class="pin-input" id="pin" type="password" inputmode="numeric"
+               maxlength="6" placeholder="••••" autocomplete="current-password">
+      </label>
+
+      <button class="btn btn--azul btn--bloque mt-8" id="btnEntrar">Entrar_</button>
+
+      <p class="mini ambar mt-24" style="margin-bottom:0">
+        MVP local: los PIN viajan en el código y no protegen nada.
+      </p>
+      <p class="mini tenue mt-8" style="margin-bottom:0">
+        <a href="https://taseca.tech/" target="_blank" rel="noopener">taseca.tech ↗</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PANEL ===================== -->
+<div id="pantallaPanel" class="oculto">
+  <div class="app-shell tsc-app" data-sidebar-shell>
+
+    <!-- ---------- BARRA LATERAL ----------
+         Mismo componente que el panel de una empresa (css/sidebar.css +
+         js/sidebar.js), con la piel de Taseca. La navegación NO se
+         mezcla: aquí van opciones de plataforma, allí las del negocio. -->
+    <aside class="app-side">
+      <!-- Marca: expandida muestra TASECA / PLATFORM; colapsada se queda
+           el isotipo, con su caja y su proporción intactas. -->
+      <a class="app-side__marca tsc-marca" href="https://taseca.tech/" target="_blank" rel="noopener">
+        <span class="app-side__iso">
+          <svg class="tsc-marca__logo" aria-label="Taseca"><use href="#tsc-logo"></use></svg>
+        </span>
+        <span class="app-side__nombre tsc-marca__texto">
+          <span class="tsc-marca__nombre">TASECA</span>
+          <span class="tsc-marca__sub">Platform</span>
+        </span>
+      </a>
+
+      <button class="app-side__toggle" data-sidebar-toggle
+              aria-label="Contraer menú" aria-expanded="true" title="Contraer menú">
+        <i>←</i><span>Contraer menú</span>
+      </button>
+
+      <nav class="app-side__menu" id="tscMenu" aria-label="Secciones de la plataforma">
+        <span class="app-side__titulo">Plataforma</span>
+        <button class="app-side__item is-activo" data-seccion="dashboard"><i>🏠</i><span>Dashboard</span></button>
+        <button class="app-side__item" data-seccion="empresas"><i>🏢</i><span>Empresas</span></button>
+        <button class="app-side__item" data-seccion="modulos"><i>🧩</i><span>Módulos</span></button>
+        <button class="app-side__item" data-seccion="config"><i>⚙️</i><span>Configuración</span></button>
+        <button class="app-side__item" data-seccion="perfil"><i>👤</i><span>Perfil Taseca</span></button>
+      </nav>
+
+      <div class="app-side__pie tsc-lateral__pie">
+        <button class="btn btn--fantasma btn--sm" id="btnSalir"><i>⎋</i><span>Cerrar sesión</span></button>
+        <span class="app-side__nota mono" style="font-size:10px;letter-spacing:.14em">v3 · MVP local</span>
+      </div>
+    </aside>
+
+    <div class="app-backdrop" data-sidebar-fondo></div>
+
+    <!-- ---------- CONTENIDO ---------- -->
+    <div class="app-main">
+      <div class="app-top tsc-top">
+        <button class="app-top__menu" data-sidebar-abrir
+                aria-label="Abrir menú" aria-expanded="false">☰</button>
+        <div class="tsc-usuario" id="usuarioChip"><i>🛠️</i><div><b>—</b><span>—</span></div></div>
+        <div class="crece"></div>
+        <!-- Empresa que se está administrando, si hay alguna. El panel
+             sigue siendo Taseca: esto es sólo el contexto. -->
+        <div class="tsc-contexto oculto" id="tscContexto">
+          <span class="tsc-contexto__label">Empresa actual</span>
+          <span class="tsc-contexto__valor" id="tscContextoNombre">—</span>
+        </div>
+      </div>
+
+      <main class="tsc-main">
+
+      <!-- ===== 🏠 DASHBOARD ===== -->
+      <section data-seccion-panel="dashboard">
+        <div class="titulo-seccion" style="margin-bottom:22px">
+          <span class="tsc-kicker">Taseca Platform</span>
+          <h2 style="font-size:30px">Dashboard</h2>
+          <p>Estado de la plataforma: cuántas empresas hay, cuáles operan y qué módulos tienen contratados.</p>
+        </div>
+
+        <h3 class="mt-16">Empresas</h3>
+        <div class="kpis" id="kpisEmpresas"></div>
+
+        <h3 class="mt-24">Módulos</h3>
+        <div class="kpis" id="kpisModulos"></div>
+
+        <h3 class="mt-24">Actividad</h3>
+        <div class="rejilla-2" id="actividadPlataforma"></div>
+      </section>
+
+      <!-- ===== 🏢 EMPRESAS ===== -->
+      <section data-seccion-panel="empresas" class="oculto">
+        <div class="titulo-seccion" style="margin-bottom:22px">
+          <span class="tsc-kicker">Taseca Platform</span>
+          <h2 style="font-size:30px">Empresas clientes</h2>
+          <p>
+            Cada empresa es un negocio con sus propios datos, usuarios y módulos.
+            <b>Taseca no pertenece a ninguna</b>, y ninguna está por encima de otra.
+          </p>
+        </div>
+
+        <div class="barra-herramientas">
+          <label class="campo" style="margin:0;min-width:220px">
+            <span>Buscar</span>
+            <input class="input" id="fBuscarEmpresa" placeholder="Nombre, NIT o id…">
+          </label>
+          <label class="campo" style="margin:0">
+            <span>Estado</span>
+            <select class="select" id="fEstadoEmpresa">
+              <option value="">Todas</option>
+              <option value="activa">Activas</option>
+              <option value="inactiva">Inactivas</option>
+            </select>
+          </label>
+          <div class="crece"></div>
+          <button class="btn btn--azul btn--sm" id="btnNuevaEmpresa">+ Nueva empresa</button>
+        </div>
+
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Empresa</th><th>Estado</th>
+                <th class="centro">Básico</th><th class="centro">Stock</th><th class="centro">Cierre</th>
+                <th class="derecha">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaEmpresas"></tbody>
+          </table>
+        </div>
+
+        <div id="detalleEmpresa" class="mt-24"></div>
+      </section>
+
+      <!-- ===== 🧩 MÓDULOS ===== -->
+      <section data-seccion-panel="modulos" class="oculto">
+        <div class="titulo-seccion" style="margin-bottom:22px">
+          <span class="tsc-kicker">Taseca Platform</span>
+          <h2 style="font-size:30px">Módulos</h2>
+          <p>
+            Qué vende la plataforma y quién lo tiene contratado. Para encender o apagar
+            un módulo de una empresa concreta, entra a su ficha en <b>Empresas</b>.
+          </p>
+        </div>
+        <div id="catalogoModulos"></div>
+      </section>
+
+      <!-- ===== ⚙️ CONFIGURACIÓN DE PLATAFORMA ===== -->
+      <section data-seccion-panel="config" class="oculto">
+        <div class="titulo-seccion" style="margin-bottom:22px">
+          <span class="tsc-kicker">Taseca Platform</span>
+          <h2 style="font-size:30px">Configuración de plataforma</h2>
+          <p>Cómo arranca una empresa nueva y en qué estado está el almacenamiento local.</p>
+        </div>
+        <div id="configPlataforma"></div>
+      </section>
+
+      <!-- ===== 👤 PERFIL ===== -->
+      <section data-seccion-panel="perfil" class="oculto">
+        <div class="titulo-seccion" style="margin-bottom:22px">
+          <span class="tsc-kicker">Taseca Platform</span>
+          <h2 style="font-size:30px">Perfil Taseca</h2>
+          <p>La identidad con la que estás administrando la plataforma.</p>
+        </div>
+        <div id="perfilPlataforma"></div>
+      </section>
+
+      </main>
+    </div><!-- /.app-main -->
+  </div><!-- /.app-shell -->
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/remoto.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/taseca-admin.js"></script>
+</body>
+</html>
