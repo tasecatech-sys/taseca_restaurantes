@@ -511,8 +511,10 @@
     pillGa.textContent = gastosPend;
     pillGa.classList.toggle('oculto', gastosPend === 0 || !A.puede('gastos_confirmar'));
 
+    // La marca es la de la empresa que se está atendiendo, no una fija
     document.title =
-      (activos ? '(' + activos + ') ' : '') + 'NASCAR · Panel administrativo';
+      (activos ? '(' + activos + ') ' : '') +
+      ((S.getConfig().marca || 'Panel') + ' · Panel administrativo');
   }
 
   /* =================================================================

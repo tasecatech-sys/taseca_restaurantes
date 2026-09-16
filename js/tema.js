@@ -56,6 +56,7 @@ NASCAR.Tema = (function () {
     // --- Marca visible
     pintarLogotipo(t);
     pintarFavicon(t);
+    pintarTitulo();
 
     return t;
   }
@@ -114,6 +115,16 @@ NASCAR.Tema = (function () {
       }
       if (nombre) nodo.textContent = nombre;
     });
+  }
+
+  /* El título de la pestaña: la marca de la empresa + lo que sea esta
+     página, que cada HTML declara en <body data-titulo="…">. Sin eso, el
+     título del archivo se queda como está. */
+  function pintarTitulo() {
+    const sufijo = document.body && document.body.dataset ? document.body.dataset.titulo : '';
+    const marca = (S.getConfig && S.getConfig().marca) || '';
+    if (!marca || !sufijo) return;
+    document.title = marca + ' · ' + sufijo;
   }
 
   function pintarFavicon(t) {

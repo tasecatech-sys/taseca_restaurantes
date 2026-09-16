@@ -37,7 +37,9 @@ NASCAR.BACKEND = Object.assign(
     url: location.protocol + '//' + (location.hostname || 'localhost') + ':3000',
     apikey: '',    // sólo Supabase (clave pública del proyecto)
     esquema: '',   // sólo Supabase: el esquema que se consulta ("rest")
-    empresa: 'empresa_nascar',
+    /* De qué empresa es esta visita. La resuelve js/backend.js (subdominio
+       o ?empresa=). Ninguna empresa está escrita a la fuerza aquí. */
+    empresa: '',
     refrescoPedidosMs: 8000,     // sólo trae lo que cambió (ver refrescarPedidos)
     refrescoCatalogoMs: 300000,  // carta y menú: cada 5 minutos
   },
@@ -75,7 +77,8 @@ NASCAR.Remoto = (function () {
     // El panel de Taseca siempre abre fuera de cualquier empresa (ver taseca-admin.js)
     if (s && s.scope === 'platform' && s.empresaContext && !PAGINA_PLATAFORMA) return s.empresaContext;
     if (s && s.scope !== 'platform' && s.empresaId) return s.empresaId;
-    return new URLSearchParams(location.search).get('empresa') || CFG.empresa;
+    return new URLSearchParams(location.search).get('empresa') || CFG.empresa ||
+           NASCAR.EMPRESA_POR_DEFECTO || '';
   }
 
   let empresa = null; // { empresa_id, codigo, ... }
@@ -492,6 +495,12 @@ NASCAR.Remoto = (function () {
 
   function cargarCatalogo() {
     const codigo = codigoEmpresa();
+    if (!codigo) {
+      throw new Error(
+        'Falta decir de qué empresa es esta página: entra por el subdominio del ' +
+        'negocio (por ejemplo nascar.taseca.tech) o agrega ?empresa=… a la dirección.'
+      );
+    }
     const e = obtener('/empresas?codigo=eq.' + encodeURIComponent(codigo), false);
     if (!e || !e.length) throw new Error('La empresa "' + codigo + '" no existe en la base de datos o está desactivada.');
     empresa = e[0];

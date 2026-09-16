@@ -50,7 +50,8 @@
   function pintarCabecera() {
     $('#numMesa').textContent = mesa;
     $('#nomSucursal').textContent = suc.corto;
-    if (!SOLO_ARCHIVO) document.title = 'NASCAR · Mesa ' + mesa + ' — ' + suc.corto;
+    if (!SOLO_ARCHIVO)
+      document.title = (S.getConfig().marca || 'Pedido') + ' · Mesa ' + mesa + ' — ' + suc.corto;
 
     $('#cabeceraMesa').innerHTML =
       '<div class="barra-dia" style="background:linear-gradient(90deg,rgba(11,95,255,.18),transparent 70%);border-color:rgba(11,95,255,.35)">' +

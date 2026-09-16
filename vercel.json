@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "admin.taseca.tech" }],
+      "destination": "/taseca-admin.html"
+    },
+    { "source": "/panel", "destination": "/empleados.html" },
+    { "source": "/cierre-inventario", "destination": "/cierre.html" },
+    { "source": "/taseca", "destination": "/taseca-admin.html" }
+  ]
+}
