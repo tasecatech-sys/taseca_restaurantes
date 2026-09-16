@@ -12967,8 +12967,10 @@ NASCAR.Remoto = (function () {
     // El panel de Taseca siempre abre fuera de cualquier empresa (ver taseca-admin.js)
     if (s && s.scope === 'platform' && s.empresaContext && !PAGINA_PLATAFORMA) return s.empresaContext;
     if (s && s.scope !== 'platform' && s.empresaId) return s.empresaId;
-    return new URLSearchParams(location.search).get('empresa') || CFG.empresa ||
-           NASCAR.EMPRESA_POR_DEFECTO || '';
+    /* Sin respaldo a propósito: si la dirección no dice de qué empresa es,
+       la página lo pide. js/backend.js ya aplica la empresa instalada
+       cuando se trabaja desde el equipo del negocio. */
+    return new URLSearchParams(location.search).get('empresa') || CFG.empresa || '';
   }
 
   let empresa = null; // { empresa_id, codigo, ... }
