@@ -32,8 +32,11 @@ window.NASCAR = window.NASCAR || {};
 NASCAR.BACKEND = Object.assign(
   {
     modo: 'postgrest',
-    // Mismo equipo que sirve la página: funciona igual desde el celular por Wi-Fi
+    // Mismo equipo que sirve la página: funciona igual desde el celular por Wi-Fi.
+    // js/backend.js lo cambia cuando la página se sirve desde internet.
     url: location.protocol + '//' + (location.hostname || 'localhost') + ':3000',
+    apikey: '',    // sólo Supabase (clave pública del proyecto)
+    esquema: '',   // sólo Supabase: el esquema que se consulta ("rest")
     empresa: 'empresa_nascar',
     refrescoPedidosMs: 8000,     // sólo trae lo que cambió (ver refrescarPedidos)
     refrescoCatalogoMs: 300000,  // carta y menú: cada 5 minutos
@@ -102,11 +105,30 @@ NASCAR.Remoto = (function () {
     }
   }
 
+  /* Cabeceras que necesita el servidor, además del token de la sesión:
+
+       apikey   → sólo el Data API de Supabase, que lo exige en su portería.
+                  Es una clave PÚBLICA, pensada para ir en el navegador: no
+                  da acceso por sí sola, los permisos siguen saliendo del
+                  token y de los roles de la base.
+       Profile  → el esquema que se consulta ("rest"). PostgREST propio ya
+                  publica sólo ese esquema; Supabase publica varios y hay
+                  que decírselo en cada petición. */
+  function cabeceras(metodo) {
+    const h = { Accept: 'application/json' };
+    if (CFG.apikey) h.apikey = CFG.apikey;
+    if (CFG.esquema) {
+      h[metodo === 'GET' ? 'Accept-Profile' : 'Content-Profile'] = CFG.esquema;
+    }
+    return h;
+  }
+
   /* Petición síncrona (ver PUENTE DE LA FASE 1 arriba). */
   function pedir(metodo, ruta, cuerpo, conSesion) {
     const x = new XMLHttpRequest();
     x.open(metodo, CFG.url + ruta, false);
-    x.setRequestHeader('Accept', 'application/json');
+    const h = cabeceras(metodo);
+    Object.keys(h).forEach((k) => x.setRequestHeader(k, h[k]));
     if (cuerpo !== undefined) x.setRequestHeader('Content-Type', 'application/json');
     const t = conSesion === false ? null : token();
     if (t) x.setRequestHeader('Authorization', 'Bearer ' + t);
@@ -124,7 +146,7 @@ NASCAR.Remoto = (function () {
 
   /* Petición asíncrona para los refrescos en segundo plano. */
   function obtenerAsync(ruta) {
-    const h = { Accept: 'application/json' };
+    const h = cabeceras('GET');
     const t = token();
     if (t) h.Authorization = 'Bearer ' + t;
     return fetch(CFG.url + ruta, { headers: h }).then(function (r) {

@@ -12694,6 +12694,66 @@ NASCAR.Store = (function () {
 })();
 
 
+/* ===================== js/backend.js ===================== */
+/* ==========================================================================
+   NASCAR · backend.js
+   A qué base de datos habla la aplicación, según DÓNDE se esté abriendo.
+
+   Se carga ANTES que remoto.js y sólo decide la dirección de la API:
+   ninguna lógica más.
+
+     · En el local (localhost o la Wi-Fi del negocio)  → PostgREST de ese
+       computador, en el puerto 3000, igual que siempre.
+     · Publicada en internet (Vercel u otro dominio)   → la base en la nube
+       configurada aquí abajo.
+     · Abierta como archivo (nascar-movil.html)        → modo local, sin red.
+
+   La clave `apikey` es PÚBLICA: Supabase la reparte para que viaje en el
+   navegador. No da acceso a nada por sí sola — quién puede ver y hacer qué
+   lo siguen decidiendo el token de la sesión y los permisos de la base.
+   La contraseña de la base NUNCA aparece aquí.
+   ========================================================================== */
+
+window.NASCAR = window.NASCAR || {};
+
+(function () {
+  'use strict';
+
+  /* ---- Base en la nube (se llena al crear el proyecto) ------------------
+     url     → https://<referencia-del-proyecto>.supabase.co/rest/v1
+     apikey  → clave publicable del proyecto (sb_publishable_… o la anon)
+     esquema → 'rest', el único esquema que publica la aplicación          */
+  const NUBE = {
+    url: '',
+    apikey: '',
+    esquema: 'rest',
+  };
+
+  const host = location.hostname || '';
+  const enEsteEquipo =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '::1' ||
+    host === '' ||
+    /^192\.168\./.test(host) ||
+    /^10\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /\.local$/.test(host);
+
+  if (!enEsteEquipo && NUBE.url) {
+    NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, NUBE);
+    return;
+  }
+
+  /* Publicada en internet pero todavía sin base en la nube: se avisa en vez
+     de intentar una conexión que no existe (el puerto 3000 de un dominio
+     público no lleva a ninguna parte). */
+  if (!enEsteEquipo) {
+    NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, { modo: 'local', sinNube: true });
+  }
+})();
+
+
 /* ===================== js/remoto.js ===================== */
 /* ==========================================================================
    NASCAR · remoto.js
@@ -12729,8 +12789,11 @@ window.NASCAR = window.NASCAR || {};
 NASCAR.BACKEND = Object.assign(
   {
     modo: 'postgrest',
-    // Mismo equipo que sirve la página: funciona igual desde el celular por Wi-Fi
+    // Mismo equipo que sirve la página: funciona igual desde el celular por Wi-Fi.
+    // js/backend.js lo cambia cuando la página se sirve desde internet.
     url: location.protocol + '//' + (location.hostname || 'localhost') + ':3000',
+    apikey: '',    // sólo Supabase (clave pública del proyecto)
+    esquema: '',   // sólo Supabase: el esquema que se consulta ("rest")
     empresa: 'empresa_nascar',
     refrescoPedidosMs: 8000,     // sólo trae lo que cambió (ver refrescarPedidos)
     refrescoCatalogoMs: 300000,  // carta y menú: cada 5 minutos
@@ -12799,11 +12862,30 @@ NASCAR.Remoto = (function () {
     }
   }
 
+  /* Cabeceras que necesita el servidor, además del token de la sesión:
+
+       apikey   → sólo el Data API de Supabase, que lo exige en su portería.
+                  Es una clave PÚBLICA, pensada para ir en el navegador: no
+                  da acceso por sí sola, los permisos siguen saliendo del
+                  token y de los roles de la base.
+       Profile  → el esquema que se consulta ("rest"). PostgREST propio ya
+                  publica sólo ese esquema; Supabase publica varios y hay
+                  que decírselo en cada petición. */
+  function cabeceras(metodo) {
+    const h = { Accept: 'application/json' };
+    if (CFG.apikey) h.apikey = CFG.apikey;
+    if (CFG.esquema) {
+      h[metodo === 'GET' ? 'Accept-Profile' : 'Content-Profile'] = CFG.esquema;
+    }
+    return h;
+  }
+
   /* Petición síncrona (ver PUENTE DE LA FASE 1 arriba). */
   function pedir(metodo, ruta, cuerpo, conSesion) {
     const x = new XMLHttpRequest();
     x.open(metodo, CFG.url + ruta, false);
-    x.setRequestHeader('Accept', 'application/json');
+    const h = cabeceras(metodo);
+    Object.keys(h).forEach((k) => x.setRequestHeader(k, h[k]));
     if (cuerpo !== undefined) x.setRequestHeader('Content-Type', 'application/json');
     const t = conSesion === false ? null : token();
     if (t) x.setRequestHeader('Authorization', 'Bearer ' + t);
@@ -12821,7 +12903,7 @@ NASCAR.Remoto = (function () {
 
   /* Petición asíncrona para los refrescos en segundo plano. */
   function obtenerAsync(ruta) {
-    const h = { Accept: 'application/json' };
+    const h = cabeceras('GET');
     const t = token();
     if (t) h.Authorization = 'Bearer ' + t;
     return fetch(CFG.url + ruta, { headers: h }).then(function (r) {
