@@ -119,7 +119,16 @@ BEGIN
     -- Por si alguna herramienta entra directamente como taseca_anon
     EXECUTE 'GRANT taseca_anon TO authenticator';
 
+    /* Quien instala (el editor SQL entra como `postgres`, que en Supabase NO
+       es superusuario) también tiene que poder asumir los roles: es lo que
+       hacen las pruebas con SET LOCAL ROLE, y hace falta para mantenimiento. */
+    EXECUTE format('GRANT taseca_app, taseca_anon TO %I', current_user);
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'taseca_lectura') THEN
+        EXECUTE format('GRANT taseca_lectura TO %I', current_user);
+    END IF;
+
     RAISE NOTICE 'Roles conectados: authenticator puede asumir taseca_app y taseca_anon; anon hereda taseca_anon.';
+    RAISE NOTICE 'El usuario % también puede asumirlos (lo necesitan las pruebas).', current_user;
 END;
 $$;
 
