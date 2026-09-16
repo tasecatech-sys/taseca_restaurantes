@@ -307,7 +307,7 @@ La aplicación se conecta a la base a través de **PostgREST 16.3**
    ```
 3. Abre `postgrest/postgrest.conf` y escribe esa contraseña en `db-uri`, donde
    dice `CAMBIA_ESTA_CONTRASEÑA`.
-4. Doble clic en **`INICIAR-POSTGREST.bat`** (deja la ventana abierta) y en
+4. Doble clic en **`iniciar-postgrest.bat`** (deja la ventana abierta) y en
    **`INICIAR.bat`**.
 5. Abre la aplicación por `http://…`: ya lee y escribe en PostgreSQL.
 

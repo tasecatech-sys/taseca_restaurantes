@@ -21,7 +21,7 @@
 
   /* --- Contexto de la mesa ---------------------------------------
      Versión de varios archivos:  mesa.html?suc=1&mesa=5
-     Versión de un solo archivo:  ...NASCAR-movil.html#mesa/1/5      */
+     Versión de un solo archivo:  ...nascar-movil.html#mesa/1/5      */
   function contextoMesa() {
     let suc = U.paramURL('suc', null);
     let num = U.paramURL('mesa', null);

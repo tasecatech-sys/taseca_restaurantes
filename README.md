@@ -43,7 +43,7 @@ cargada y 20 pruebas. Instrucciones para DBeaver en
 ### Conectada con PostgREST (fase 1)
 
 Servida por `http://`, la aplicación **lee y escribe en PostgreSQL** a través de
-PostgREST (`INICIAR-POSTGREST.bat`, puerto 3000). Instalación en
+PostgREST (`iniciar-postgrest.bat`, puerto 3000). Instalación en
 [`database/README.md`](database/README.md#api-rest-con-postgrest-fase-1).
 
 | Ya usa la base | Sigue en `localStorage` (fase 2) |
@@ -59,7 +59,7 @@ PostgREST (`INICIAR-POSTGREST.bat`, puerto 3000). Instalación en
 - Si PostgREST está apagado, aparece un aviso rojo; no se mezcla con datos
   locales.
 - `?backend=local` al final de la dirección trabaja en modo local como antes.
-  Abierto como archivo (`NASCAR-movil.html`), siempre es local.
+  Abierto como archivo (`nascar-movil.html`), siempre es local.
 - Desde el celular por Wi-Fi funciona igual: la API se busca en el mismo equipo
   que sirve la página.
 
@@ -69,9 +69,9 @@ PostgREST (`INICIAR-POSTGREST.bat`, puerto 3000). Instalación en
 
 Hay dos caminos. **El segundo es mejor**, pero el primero no necesita nada.
 
-### Camino 1 — Mandar el archivo `NASCAR-movil.html`
+### Camino 1 — Mandar el archivo `nascar-movil.html`
 
-`NASCAR-movil.html` es **todo el proyecto en un solo archivo** (212 KB). Mándalo
+`nascar-movil.html` es **todo el proyecto en un solo archivo** (212 KB). Mándalo
 por WhatsApp, Drive o correo, y en el celular ábrelo con doble toque.
 
 Trae las tres pantallas juntas, con una barra arriba para cambiar entre ellas:
@@ -92,8 +92,8 @@ archivo suelto no existe una dirección por mesa.
 py build-movil.py
 ```
 
-Ese comando lee los archivos originales y regenera `NASCAR-movil.html`.
-Nunca edites `NASCAR-movil.html` a mano: se sobrescribe.
+Ese comando lee los archivos originales y regenera `nascar-movil.html`.
+Nunca edites `nascar-movil.html` a mano: se sobrescribe.
 
 **En iPhone y iPad este camino no sirve.** Al tocar un `.html` desde WhatsApp,
 Archivos o el correo, iOS lo muestra como *vista previa* y no ejecuta la app:
@@ -237,7 +237,7 @@ empresa, ni siquiera en la URL.
 
 ### En la versión de un solo archivo
 
-`NASCAR-movil.html` no tiene direcciones —es un archivo—, así que la separación
+`nascar-movil.html` no tiene direcciones —es un archivo—, así que la separación
 se hace en la barra de abajo: **sin sesión sólo se ofrece el portal del
 cliente**. Los destinos operativos aparecen al entrar. Se llega a ellos
 escribiendo `#panel` o `#cierre`, y ahí manda el login igual que en la versión
@@ -1766,7 +1766,7 @@ Proyecto_jhon/
 ├── cierre.html         Registro de inventario para las meseras
 ├── empleados.html          Panel interno
 │
-├── NASCAR-movil.html   ★ Todo en un archivo, para el celular (generado)
+├── nascar-movil.html   ★ Todo en un archivo, para el celular (generado)
 ├── build-movil.py      Regenera el archivo de arriba
 │
 ├── INICIAR.bat         Servidor local (solo este computador)

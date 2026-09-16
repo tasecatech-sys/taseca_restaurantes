@@ -14,7 +14,7 @@
   /* Raíz de esta vista.
      En la versión de varios archivos no existe [data-vista], así que la raíz
      es todo el documento y todo funciona como siempre. En la versión de un
-     solo archivo (NASCAR-movil.html) las tres pantallas viven en el mismo
+     solo archivo (nascar-movil.html) las tres pantallas viven en el mismo
      documento y comparten nombres de id, por eso cada controlador limita sus
      búsquedas y sus eventos a su propio contenedor. */
   const RAIZ = document.querySelector('[data-vista="publico"]') || document;

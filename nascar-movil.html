@@ -12720,7 +12720,7 @@ NASCAR.Store = (function () {
 
    MODO
      · Por defecto se usa la base si la página se sirve por http(s).
-     · Abierto como archivo (NASCAR-movil.html) siempre es local.
+     · Abierto como archivo (nascar-movil.html) siempre es local.
      · ?backend=local  fuerza el modo local  ·  ?backend=postgrest  la base
    ========================================================================== */
 
@@ -14700,7 +14700,7 @@ NASCAR.Remoto = (function () {
       const detalle = /No hay conexión/.test(e.message || '') ? '' : ' ' + e.message;
       avisar(
         '<b>No hay conexión con la base de datos.</b>' + detalle +
-          ' Inicia <code>INICIAR-POSTGREST.bat</code> y recarga, o ' +
+          ' Inicia <code>iniciar-postgrest.bat</code> y recarga, o ' +
           '<a href="?backend=local" style="color:#fff;text-decoration:underline">trabaja en modo local</a>.'
       );
       return;
@@ -22132,7 +22132,7 @@ NASCAR.Avisos = (function () {
   /* Raíz de esta vista.
      En la versión de varios archivos no existe [data-vista], así que la raíz
      es todo el documento y todo funciona como siempre. En la versión de un
-     solo archivo (NASCAR-movil.html) las tres pantallas viven en el mismo
+     solo archivo (nascar-movil.html) las tres pantallas viven en el mismo
      documento y comparten nombres de id, por eso cada controlador limita sus
      búsquedas y sus eventos a su propio contenedor. */
   const RAIZ = document.querySelector('[data-vista="publico"]') || document;
@@ -23311,7 +23311,7 @@ NASCAR.Avisos = (function () {
 
   /* --- Contexto de la mesa ---------------------------------------
      Versión de varios archivos:  mesa.html?suc=1&mesa=5
-     Versión de un solo archivo:  ...NASCAR-movil.html#mesa/1/5      */
+     Versión de un solo archivo:  ...nascar-movil.html#mesa/1/5      */
   function contextoMesa() {
     let suc = U.paramURL('suc', null);
     let num = U.paramURL('mesa', null);
