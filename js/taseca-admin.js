@@ -347,7 +347,7 @@
           (e.id === actual ? ' <span class="badge badge--azul">administrando</span>' : '') +
           '<div class="mini tenue">' + U.esc(e.razonSocial || 'Sin razón social') +
           (e.nit ? ' · NIT ' + U.esc(e.nit) : '') + '</div>' +
-          '<div class="mini tenue mono">' + U.esc(e.id) + '</div></div></div></td>' +
+          '<div class="mini tenue mono">' + U.esc(e.id) + direccionEmpresa(e.id) + '</div></div></div></td>' +
           '<td><span class="badge badge--' + (activa ? 'verde' : 'linea') + '">' +
           (activa ? 'Activa' : 'Inactiva') + '</span></td>' +
           celdaModulo(e, 'basico') + celdaModulo(e, 'stock') + celdaModulo(e, 'cierre') +
@@ -673,6 +673,13 @@
       seguir,
       'Sí, desactivar'
     );
+  }
+
+  /* La dirección pública de una empresa: /taseca/<empresa> */
+  function direccionEmpresa(empresaId) {
+    if (!NASCAR.rutaDe || !empresaId) return '';
+    const ruta = NASCAR.rutaDe('publico', empresaId);
+    return ' · <a href="' + U.esc(ruta) + '" target="_blank" rel="noopener">' + U.esc(location.host + ruta) + ' ↗</a>';
   }
 
   function entrarAEmpresa(empresaId) {
@@ -1083,7 +1090,8 @@
 
       m.cerrar();
       U.toast(
-        r.empresa.nombre + ' creada.' + (r.usuario ? ' Administrador: ' + r.usuario.usuario + '.' : ''),
+        r.empresa.nombre + ' creada.' + (r.usuario ? ' Administrador: ' + r.usuario.usuario + '.' : '') +
+          (NASCAR.rutaDe ? ' Su dirección: ' + location.host + NASCAR.rutaDe('publico', r.empresa.id) : ''),
         'info'
       );
       empresaAbierta = r.empresa.id;
