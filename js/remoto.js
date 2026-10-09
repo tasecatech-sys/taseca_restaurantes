@@ -2018,7 +2018,9 @@ NASCAR.Remoto = (function () {
     Object.keys(configuracion).forEach((k) => (S[k] = configuracion[k]));
 
     try {
-      cargarCatalogo();
+      /* El panel de Taseca no es de ninguna empresa: entra sin catálogo y
+         carga la lista de empresas cuando el SuperAdmin inicia sesión. */
+      if (codigoEmpresa()) cargarCatalogo();
       try {
         cargarDatosDeSesion();
       } catch (e) {
