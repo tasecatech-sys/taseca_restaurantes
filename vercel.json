@@ -1,13 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "trailingSlash": false,
-  "redirects": [
-    { "source": "/", "destination": "/nascar", "permanent": false }
-  ],
   "rewrites": [
     {
       "source": "/",
       "has": [{ "type": "host", "value": "admin.taseca.tech" }],
+      "destination": "/taseca-admin.html"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "taseca.taseca.tech" }],
       "destination": "/taseca-admin.html"
     },
     { "source": "/taseca", "destination": "/taseca-admin.html" },

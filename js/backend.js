@@ -53,8 +53,10 @@ window.NASCAR = window.NASCAR || {};
     // 'pizzeria': 'empresa_pizzeria_del_parque',
   };
 
-  /* Subdominios que NO son de una empresa: el sitio de la plataforma. */
-  const RESERVADOS = ['www', 'taseca', 'admin', 'plataforma', 'app'];
+  /* Subdominios que NO nombran una empresa, sino al sitio mismo. En
+     restaurante.taseca.tech la empresa va en la ruta (/nascar/panel). */
+  const RESERVADOS = ['www', 'taseca', 'admin', 'plataforma', 'app',
+                      'restaurante', 'restaurantes', 'api', 'demo'];
 
   /* La resolución vive en una función aparte, con el host como parámetro,
      para poder comprobarla con cualquier dominio sin tener que publicarlo:

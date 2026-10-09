@@ -363,8 +363,13 @@
         '<span>' + U.esc(A.nombreRol(usuario.rol)) + '</span></div>';
     }
 
-    // Se abre en la primera pestaña a la que sí tiene acceso
-    const inicial = A.seccionInicial();
+    /* Se abre donde diga la dirección (#cocina, #entregas…) si ese perfil
+       puede entrar ahí; si no, en la primera sección a la que sí tiene
+       acceso. Así cada tablet abre en lo suyo con un enlace fijo. */
+    const pedida = (location.hash || '').replace('#', '').toLowerCase();
+    const inicial = (pedida && A.seccionesVisibles().indexOf(pedida) >= 0)
+      ? pedida
+      : A.seccionInicial();
     if (inicial) irATab(inicial);
 
     /* Un grupo del menú en el que este perfil no tiene ninguna opción no
@@ -393,6 +398,9 @@
        a qué sección se puede ir ya lo decidió quien llama. */
     if (NASCAR.Sidebar && NASCAR.Sidebar.revelarActivo)
       NASCAR.Sidebar.revelarActivo($('[data-sidebar-shell]'), { abrir: anterior !== tab });
+
+    // La dirección acompaña a la sección: al recargar se vuelve a la misma
+    if (history.replaceState) history.replaceState(null, '', '#' + tab);
   }
 
   function conectarTabs() {
