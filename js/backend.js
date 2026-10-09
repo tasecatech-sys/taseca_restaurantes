@@ -99,10 +99,15 @@ window.NASCAR = window.NASCAR || {};
     return EMPRESAS[ranura] || 'empresa_' + ranura.replace(/-/g, '_');
   }
 
-  /* El primer tramo de la ruta, si nombra una empresa: /nascar/panel → nascar.
+  /* La empresa de la ruta. La forma oficial es /taseca/<empresa>/<página>:
+       /taseca/pizzeria-del-parque/panel → pizzeria-del-parque
+     /taseca a secas es el panel de la plataforma. La forma anterior
+     (/nascar/panel) se sigue entendiendo, para no romper enlaces ni QR.
      Los nombres de página y de archivo no cuentan como empresa. */
   function ranuraDe(camino) {
-    const tramo = String(camino || '').split('/')[1] || '';
+    const partes = String(camino || '').split('/');
+    let tramo = partes[1] || '';
+    if (tramo === 'taseca') tramo = partes[2] || '';
     if (!tramo || tramo.indexOf('.') >= 0) return '';
     if (tramo === 'taseca' || Object.prototype.hasOwnProperty.call(PAGINAS, tramo)) return '';
     return tramo.toLowerCase();
@@ -126,8 +131,8 @@ window.NASCAR = window.NASCAR || {};
   }
 
   /* La dirección de una página PARA una empresa:
-       rutaDe('panel')                        → /nascar/panel   (la de esta visita)
-       rutaDe('panel', 'empresa_pizzeria')    → /pizzeria/panel
+       rutaDe('panel')                        → /taseca/nascar/panel   (la de esta visita)
+       rutaDe('panel', 'empresa_pizzeria')    → /taseca/pizzeria/panel
      Con subdominio propio la empresa ya va delante, así que no se repite. */
   function rutaDe(pagina, codigo) {
     const cod = codigo || NASCAR.BACKEND.empresa || '';
@@ -136,7 +141,7 @@ window.NASCAR = window.NASCAR || {};
       return '/' + hoja;
     }
     const ranura = aRanura(cod);
-    return ranura ? '/' + ranura + (hoja ? '/' + hoja : '/') : '/' + (hoja || '');
+    return ranura ? '/taseca/' + ranura + (hoja ? '/' + hoja : '') : '/' + (hoja || '');
   }
 
   NASCAR.Backend = {
@@ -172,6 +177,12 @@ window.NASCAR = window.NASCAR || {};
 
   if (!enEsteEquipo && NUBE.url) {
     NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, NUBE, { empresa: empresa });
+    // Los enlaces del HTML (empleados.html…) pasan a /taseca/<empresa>/panel
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', traducirEnlaces);
+    } else {
+      traducirEnlaces();
+    }
     return;
   }
 
