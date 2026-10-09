@@ -1,0 +1,31 @@
+# ============================================================================
+#  TASECA · PostgREST local apuntando a la base EN LA NUBE (Supabase)
+#
+#  Sirve para probar, antes de publicar nada, que la base de Supabase responde
+#  y que el ingreso funciona. Es el mismo programa de siempre, en el puerto
+#  3001 para no chocar con el de la base local (3000).
+#
+#  CÓMO USARLO
+#    1. Copia este archivo como  nube.conf  (sin ".ejemplo") en esta carpeta.
+#    2. Pega abajo la cadena del Session pooler de Supabase, con el usuario
+#       taseca_rest.<referencia-del-proyecto> y su contraseña.
+#    3. Doble clic en INICIAR-POSTGREST-NUBE.bat
+#
+#  nube.conf NO se sube a GitHub: lo excluye .gitignore, porque lleva la
+#  contraseña.
+# ============================================================================
+
+# Ojo con el usuario: el pooler exige la referencia del proyecto pegada,
+# taseca_rest.wnbslnjdoupdoshipxbc, no sólo taseca_rest.
+db-uri = "postgresql://taseca_rest.wnbslnjdoupdoshipxbc:CAMBIA_ESTA_CONTRASEÑA@aws-1-us-east-2.pooler.supabase.com:5432/postgres"
+
+db-schemas = "rest"
+db-anon-role = "taseca_anon"
+db-pre-config = "core.fn_postgrest_pre_config"
+db-prepared-statements = false
+db-pool = 5
+
+server-host = "*"
+server-port = 3001
+
+log-level = "info"

@@ -2,9 +2,10 @@
 #  Qué NO sube a GitHub
 # ============================================================================
 
-# La contraseña de la base de datos vive aquí: NUNCA se publica.
-# En su lugar se sube postgrest/postgrest.conf.ejemplo, sin contraseña.
+# Las contraseñas de la base viven en estos archivos: NUNCA se publican.
+# En su lugar se suben sus plantillas, con CAMBIA_ESTA_CONTRASEÑA.
 postgrest/postgrest.conf
+postgrest/nube.conf
 
 # El ejecutable de PostgREST se descarga aparte (pesa varios MB)
 postgrest/postgrest.exe
