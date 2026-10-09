@@ -33,8 +33,8 @@ window.NASCAR = window.NASCAR || {};
      apikey  → clave publicable del proyecto (sb_publishable_… o la anon)
      esquema → 'rest', el único esquema que publica la aplicación          */
   const NUBE = {
-    url: 'https://sybyknbzdquvkaovixma.supabase.co/rest/v1',
-    apikey: 'sb_publishable_ML-n5271NiXSQeBZIN9b6w_E2C33u-y',
+       url: 'https://wnbslnjdoupdoshipxbc.supabase.co/rest/v1',
+   apikey: 'sb_publishable_RRRe21I2qDwyyA4Z0kRKKA_0khRdh6z',
     esquema: 'rest',
   };
 
