@@ -31,19 +31,47 @@ Guarda esa contraseña en tu gestor. **No la compartas con nadie**, tampoco por 
 
 ### 2. La cadena de conexión
 
-En Supabase: **Connect → Session pooler**. Copia la cadena y reemplaza el
-usuario y la contraseña por los del paso 1. Queda algo así:
+En Supabase: **Connect → Session pooler**. Copia la cadena tal cual y cámbiale
+dos cosas: el usuario y la contraseña.
+
+Ojo con el usuario: el pooler exige que lleve pegada la referencia del
+proyecto, así que donde dice `postgres.wnbslnjdoupdoshipxbc` va
+`taseca_rest.wnbslnjdoupdoshipxbc`. Queda algo así:
 
 ```
-postgresql://taseca_rest:TU-CONTRASEÑA@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+postgresql://taseca_rest.wnbslnjdoupdoshipxbc:TU-CONTRASEÑA@aws-1-us-east-2.pooler.supabase.com:5432/postgres
 ```
 
-Usa el **pooler**, no la conexión directa: la directa sólo responde por IPv6.
+La región y el número del host los copias de tu panel; cambian según el
+proyecto. Usa el **pooler**, no la conexión directa: esa sólo responde por IPv6.
+
+### 2b. Probarlo en tu computador antes de publicar nada
+
+Con Docker instalado, una sola línea levanta el mismo servidor en el puerto
+3001 y se ve si conecta:
+
+```bash
+docker run --rm -p 3001:3000 -e PGRST_DB_URI="LA-CADENA-DEL-PASO-2" -e PGRST_DB_SCHEMAS=rest -e PGRST_DB_ANON_ROLE=taseca_anon -e PGRST_DB_PRE_CONFIG=core.fn_postgrest_pre_config -e PGRST_DB_PREPARED_STATEMENTS=false postgrest/postgrest:v12.2.12
+```
+
+Y en otra ventana:
+
+```bash
+curl http://localhost:3001/empresas?select=codigo
+```
+
+Si responde la lista de empresas, la conexión y los permisos están bien y sólo
+falta publicarlo. Si no, el propio contenedor dice por qué en su salida.
 
 ### 3. Publicar
 
-Instala `flyctl` ([fly.io/docs/flyctl/install](https://fly.io/docs/flyctl/install/)) y,
-desde esta carpeta:
+Instala `flyctl` (en Windows, PowerShell):
+
+```powershell
+iwr https://fly.io/install.ps1 -useb | iex
+```
+
+Y desde esta carpeta:
 
 ```bash
 fly auth signup
