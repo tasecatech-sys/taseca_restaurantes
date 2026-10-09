@@ -68,7 +68,8 @@ NASCAR.Remoto = (function () {
     'stock', 'cierres', 'entradas', 'gastos', 'bases', 'empresas', 'config', 'empresaActual',
   ];
 
-  const PAGINA_PLATAFORMA = /taseca-admin/i.test(location.pathname);
+  // taseca-admin.html, o /taseca a secas (sin empresa detrás)
+  const PAGINA_PLATAFORMA = /taseca-admin/i.test(location.pathname) || /^\/taseca\/?$/i.test(location.pathname);
 
   /* Qué empresa se carga: la que administra el SuperAdmin, la del usuario
      conectado, la de la dirección (?empresa=…) o la de la instalación. */
