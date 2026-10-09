@@ -10573,22 +10573,40 @@ $$;
 
 /* ============================================================================
    4. REVISIÓN
+
+   Todo lo que menciona la columna nueva va por SQL dinámico (EXECUTE). No es
+   capricho: en el editor de Supabase, que habla con la base a través del
+   pooler, un bloque PL/pgSQL puede compilarse contra el plan en caché de la
+   tabla ANTERIOR al ALTER y quejarse de que «column patron does not exist»
+   aunque la columna ya esté creada. Con EXECUTE la consulta se resuelve en el
+   momento de ejecutarla y eso no puede pasar.
    ============================================================================ */
 
 DO $$
 DECLARE
     v_sin  INTEGER;
     v_col  BOOLEAN;
+    v_tot  INTEGER;
 BEGIN
     SELECT EXISTS (SELECT 1 FROM pg_attribute
                     WHERE attrelid = 'core.empresas'::regclass AND attname = 'patron' AND NOT attisdropped)
       INTO v_col;
-    SELECT count(*) INTO v_sin FROM core.empresas WHERE patron IS NULL;
+
+    IF NOT v_col THEN
+        RAISE EXCEPTION 'La columna core.empresas.patron no se creó: revisa el paso 1.';
+    END IF;
+
+    EXECUTE 'SELECT count(*) FROM core.empresas WHERE patron IS NULL' INTO v_sin;
+    EXECUTE 'SELECT count(*) FROM core.empresas' INTO v_tot;
 
     RAISE NOTICE '--------------------------------------------------';
-    RAISE NOTICE 'Columna core.empresas.patron ....... %', CASE WHEN v_col THEN 'sí' ELSE 'NO' END;
+    RAISE NOTICE 'Columna core.empresas.patron ....... sí';
+    RAISE NOTICE 'Empresas ........................... %', v_tot;
     RAISE NOTICE 'Empresas sin motivo definido ....... %', v_sin;
-    RAISE NOTICE 'Motivo de cada empresa:';
+    RAISE NOTICE 'Vista rest.empresas publica patron . %',
+        CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+                           WHERE table_schema = 'rest' AND table_name = 'empresas' AND column_name = 'patron')
+             THEN 'sí' ELSE 'NO' END;
     RAISE NOTICE '--------------------------------------------------';
 END;
 $$;
