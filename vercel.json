@@ -13,6 +13,10 @@
       "destination": "/taseca-admin.html"
     },
     { "source": "/taseca", "destination": "/taseca-admin.html" },
+    { "source": "/taseca/:empresa/panel", "destination": "/empleados.html" },
+    { "source": "/taseca/:empresa/mesa", "destination": "/mesa.html" },
+    { "source": "/taseca/:empresa/cierre", "destination": "/cierre.html" },
+    { "source": "/taseca/:empresa", "destination": "/index.html" },
     { "source": "/:empresa/panel", "destination": "/empleados.html" },
     { "source": "/:empresa/mesa", "destination": "/mesa.html" },
     { "source": "/:empresa/cierre", "destination": "/cierre.html" },
