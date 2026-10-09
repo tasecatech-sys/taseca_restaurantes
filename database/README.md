@@ -53,6 +53,7 @@ Con la conexión **`taseca_db`** seleccionada, abre cada archivo y ejecútalo co
 | 17 | `17_pruebas_integridad.sql` | *(Opcional)* 5 pruebas de integridad; la primera revisa TUS datos |
 | 18 | `18_supabase.sql` | *(Sólo en la nube)* Adapta la base a un proyecto de Supabase: cifrado, roles y tokens |
 | 19 | `19_rls.sql` | Enciende la seguridad a nivel de fila (RLS) en todas las tablas de `core` |
+| — | `SUPABASE_INSTALAR.sql` | **Todo lo anterior en un solo archivo**, en el orden que pide Supabase (generado) |
 
 En `08_pruebas.sql` los resultados salen en la pestaña **Salida / Output**:
 una línea ✔ por prueba y al final *TODAS LAS PRUEBAS PASARON*.
@@ -661,6 +662,30 @@ Sin filas, todo en orden.
 ---
 
 ## Instalar en Supabase (base en la nube)
+
+### Lo más fácil: un solo archivo
+
+`SUPABASE_INSTALAR.sql` trae **toda la base en un archivo**, ya en el orden que
+Supabase necesita: 481 KB que se pegan en su editor SQL, o se ejecutan con psql:
+
+```bash
+psql "postgresql://postgres:TU-CONTRASEÑA@db.TU-PROYECTO.supabase.co:5432/postgres" -v ON_ERROR_STOP=1 -f database/SUPABASE_INSTALAR.sql
+```
+
+Deja 56 tablas, 56 vistas, 95 funciones y procedimientos, RLS en todo y los
+datos de ejemplo de NASCAR (marcados por si quieres la plataforma vacía).
+Tarda segundos y al final imprime el resumen. **Sobre una base vacía**: si ya
+instalaste, primero hay que borrar los esquemas `rest`, `api` y `core`.
+
+Está **generado**, no se edita a mano: sale de los scripts 01 … 19 con
+
+```bash
+py database/generar_supabase.py
+```
+
+Probado instalando de cero y corriendo encima las 8 baterías: 69 pruebas en verde.
+
+### O paso a paso
 
 El orden **no es el mismo** que en local, porque Supabase trae su propia base,
 sus propios roles y guarda `pgcrypto` en el esquema `extensions`:
