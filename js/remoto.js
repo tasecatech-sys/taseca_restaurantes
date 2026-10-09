@@ -203,7 +203,8 @@ NASCAR.Remoto = (function () {
     const unidades = u.unidades || [];
     return {
       id: u.usuario_id,
-      empresaId: empresa.codigo,
+      // En el panel de Taseca no hay empresa cargada: cada usuario trae la suya
+      empresaId: empresa ? empresa.codigo : (u.empresa_codigo || ''),
       nombre: u.nombre,
       usuario: u.usuario,
       pin: '',
