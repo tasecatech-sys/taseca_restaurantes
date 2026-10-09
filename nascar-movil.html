@@ -6438,7 +6438,8 @@ NASCAR.MODULOS = [
 
 /* Con qué módulos arranca una empresa nueva: sólo lo básico. Lo demás
    se contrata. */
-NASCAR.MODULOS_POR_DEFECTO = { basico: true, stock: false, cierre: false };
+// Una empresa nueva nace con todo, igual que NASCAR. Se apaga lo que no use.
+NASCAR.MODULOS_POR_DEFECTO = { basico: true, stock: true, cierre: true };
 
 /* =========================================================================
    TEMAS DE EMPRESA
@@ -6546,7 +6547,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     nombre: 'Cafetería',
     icono: '☕',
     descripcion: 'Rotación rápida y carta corta, con inventario.',
-    modulos: { basico: true, stock: true, cierre: false },
+    modulos: { basico: true, stock: true, cierre: true },
     theme: { primary: '#92400e', secondary: '#b45309', accent: '#f59e0b', fontFamily: 'lora' },
   },
   {
@@ -6554,7 +6555,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     nombre: 'Comercio',
     icono: '🛍️',
     descripcion: 'Venta de producto con existencias, sin cierre de cocina.',
-    modulos: { basico: true, stock: true, cierre: false },
+    modulos: { basico: true, stock: true, cierre: true },
     theme: { primary: '#0f766e', secondary: '#14b8a6', accent: '#5eead4', fontFamily: 'inter' },
   },
   {
@@ -6562,7 +6563,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     nombre: 'Servicios',
     icono: '🧰',
     descripcion: 'Sin inventario: sólo la operación, los pagos y los gastos.',
-    modulos: { basico: true, stock: false, cierre: false },
+    modulos: { basico: true, stock: true, cierre: true },
     theme: { primary: '#1d4ed8', secondary: '#475569', accent: '#60a5fa', fontFamily: 'inter' },
   },
   {
@@ -12734,8 +12735,8 @@ window.NASCAR = window.NASCAR || {};
      apikey  → clave publicable del proyecto (sb_publishable_… o la anon)
      esquema → 'rest', el único esquema que publica la aplicación          */
   const NUBE = {
-       url: 'https://wnbslnjdoupdoshipxbc.supabase.co/rest/v1',
-   apikey: 'sb_publishable_RRRe21I2qDwyyA4Z0kRKKA_0khRdh6z',
+       url: 'https://mzxyqkbhrcegiyqbbazp.supabase.co/rest/v1',
+   apikey: 'sb_publishable_71sDgXwdaGSomzG2U24vkw_1N4JWhF-',
     esquema: 'rest',
   };
 
@@ -12964,7 +12965,8 @@ NASCAR.Remoto = (function () {
     'stock', 'cierres', 'entradas', 'gastos', 'bases', 'empresas', 'config', 'empresaActual',
   ];
 
-  const PAGINA_PLATAFORMA = /taseca-admin/i.test(location.pathname);
+  // taseca-admin.html, o /taseca a secas (sin empresa detrás)
+  const PAGINA_PLATAFORMA = /taseca-admin/i.test(location.pathname) || /^\/taseca\/?$/i.test(location.pathname);
 
   /* Qué empresa se carga: la que administra el SuperAdmin, la del usuario
      conectado, la de la dirección (?empresa=…) o la de la instalación. */

@@ -1638,6 +1638,31 @@ caja**. Los pedidos **cancelados no cuentan** en las ventas.
 
 ---
 
+## Una pantalla por local: la unidad va en la dirección
+
+El panel trabaja sobre **una unidad**. Para dejar cada tablet abierta en lo
+suyo, la unidad se puede pasar en la dirección, junto con la sección:
+
+```
+/nascar/panel?unidad=4#cocina          → cocina de COMIC'ENDO
+/nascar/panel?unidad=2#cocina          → cocina de NASCAR-Comidas
+/nascar/panel?unidad=bar-vip#pedidos   → pedidos del bar
+```
+
+Se acepta el número de la unidad o su nombre (corto o completo, sin importar
+mayúsculas ni tildes).
+
+**Los permisos siguen mandando.** Si el usuario está asignado a un local, esa
+dirección no lo saca de ahí: se queda en el suyo y el selector de arriba sólo
+muestra esa unidad. Si está asignado a varios, puede moverse entre ésos y nada
+más. Administración, que no está atada a ninguno, los ve todos.
+
+Para un restaurante con varias cocinas, lo ordenado es **un usuario por local**
+(👥 Usuarios → asignar unidad): cada cocinero entra con el suyo y ve sólo sus
+pedidos, sin depender de qué dirección quedó abierta en la tablet.
+
+---
+
 ## Avisos sonoros: a cada quien le suena lo suyo
 
 El panel avisa **con sonido** de lo que le toca a cada rol, sin que nadie tenga
