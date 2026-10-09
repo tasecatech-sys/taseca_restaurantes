@@ -1171,6 +1171,10 @@ NASCAR.Store = (function () {
     const ses = getSesion();
     if (ses && ses.scope !== SCOPE_PLATAFORMA && ses.sucursalId && Number(ses.sucursalId) !== Number(u.id))
       throw new Error('Tu usuario está asignado a otra unidad.');
+    /* Asignado a varias: puede moverse entre ellas, pero sólo entre ellas. */
+    if (ses && ses.scope !== SCOPE_PLATAFORMA && !ses.sucursalId &&
+        (ses.unidades || []).length && ses.unidades.map(Number).indexOf(Number(u.id)) < 0)
+      throw new Error('Tu usuario no trabaja en "' + u.nombre + '".');
 
     const mapa = leer(K.unidadActiva, {}) || {};
     if (Number(mapa[eid]) === Number(u.id)) return Number(u.id);

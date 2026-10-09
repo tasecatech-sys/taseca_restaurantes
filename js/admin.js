@@ -143,6 +143,7 @@
        panel —pedidos, ventas, gastos, stock, cierres, carta, menú— trabaja
        sobre ella. Ya no hay "todas": la información de una unidad no se
        mezcla con la de otra. */
+    unidadDeLaDireccion();
     pintarSelectorUnidad();
     $('#qrSucursal').innerHTML = NASCAR.SUCURSALES.map(
       (s) => '<option value="' + s.id + '">' + U.esc(s.nombre) + '</option>'
@@ -447,14 +448,41 @@
      unidad creada, renombrada o desactivada —o elegida en otra pestaña—
      se refleja al momento, y `sucursalGlobal` nunca se queda con la
      unidad anterior. */
+  /* La unidad puede venir en la dirección, para dejar cada tablet abierta
+     en lo suyo:  /nascar/panel?unidad=4#cocina  ·  ?unidad=comic-endo
+
+     Se acepta el número o el nombre corto. Los permisos mandan igual: si el
+     usuario no trabaja ahí, el store lo rechaza y se queda en la suya. */
+  function unidadDeLaDireccion() {
+    const pedida = U.paramURL('unidad', null);
+    if (!pedida) return;
+
+    const normal = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const unidad = S.getSucursales().find(
+      (s) => String(s.id) === String(pedida) ||
+             normal(s.corto) === normal(pedida) ||
+             normal(s.nombre) === normal(pedida)
+    );
+    if (!unidad) return U.toast('No hay ninguna unidad "' + pedida + '" en esta empresa.', 'error');
+
+    try {
+      S.setUnidadActiva(unidad.id);
+    } catch (err) {
+      U.toast(err.message, 'error');
+    }
+  }
+
   function pintarSelectorUnidad() {
     const sel = $('#sucursalGlobal');
     if (!sel) return;
     const actual = S.unidadActivaId();
     const atada = A.sucursalDelUsuario();
+    const suyas = A.unidadesDelUsuario ? A.unidadesDelUsuario() : [];
     const lista = atada
       ? S.getSucursales({ todas: true }).filter((s) => Number(s.id) === Number(atada))
-      : S.getSucursales();
+      : suyas.length
+        ? S.getSucursales().filter((s) => suyas.indexOf(Number(s.id)) >= 0)
+        : S.getSucursales();
 
     const html = lista.length
       ? lista

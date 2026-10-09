@@ -256,6 +256,21 @@ NASCAR.Auth = (function () {
     return u && u.sucursalId ? Number(u.sucursalId) : null;
   }
 
+  /* Las unidades en las que este usuario puede trabajar. Vacío = todas las
+     de la empresa (administración). Un cocinero asignado a dos locales ve
+     esos dos y puede moverse entre ellos; a los demás ni se asoma. */
+  function unidadesDelUsuario() {
+    const u = getUsuarioActual();
+    if (!u) return [];
+    if (u.sucursalId) return [Number(u.sucursalId)];
+    return ((u.unidades || []).map(Number)).filter(Boolean);
+  }
+
+  function puedeEnUnidad(sucursalId) {
+    const suyas = unidadesDelUsuario();
+    return !suyas.length || suyas.indexOf(Number(sucursalId)) >= 0;
+  }
+
   /* =================================================================
      PERMISOS
      ================================================================= */
@@ -518,6 +533,8 @@ NASCAR.Auth = (function () {
     nombreRol: nombreRol,
     iconoRol: iconoRol,
     sucursalDelUsuario: sucursalDelUsuario,
+    unidadesDelUsuario: unidadesDelUsuario,
+    puedeEnUnidad: puedeEnUnidad,
 
     puede: puede,
     puedeAlguno: puedeAlguno,

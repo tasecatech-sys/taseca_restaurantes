@@ -736,7 +736,10 @@ NASCAR.Remoto = (function () {
         rol: r.rol,
         scope: 'empresa',
         empresaId: r.empresa_codigo,
+        /* Atado a UNA unidad: el panel no deja cambiarla. Con varias, la
+           sesión las lleva todas y el selector muestra sólo ésas. */
         sucursalId: r.unidades && r.unidades.length === 1 ? r.unidades[0] : null,
+        unidades: (r.unidades || []).map(Number),
         token: r.token,
         expira: r.expira,
       });
