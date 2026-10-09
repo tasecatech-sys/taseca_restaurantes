@@ -4870,19 +4870,15 @@ tr.fila--sin td {
 <section class="hero">
   <div class="contenedor hero__inner">
     <div>
-      <span class="hero__etiqueta">
-        <i class="cuadros cuadros--fina"></i> Cuatro locales en Bogotá
+      <!-- Lo llena app.js con las unidades de la empresa; sin unidades, se oculta -->
+      <span class="hero__etiqueta" id="heroEtiqueta">
+        <i class="cuadros cuadros--fina"></i> <span data-texto></span>
       </span>
 
-      <h1>
-        Cocina de<br>
-        <span class="linea-rojo">alta</span> <span class="linea-contorno">velocidad</span>
-      </h1>
+      <!-- El eslogan de la empresa, con las dos últimas palabras resaltadas -->
+      <h1 id="heroTitular"></h1>
 
-      <p class="hero__texto" id="heroTexto">
-        Parrilla al carbón, comida tradicional y almuerzos que cambian todos los días.
-        Pide para llevar a tu mesa o a domicilio en menos de dos minutos.
-      </p>
+      <p class="hero__texto" id="heroTexto"></p>
 
       <div class="hero__cta">
         <a href="#dia" class="btn btn--rojo">🏁 Ver platos de hoy</a>
@@ -4899,13 +4895,13 @@ tr.fila--sin td {
           <b id="statLocales">—</b>
           <span>Locales</span>
         </div>
-        <div class="hero__dato">
-          <b>35'</b>
+        <div class="hero__dato" id="datoDomicilio">
+          <b data-texto></b>
           <span>Domicilio promedio</span>
         </div>
-        <div class="hero__dato">
-          <b>11–22h</b>
-          <span>Todos los días</span>
+        <div class="hero__dato" id="datoHorario">
+          <b data-texto></b>
+          <span>Horario</span>
         </div>
       </div>
     </div>
@@ -4926,7 +4922,8 @@ tr.fila--sin td {
         </div>
         <div class="paso">
           <span class="paso__n">3</span>
-          <div><b>Datos y pago</b><p>Efectivo contra entrega, datáfono o transferencia (Nequi / Bancolombia).</p></div>
+          <!-- Los métodos que la empresa tenga activos, no los de otra -->
+          <div><b>Datos y pago</b><p id="pasoPagos"></p></div>
         </div>
         <div class="paso">
           <span class="paso__n">4</span>
@@ -4996,7 +4993,7 @@ tr.fila--sin td {
   <div class="contenedor">
     <div class="titulo-seccion titulo-seccion--centro reveal">
       <span class="titulo-seccion__kicker">Servicios</span>
-      <h2>Tres formas de comer NASCAR</h2>
+      <h2>Tres formas de comer en <span data-marca></span></h2>
     </div>
 
     <div class="sucursales reveal" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
@@ -5006,7 +5003,7 @@ tr.fila--sin td {
           <span class="sucursal__num">01</span>
           <h3>En la mesa</h3>
           <p class="tenue">Escanea el código QR de tu mesa y pide desde el celular sin esperar al mesero. El pedido entra directo a cocina con el número de mesa.</p>
-          <a href="#mesa/1/1" class="btn btn--fantasma btn--sm">Ver pantalla de mesa</a>
+          <a href="#mesa" class="btn btn--fantasma btn--sm" id="verPantallaMesa">Ver pantalla de mesa</a>
         </div>
       </article>
 
@@ -5040,9 +5037,9 @@ tr.fila--sin td {
       <div>
         <div class="logo mb-16">
           <span class="logo__cuadros cuadros cuadros--fina"></span>
-          <span><span class="logo__marca">NAS<em>CAR</em></span><span class="logo__sub">Restaurante</span></span>
+          <span><span class="logo__marca" data-marca></span><span class="logo__sub" id="pieTipo"></span></span>
         </div>
-        <p class="tenue mini">Parrilla, comida tradicional y burgers servidas a ritmo de carrera. Dos boxes, un mismo sabor.</p>
+        <p class="tenue mini" id="pieDescripcion"></p>
         <p class="tenue mini" id="pieNit"></p>
       </div>
 
@@ -5077,8 +5074,8 @@ tr.fila--sin td {
     </div>
 
     <div class="pie__legal">
-      <span>© <span data-anio></span> NASCAR Restaurante. Todos los derechos reservados.</span>
-      <span>Hecho con 🏁 en Bogotá</span>
+      <span>© <span data-anio></span> <span data-marca></span>. Todos los derechos reservados.</span>
+      <span id="pieCiudad"></span>
     </div>
   </div>
   <div class="franja"></div>
@@ -22780,8 +22777,122 @@ NASCAR.Avisos = (function () {
 
     // Textos de marca configurables desde el panel
     $$('[data-marca]').forEach((n) => (n.textContent = cfg.marca));
-    const desc = $('#heroTexto');
-    if (desc && cfg.descripcion) desc.textContent = cfg.descripcion;
+    personalizarPortal(cfg);
+  }
+
+  /* =================================================================
+     EL PORTAL ES UN LIENZO
+
+     Nada de lo que se lee aquí está escrito en el HTML: todo sale de la
+     empresa que se está mostrando (⚙️ Configuración y sus unidades). Un
+     negocio recién creado ve su propio nombre y los huecos que aún no ha
+     llenado simplemente NO aparecen, en vez de enseñar los textos de otro.
+     ================================================================= */
+  function mostrarSi(nodo, valor, donde) {
+    if (!nodo) return;
+    const hay = !!String(valor || '').trim();
+    nodo.classList.toggle('oculto', !hay);
+    if (!hay) return;
+    const destino = donde ? nodo.querySelector(donde) : nodo;
+    if (destino) destino.textContent = valor;
+  }
+
+  /* El eslogan como titular: las dos últimas palabras se resaltan, que es
+     lo que le da el aire de portada. Con una sola palabra, va entera. */
+  function titularDe(eslogan) {
+    const palabras = String(eslogan || '').trim().split(/\s+/).filter(Boolean);
+    if (!palabras.length) return '';
+    const ultima = palabras.pop();
+    const penultima = palabras.length ? palabras.pop() : '';
+    const principio = palabras.join(' ');
+    return (
+      (principio ? U.esc(principio) + '<br>' : '') +
+      (penultima ? '<span class="linea-rojo">' + U.esc(penultima) + '</span> ' : '') +
+      '<span class="linea-contorno">' + U.esc(ultima) + '</span>'
+    );
+  }
+
+  /* "Lunes a Domingo · 11:00 a.m. – 10:00 p.m." → "11:00 a.m. – 10:00 p.m."
+     En una cifra del hero no cabe la frase entera. */
+  function horarioCorto(texto) {
+    const partes = String(texto || '').split('·');
+    return (partes[partes.length - 1] || '').trim();
+  }
+
+  function ciudadDeLaEmpresa() {
+    const unidades = S.getSucursales();
+    const ciudades = unidades.map((u) => (u.ciudad || '').trim()).filter(Boolean);
+    return ciudades.length ? ciudades[0] : '';
+  }
+
+  function personalizarPortal(cfg) {
+    const unidades = S.getSucursales();
+    const ciudad = ciudadDeLaEmpresa();
+
+    // Titular y descripción
+    const titular = $('#heroTitular');
+    if (titular) {
+      titular.innerHTML = titularDe(cfg.eslogan || cfg.marca);
+      titular.classList.toggle('oculto', !titular.innerHTML);
+    }
+    mostrarSi($('#heroTexto'), cfg.descripcion);
+
+    // "Cuatro locales en Bogotá", contando las que hay de verdad
+    const n = unidades.length;
+    const etiqueta = n
+      ? n + (n === 1 ? ' local' : ' locales') + (ciudad ? ' en ' + ciudad : '')
+      : '';
+    mostrarSi($('#heroEtiqueta'), etiqueta, '[data-texto]');
+
+    // Cifras: lo que diga la configuración, y si no dice nada no se muestran
+    mostrarSi($('#datoDomicilio'), (cfg.tiempos || {}).domicilio, '[data-texto]');
+    mostrarSi($('#datoHorario'), horarioCorto((cfg.contacto || {}).horarioGeneral), '[data-texto]');
+
+    // Pie
+    const tipo = unidades.length ? S.getTipoNegocio(unidades[0].tipoNegocio) : null;
+    mostrarSi($('#pieTipo'), tipo ? tipo.nombre : '');
+    mostrarSi($('#pieDescripcion'), cfg.descripcion);
+    mostrarSi($('#pieCiudad'), ciudad ? 'Hecho con 🏁 en ' + ciudad : '');
+    const nit = $('#pieNit');
+    if (nit) {
+      const valor = ((cfg.pago || {}).nit || '').trim();
+      nit.textContent = valor ? 'NIT ' + valor : '';
+    }
+
+    // La pantalla de mesa, de la primera unidad de ESTA empresa
+    const verMesa = $('#verPantallaMesa');
+    if (verMesa) {
+      const suc = unidades[0];
+      verMesa.classList.toggle('oculto', !suc);
+      if (suc) {
+        const base = NASCAR.rutaDe ? NASCAR.rutaDe('mesa') : 'mesa.html';
+        verMesa.setAttribute('href', base + '?suc=' + suc.id + '&mesa=1');
+      }
+    }
+
+    /* Cómo se paga: los métodos activos de ESTA empresa, y las cuentas que
+       tenga registradas. Sin métodos, el paso no promete nada. */
+    const comoSeLlama = { efectivo: 'Efectivo', datafono: 'Datáfono', transferencia: 'Transferencia' };
+    const metodos = (cfg.metodosPago || [])
+      .filter((m) => m.activo)
+      .map((m) => comoSeLlama[m.id] || m.nombre);
+    const cuentas = ['nequi', 'daviplata', 'bancolombia']
+      .filter((c) => ((cfg.pago || {})[c] || '').trim())
+      .map((c) => c.charAt(0).toUpperCase() + c.slice(1));
+    const pagos = metodos.length
+      ? metodos.join(', ') + (cuentas.length ? ' (' + cuentas.join(' / ') + ')' : '') + '.'
+      : '';
+    mostrarSi($('#pasoPagos'), pagos || 'Se acuerda al confirmar el pedido.');
+
+    // Lo que ve el navegador y lo que se comparte por WhatsApp
+    const resumen = cfg.descripcion || cfg.eslogan || '';
+    if (cfg.marca) document.title = cfg.marca + (cfg.eslogan ? ' · ' + cfg.eslogan : '');
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta && resumen) meta.setAttribute('content', resumen);
+    const og = document.querySelector('meta[property="og:title"]');
+    if (og) og.setAttribute('content', cfg.marca + (cfg.eslogan ? ' · ' + cfg.eslogan : ''));
+    const ogd = document.querySelector('meta[property="og:description"]');
+    if (ogd && resumen) ogd.setAttribute('content', resumen);
   }
 
   /* =================================================================

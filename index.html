@@ -60,19 +60,15 @@
 <section class="hero">
   <div class="contenedor hero__inner">
     <div>
-      <span class="hero__etiqueta">
-        <i class="cuadros cuadros--fina"></i> Cuatro locales en Bogotá
+      <!-- Lo llena app.js con las unidades de la empresa; sin unidades, se oculta -->
+      <span class="hero__etiqueta" id="heroEtiqueta">
+        <i class="cuadros cuadros--fina"></i> <span data-texto></span>
       </span>
 
-      <h1>
-        Cocina de<br>
-        <span class="linea-rojo">alta</span> <span class="linea-contorno">velocidad</span>
-      </h1>
+      <!-- El eslogan de la empresa, con las dos últimas palabras resaltadas -->
+      <h1 id="heroTitular"></h1>
 
-      <p class="hero__texto" id="heroTexto">
-        Parrilla al carbón, comida tradicional y almuerzos que cambian todos los días.
-        Pide para llevar a tu mesa o a domicilio en menos de dos minutos.
-      </p>
+      <p class="hero__texto" id="heroTexto"></p>
 
       <div class="hero__cta">
         <a href="#dia" class="btn btn--rojo">🏁 Ver platos de hoy</a>
@@ -89,13 +85,13 @@
           <b id="statLocales">—</b>
           <span>Locales</span>
         </div>
-        <div class="hero__dato">
-          <b>35'</b>
+        <div class="hero__dato" id="datoDomicilio">
+          <b data-texto></b>
           <span>Domicilio promedio</span>
         </div>
-        <div class="hero__dato">
-          <b>11–22h</b>
-          <span>Todos los días</span>
+        <div class="hero__dato" id="datoHorario">
+          <b data-texto></b>
+          <span>Horario</span>
         </div>
       </div>
     </div>
@@ -116,7 +112,8 @@
         </div>
         <div class="paso">
           <span class="paso__n">3</span>
-          <div><b>Datos y pago</b><p>Efectivo contra entrega, datáfono o transferencia (Nequi / Bancolombia).</p></div>
+          <!-- Los métodos que la empresa tenga activos, no los de otra -->
+          <div><b>Datos y pago</b><p id="pasoPagos"></p></div>
         </div>
         <div class="paso">
           <span class="paso__n">4</span>
@@ -186,7 +183,7 @@
   <div class="contenedor">
     <div class="titulo-seccion titulo-seccion--centro reveal">
       <span class="titulo-seccion__kicker">Servicios</span>
-      <h2>Tres formas de comer NASCAR</h2>
+      <h2>Tres formas de comer en <span data-marca></span></h2>
     </div>
 
     <div class="sucursales reveal" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
@@ -196,7 +193,7 @@
           <span class="sucursal__num">01</span>
           <h3>En la mesa</h3>
           <p class="tenue">Escanea el código QR de tu mesa y pide desde el celular sin esperar al mesero. El pedido entra directo a cocina con el número de mesa.</p>
-          <a href="mesa.html?suc=1&amp;mesa=1" class="btn btn--fantasma btn--sm">Ver pantalla de mesa</a>
+          <a href="mesa.html" class="btn btn--fantasma btn--sm" id="verPantallaMesa">Ver pantalla de mesa</a>
         </div>
       </article>
 
@@ -230,9 +227,9 @@
       <div>
         <div class="logo mb-16">
           <span class="logo__cuadros cuadros cuadros--fina"></span>
-          <span><span class="logo__marca">NAS<em>CAR</em></span><span class="logo__sub">Restaurante</span></span>
+          <span><span class="logo__marca" data-marca></span><span class="logo__sub" id="pieTipo"></span></span>
         </div>
-        <p class="tenue mini">Parrilla, comida tradicional y burgers servidas a ritmo de carrera. Dos boxes, un mismo sabor.</p>
+        <p class="tenue mini" id="pieDescripcion"></p>
         <p class="tenue mini" id="pieNit"></p>
       </div>
 
@@ -267,8 +264,8 @@
     </div>
 
     <div class="pie__legal">
-      <span>© <span data-anio></span> NASCAR Restaurante. Todos los derechos reservados.</span>
-      <span>Hecho con 🏁 en Bogotá</span>
+      <span>© <span data-anio></span> <span data-marca></span>. Todos los derechos reservados.</span>
+      <span id="pieCiudad"></span>
     </div>
   </div>
   <div class="franja"></div>

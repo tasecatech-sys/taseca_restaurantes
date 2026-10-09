@@ -299,8 +299,122 @@
 
     // Textos de marca configurables desde el panel
     $$('[data-marca]').forEach((n) => (n.textContent = cfg.marca));
-    const desc = $('#heroTexto');
-    if (desc && cfg.descripcion) desc.textContent = cfg.descripcion;
+    personalizarPortal(cfg);
+  }
+
+  /* =================================================================
+     EL PORTAL ES UN LIENZO
+
+     Nada de lo que se lee aquí está escrito en el HTML: todo sale de la
+     empresa que se está mostrando (⚙️ Configuración y sus unidades). Un
+     negocio recién creado ve su propio nombre y los huecos que aún no ha
+     llenado simplemente NO aparecen, en vez de enseñar los textos de otro.
+     ================================================================= */
+  function mostrarSi(nodo, valor, donde) {
+    if (!nodo) return;
+    const hay = !!String(valor || '').trim();
+    nodo.classList.toggle('oculto', !hay);
+    if (!hay) return;
+    const destino = donde ? nodo.querySelector(donde) : nodo;
+    if (destino) destino.textContent = valor;
+  }
+
+  /* El eslogan como titular: las dos últimas palabras se resaltan, que es
+     lo que le da el aire de portada. Con una sola palabra, va entera. */
+  function titularDe(eslogan) {
+    const palabras = String(eslogan || '').trim().split(/\s+/).filter(Boolean);
+    if (!palabras.length) return '';
+    const ultima = palabras.pop();
+    const penultima = palabras.length ? palabras.pop() : '';
+    const principio = palabras.join(' ');
+    return (
+      (principio ? U.esc(principio) + '<br>' : '') +
+      (penultima ? '<span class="linea-rojo">' + U.esc(penultima) + '</span> ' : '') +
+      '<span class="linea-contorno">' + U.esc(ultima) + '</span>'
+    );
+  }
+
+  /* "Lunes a Domingo · 11:00 a.m. – 10:00 p.m." → "11:00 a.m. – 10:00 p.m."
+     En una cifra del hero no cabe la frase entera. */
+  function horarioCorto(texto) {
+    const partes = String(texto || '').split('·');
+    return (partes[partes.length - 1] || '').trim();
+  }
+
+  function ciudadDeLaEmpresa() {
+    const unidades = S.getSucursales();
+    const ciudades = unidades.map((u) => (u.ciudad || '').trim()).filter(Boolean);
+    return ciudades.length ? ciudades[0] : '';
+  }
+
+  function personalizarPortal(cfg) {
+    const unidades = S.getSucursales();
+    const ciudad = ciudadDeLaEmpresa();
+
+    // Titular y descripción
+    const titular = $('#heroTitular');
+    if (titular) {
+      titular.innerHTML = titularDe(cfg.eslogan || cfg.marca);
+      titular.classList.toggle('oculto', !titular.innerHTML);
+    }
+    mostrarSi($('#heroTexto'), cfg.descripcion);
+
+    // "Cuatro locales en Bogotá", contando las que hay de verdad
+    const n = unidades.length;
+    const etiqueta = n
+      ? n + (n === 1 ? ' local' : ' locales') + (ciudad ? ' en ' + ciudad : '')
+      : '';
+    mostrarSi($('#heroEtiqueta'), etiqueta, '[data-texto]');
+
+    // Cifras: lo que diga la configuración, y si no dice nada no se muestran
+    mostrarSi($('#datoDomicilio'), (cfg.tiempos || {}).domicilio, '[data-texto]');
+    mostrarSi($('#datoHorario'), horarioCorto((cfg.contacto || {}).horarioGeneral), '[data-texto]');
+
+    // Pie
+    const tipo = unidades.length ? S.getTipoNegocio(unidades[0].tipoNegocio) : null;
+    mostrarSi($('#pieTipo'), tipo ? tipo.nombre : '');
+    mostrarSi($('#pieDescripcion'), cfg.descripcion);
+    mostrarSi($('#pieCiudad'), ciudad ? 'Hecho con 🏁 en ' + ciudad : '');
+    const nit = $('#pieNit');
+    if (nit) {
+      const valor = ((cfg.pago || {}).nit || '').trim();
+      nit.textContent = valor ? 'NIT ' + valor : '';
+    }
+
+    // La pantalla de mesa, de la primera unidad de ESTA empresa
+    const verMesa = $('#verPantallaMesa');
+    if (verMesa) {
+      const suc = unidades[0];
+      verMesa.classList.toggle('oculto', !suc);
+      if (suc) {
+        const base = NASCAR.rutaDe ? NASCAR.rutaDe('mesa') : 'mesa.html';
+        verMesa.setAttribute('href', base + '?suc=' + suc.id + '&mesa=1');
+      }
+    }
+
+    /* Cómo se paga: los métodos activos de ESTA empresa, y las cuentas que
+       tenga registradas. Sin métodos, el paso no promete nada. */
+    const comoSeLlama = { efectivo: 'Efectivo', datafono: 'Datáfono', transferencia: 'Transferencia' };
+    const metodos = (cfg.metodosPago || [])
+      .filter((m) => m.activo)
+      .map((m) => comoSeLlama[m.id] || m.nombre);
+    const cuentas = ['nequi', 'daviplata', 'bancolombia']
+      .filter((c) => ((cfg.pago || {})[c] || '').trim())
+      .map((c) => c.charAt(0).toUpperCase() + c.slice(1));
+    const pagos = metodos.length
+      ? metodos.join(', ') + (cuentas.length ? ' (' + cuentas.join(' / ') + ')' : '') + '.'
+      : '';
+    mostrarSi($('#pasoPagos'), pagos || 'Se acuerda al confirmar el pedido.');
+
+    // Lo que ve el navegador y lo que se comparte por WhatsApp
+    const resumen = cfg.descripcion || cfg.eslogan || '';
+    if (cfg.marca) document.title = cfg.marca + (cfg.eslogan ? ' · ' + cfg.eslogan : '');
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta && resumen) meta.setAttribute('content', resumen);
+    const og = document.querySelector('meta[property="og:title"]');
+    if (og) og.setAttribute('content', cfg.marca + (cfg.eslogan ? ' · ' + cfg.eslogan : ''));
+    const ogd = document.querySelector('meta[property="og:description"]');
+    if (ogd && resumen) ogd.setAttribute('content', resumen);
   }
 
   /* =================================================================
