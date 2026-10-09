@@ -602,8 +602,9 @@
     let columnas = S.ESTADOS.filter((e) => e !== 'camino' || hayDomicilios);
     if (!soloActivos) columnas = columnas.concat(['cancelado']);
 
-    $('#tablero').style.gridTemplateColumns =
-      'repeat(' + Math.min(columnas.length, 5) + ', minmax(0,1fr))';
+    /* Cuántas columnas, como variable: en línea le ganaría a las reglas de
+       móvil, y el tablero quedaría amontonado en el celular. */
+    $('#tablero').style.setProperty('--columnas', Math.min(columnas.length, 5));
 
     $('#tablero').innerHTML = columnas
       .map(function (estado) {

@@ -2168,7 +2168,7 @@ body.admin {
 /* Tablero de pedidos */
 .tablero {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--columnas, 4), minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
@@ -3219,8 +3219,30 @@ tr.fila--sin td {
   .rejilla-2 {
     grid-template-columns: 1fr;
   }
+  /* En el celular el tablero no se apila ni se amontona: se desliza de
+     lado, una columna por pantalla. Se asoma la siguiente para que se note
+     que hay más, y cada una se detiene en su sitio al soltar. */
   .tablero {
-    grid-template-columns: 1fr;
+    display: flex;
+    grid-template-columns: none;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+  .tablero > .columna {
+    flex: 0 0 86%;
+    scroll-snap-align: center;
+    min-height: 0;
+  }
+  .columna__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--negro-800);
+    border-radius: var(--r) var(--r) 0 0;
   }
   .columna__body {
     max-height: none;
@@ -24605,8 +24627,9 @@ NASCAR.Avisos = (function () {
     let columnas = S.ESTADOS.filter((e) => e !== 'camino' || hayDomicilios);
     if (!soloActivos) columnas = columnas.concat(['cancelado']);
 
-    $('#tablero').style.gridTemplateColumns =
-      'repeat(' + Math.min(columnas.length, 5) + ', minmax(0,1fr))';
+    /* Cuántas columnas, como variable: en línea le ganaría a las reglas de
+       móvil, y el tablero quedaría amontonado en el celular. */
+    $('#tablero').style.setProperty('--columnas', Math.min(columnas.length, 5));
 
     $('#tablero').innerHTML = columnas
       .map(function (estado) {
