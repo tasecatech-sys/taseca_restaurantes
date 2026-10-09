@@ -377,6 +377,15 @@ NASCAR.Operacion = (function () {
      👨‍🍳  COCINA
      ================================================================= */
   function conectarCocina() {
+    const sedes = $('#cocinaSedes');
+    if (sedes)
+      sedes.addEventListener('click', function (e) {
+        const b = e.target.closest('[data-sede-cocina]');
+        if (!b) return;
+        sedeCocina = b.dataset.sedeCocina;
+        pintarCocina();
+      });
+
     $('#listaCocina').addEventListener('click', function (e) {
       const b = e.target.closest('[data-avanzar-cocina]');
       if (!b) return;
@@ -391,17 +400,63 @@ NASCAR.Operacion = (function () {
       refrescar();
     });
 
-    $('#cocinaSoloMias').addEventListener('change', pintarCocina);
+  }
+
+  /* Qué sede atiende esta cocina: 'todas' o el id de una. Vive sólo mientras
+     la pantalla está abierta. Quien está asignado a un local no elige: es el
+     suyo y punto. */
+  let sedeCocina = 'todas';
+
+  function sedesDeCocina() {
+    const suyas = A.unidadesDelUsuario ? A.unidadesDelUsuario() : [];
+    const todas = S.getSucursales();
+    return suyas.length ? todas.filter((u) => suyas.indexOf(Number(u.id)) >= 0) : todas;
+  }
+
+  function pintarSedesCocina(sedes, porSede) {
+    const caja = $('#cocinaSedes');
+    if (!caja) return;
+    if (sedes.length < 2) {
+      caja.innerHTML = '';
+      return;
+    }
+    const chip = (valor, texto, n) =>
+      '<button class="chip' + (String(sedeCocina) === String(valor) ? ' is-activo' : '') +
+      '" data-sede-cocina="' + valor + '">' + texto +
+      (n ? ' <b>' + n + '</b>' : '') + '</button>';
+
+    caja.innerHTML =
+      chip('todas', '🍳 Todas', Object.values(porSede).reduce((a, b) => a + b, 0)) +
+      sedes.map((u) => chip(u.id, U.esc(u.corto || u.nombre), porSede[u.id] || 0)).join('');
   }
 
   function pintarCocina() {
-    const sucId = A.sucursalDelUsuario() || Number(ctx.sucursalGlobal()) || null;
-    const filtro = { activos: true };
-    if (sucId) filtro.sucursalId = sucId; // la cocina ve sólo SU unidad
+    const atada = A.sucursalDelUsuario();
+    const sedes = sedesDeCocina();
 
-    const pedidos = S.getPedidos(filtro).filter(
+    /* Sin elección previa: si sólo puede ver una sede, ésa; si no, todas.
+       Y si la sede elegida ya no está a su alcance, vuelve a todas. */
+    if (atada) sedeCocina = atada;
+    else if (sedeCocina !== 'todas' && !sedes.some((u) => Number(u.id) === Number(sedeCocina)))
+      sedeCocina = 'todas';
+
+    const filtro = { activos: true };
+    if (sedeCocina !== 'todas') filtro.sucursalId = Number(sedeCocina);
+
+    let pedidos = S.getPedidos(filtro).filter(
       (p) => p.estado === 'nuevo' || p.estado === 'preparacion'
     );
+    // Viendo "todas", sólo las sedes en las que este usuario puede trabajar
+    if (sedeCocina === 'todas' && sedes.length) {
+      const permitidas = sedes.map((u) => Number(u.id));
+      pedidos = pedidos.filter((p) => permitidas.indexOf(Number(p.sucursalId)) >= 0);
+    }
+
+    const porSede = {};
+    S.getPedidos({ activos: true })
+      .filter((p) => p.estado === 'nuevo' || p.estado === 'preparacion')
+      .forEach((p) => (porSede[p.sucursalId] = (porSede[p.sucursalId] || 0) + 1));
+    pintarSedesCocina(sedes, porSede);
     // En cocina lo más viejo va primero: es lo que lleva más esperando.
     pedidos.sort((a, b) => (a.creado < b.creado ? -1 : 1));
 

@@ -170,31 +170,44 @@ window.NASCAR = window.NASCAR || {};
     });
   }
 
+  /* Atajo: /nascar#cocina lleva al panel, no al portal del cliente. Son las
+     secciones de trabajo; «carta» y «dia» quedan fuera a propósito, porque
+     el portal ya usa esos anclajes para su propio contenido. */
+  const SECCIONES_PANEL = [
+    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'pagos', 'informe',
+    'gastos', 'stock', 'entradas', 'cierre', 'inventario', 'unidades',
+    'usuarios', 'config', 'ajustes',
+  ];
+
+  function alPanelSiPidenUnaSeccion(empresa) {
+    if (!empresa) return false;
+    if (/(empleados|taseca-admin|mesa|cierre)\.html$/i.test(location.pathname)) return false;
+    if (/\/(panel|cierre|mesa)$/i.test(location.pathname)) return false;
+    const seccion = (location.hash || '').replace('#', '').toLowerCase();
+    if (SECCIONES_PANEL.indexOf(seccion) < 0) return false;
+    location.replace(rutaDe('panel') + location.search + '#' + seccion);
+    return true;
+  }
+
   const host = (location.hostname || '').toLowerCase();
   const enEsteEquipo = esDeEsteEquipo(host);
-
   const empresa = empresaDe(host, location.search, location.pathname);
 
   if (!enEsteEquipo && NUBE.url) {
     NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, NUBE, { empresa: empresa });
-    // Los enlaces del HTML (empleados.html…) pasan a /taseca/<empresa>/panel
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', traducirEnlaces);
-    } else {
-      traducirEnlaces();
-    }
-    return;
-  }
-
-  /* Publicada en internet pero todavía sin base en la nube: se avisa en vez
-     de intentar una conexión que no existe (el puerto 3000 de un dominio
-     público no lleva a ninguna parte). */
-  if (!enEsteEquipo) {
+  } else if (!enEsteEquipo) {
+    /* Publicada en internet pero todavía sin base en la nube: se avisa en vez
+       de intentar una conexión que no existe (el puerto 3000 de un dominio
+       público no lleva a ninguna parte). */
     NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, { modo: 'local', sinNube: true });
-    return;
+  } else if (empresa) {
+    NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, { empresa: empresa });
   }
 
-  if (empresa) NASCAR.BACKEND = Object.assign({}, NASCAR.BACKEND, { empresa: empresa });
+  /* Lo que sigue vale en los tres casos: el atajo a una sección y la
+     traducción de los enlaces del HTML a direcciones con empresa. */
+  if (alPanelSiPidenUnaSeccion(empresa)) return;
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', traducirEnlaces);
   } else {
