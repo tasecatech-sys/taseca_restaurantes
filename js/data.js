@@ -273,7 +273,8 @@ NASCAR.MODULOS = [
 
 /* Con qué módulos arranca una empresa nueva: sólo lo básico. Lo demás
    se contrata. */
-NASCAR.MODULOS_POR_DEFECTO = { basico: true, stock: false, cierre: false };
+// Una empresa nueva nace con todo, igual que NASCAR. Se apaga lo que no use.
+NASCAR.MODULOS_POR_DEFECTO = { basico: true, stock: true, cierre: true };
 
 /* =========================================================================
    TEMAS DE EMPRESA
@@ -381,7 +382,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     nombre: 'Cafetería',
     icono: '☕',
     descripcion: 'Rotación rápida y carta corta, con inventario.',
-    modulos: { basico: true, stock: true, cierre: false },
+    modulos: { basico: true, stock: true, cierre: true },
     theme: { primary: '#92400e', secondary: '#b45309', accent: '#f59e0b', fontFamily: 'lora' },
   },
   {
@@ -389,7 +390,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     nombre: 'Comercio',
     icono: '🛍️',
     descripcion: 'Venta de producto con existencias, sin cierre de cocina.',
-    modulos: { basico: true, stock: true, cierre: false },
+    modulos: { basico: true, stock: true, cierre: true },
     theme: { primary: '#0f766e', secondary: '#14b8a6', accent: '#5eead4', fontFamily: 'inter' },
   },
   {
@@ -397,7 +398,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     nombre: 'Servicios',
     icono: '🧰',
     descripcion: 'Sin inventario: sólo la operación, los pagos y los gastos.',
-    modulos: { basico: true, stock: false, cierre: false },
+    modulos: { basico: true, stock: true, cierre: true },
     theme: { primary: '#1d4ed8', secondary: '#475569', accent: '#60a5fa', fontFamily: 'inter' },
   },
   {
