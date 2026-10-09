@@ -798,6 +798,24 @@ NASCAR.Store = (function () {
     return lista.find((t) => t.id === id) || lista[0] || null;
   }
 
+  /* El motivo de marca: la banda decorativa y las fichas del logotipo.
+     Otra lista cerrada (NASCAR.PATRONES); el dibujo de cada uno está en
+     css/styles.css. Si la empresa no ha elegido —o eligió algo que ya no
+     existe— se devuelve `cuadros`, que es como se ha visto siempre: así
+     esta función no le cambia el aspecto a nadie sin pedirlo. */
+  function patron(id) {
+    const lista = NASCAR.PATRONES || [];
+    return lista.find((p) => p.id === id) || lista.find((p) => p.id === 'cuadros') || lista[0] || null;
+  }
+
+  /* El icono que la empresa pone en sus botones principales. La bandera
+     a cuadros es de la carrera, no de todos los negocios: los demás
+     motivos no ponen ninguno. */
+  function emblema(empresaId) {
+    const p = patron(getTheme(empresaId).patron);
+    return p ? p.emblema || '' : '';
+  }
+
   /* Un color sólo puede ser un hexadecimal. Cualquier otra cosa —una
      función CSS, una variable, un `url()`— se descarta: es la puerta por
      la que se colaría CSS arbitrario. */
@@ -833,6 +851,9 @@ NASCAR.Store = (function () {
       background: color(t.background, base.background || '#0b0f16'),
 
       fontFamily: fuente ? fuente.id : 'inter',
+      /* Sin motivo elegido se queda el de siempre, no el del tema base:
+         una empresa ya publicada no cambia de aspecto sola. */
+      patron: patron(t.patron || 'cuadros').id,
 
       iniciales: String(t.iniciales || inicialesDe(nombre)).slice(0, 3).toUpperCase(),
       lema: String(t.lema || '').slice(0, 80),
@@ -5327,6 +5348,8 @@ NASCAR.Store = (function () {
     altaEmpresa: altaEmpresa,
     familiaTipografica: familiaTipografica,
     tipografia: tipografia,
+    patron: patron,
+    emblema: emblema,
 
     // --- Cruce de información / caja de la jornada ---
     getBases: getBases,

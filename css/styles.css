@@ -242,8 +242,12 @@ textarea {
   color: var(--ambar);
 }
 
-/* Bandera a cuadros */
+/* Bandera a cuadros. Es el motivo `cuadros` y, a la vez, lo que se ve
+   mientras una empresa no elija otro: ver MOTIVO DE MARCA, más abajo.
+   `--patron-celda` es el tamaño del dibujo que pide este elemento; los
+   demás motivos lo usan para salir a la medida de donde se pinten. */
 .cuadros {
+  --patron-celda: 14px;
   background-color: #000;
   background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%),
     linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%);
@@ -251,8 +255,100 @@ textarea {
   background-position: 0 0, 7px 7px;
 }
 .cuadros--fina {
+  --patron-celda: 8px;
   background-size: 8px 8px;
   background-position: 0 0, 4px 4px;
+}
+
+/* =========================== MOTIVO DE MARCA ============================
+   La banda que corta la portada bajo la primera pantalla, y las fichas que
+   acompañan al logotipo, son el mismo dibujo. Qué dibujo es lo decide la
+   empresa con `theme.patron`: js/tema.js lo escribe en
+   <html data-patron="..."> y de aquí sale el resto.
+
+   La empresa ELIGE de una lista (NASCAR.PATRONES), nunca escribe CSS. Y
+   los motivos se pintan con los colores de su propio tema, así que cada
+   negocio ve el suyo sin que nadie toque esta hoja.
+
+   `cuadros` no tiene bloque: es lo de arriba, el valor de partida.
+   ======================================================================== */
+
+/* --- Diagonales: las dos franjas de color, inclinadas --- */
+[data-patron='diagonales'] {
+  --patron-alto: 16px;
+}
+[data-patron='diagonales'] .cuadros,
+[data-patron='diagonales'] .hero::after {
+  background-color: var(--azul);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--rojo) 0 calc(var(--patron-celda) / 2),
+    transparent calc(var(--patron-celda) / 2) var(--patron-celda)
+  );
+  background-size: auto;
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Tres franjas: principal, acento y secundario, en bloque --- */
+[data-patron='tricolor'] {
+  --patron-alto: 10px;
+}
+[data-patron='tricolor'] .cuadros,
+[data-patron='tricolor'] .hero::after {
+  background-color: var(--azul);
+  background-image: linear-gradient(
+    90deg,
+    var(--azul) 0 33.34%,
+    var(--azul-claro) 33.34% 66.67%,
+    var(--rojo) 66.67% 100%
+  );
+  background-size: 100% 100%;
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Puntos: lunares del color de acento --- */
+[data-patron='puntos'] {
+  --patron-alto: 16px;
+}
+[data-patron='puntos'] .cuadros,
+[data-patron='puntos'] .hero::after {
+  background-color: var(--negro-800);
+  background-image: radial-gradient(var(--azul-claro) 28%, transparent 30%);
+  background-size: var(--patron-celda) var(--patron-celda);
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Degradado: una línea que pasa de un color al otro --- */
+[data-patron='degradado'] {
+  --patron-alto: 8px;
+}
+[data-patron='degradado'] .cuadros,
+[data-patron='degradado'] .hero::after {
+  background-color: var(--azul);
+  background-image: linear-gradient(90deg, var(--azul), var(--azul-claro) 50%, var(--rojo));
+  background-size: 100% 100%;
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Línea lisa: una raya fina, sin dibujo --- */
+[data-patron='liso'] {
+  --patron-alto: 6px;
+}
+[data-patron='liso'] .cuadros,
+[data-patron='liso'] .hero::after {
+  background-color: var(--azul-claro);
+  background-image: none;
+  opacity: 1;
+}
+
+/* --- Sin banda: el corte limpio entre secciones --- */
+[data-patron='ninguno'] .cuadros,
+[data-patron='ninguno'] .hero::after {
+  display: none;
 }
 
 /* Franja de velocidad azul/rojo */
@@ -650,6 +746,7 @@ textarea {
 
 /* ============================ 06. HERO ================================== */
 .hero {
+  --patron-celda: 22px; /* el tamaño del motivo en la banda de abajo */
   position: relative;
   padding: 108px 0 96px;
   overflow: hidden;
@@ -676,7 +773,7 @@ textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 22px;
+  height: var(--patron-alto, 22px);
   background-color: #000;
   background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%),
     linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%);

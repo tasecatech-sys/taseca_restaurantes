@@ -812,6 +812,8 @@
           .join('') +
         '</select></label>' +
 
+        campoPatron('wPatron', t.patron) +
+
         '<div class="rejilla-2">' +
         '<label class="campo"><span>Logo</span>' +
         '<input class="input" type="file" id="wLogo" accept="image/png,image/jpeg,image/webp">' +
@@ -901,8 +903,10 @@
         '<div style="border-radius:12px;overflow:hidden;border:1px solid var(--platform-border-soft);' +
         'background:' + t.background + ';font-family:' + familia + ';color:#e8ecf2">' +
 
+        // La banda del motivo, arriba del todo
+        '<div style="' + estiloPatron(t) + '"></div>' +
+
         // Cabecera + menú
-        '<div style="background:linear-gradient(90deg,' + t.primary + ',' + t.secondary + ');height:4px"></div>' +
         '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' +
         'border-bottom:1px solid rgba(255,255,255,.09)">' + marca +
         '<div style="flex:1"></div>' +
@@ -938,7 +942,8 @@
         '<h4 style="margin:0 0 4px;font-size:17px;font-family:inherit">Pedidos de hoy</h4>' +
         '<p style="margin:0 0 12px;font-size:12px;opacity:.65">Así se verán los textos y los botones.</p>' +
         '<span style="background:' + t.primary + ';color:#fff;border-radius:8px;padding:8px 14px;' +
-        'font-size:12px;font-weight:600;display:inline-block;margin-right:8px">Botón principal</span>' +
+        'font-size:12px;font-weight:600;display:inline-block;margin-right:8px">' +
+        emblemaDe(t) + 'Botón principal</span>' +
         '<span style="border:1px solid ' + t.accent + ';color:' + t.accent + ';border-radius:8px;' +
         'padding:8px 14px;font-size:12px;display:inline-block">Secundario</span>' +
         (t.lema
@@ -970,7 +975,7 @@
           };
         });
 
-        ['#wPrim', '#wSec', '#wAcc', '#wBg', '#wFuente', '#wLogoTexto', '#wLogoAcento', '#wLema'].forEach(
+        ['#wPrim', '#wSec', '#wAcc', '#wBg', '#wFuente', '#wPatron', '#wLogoTexto', '#wLogoAcento', '#wLema'].forEach(
           function (sel) {
             const el = U.$(sel, raiz);
             if (el) el.addEventListener('input', () => { leerTema(); pintarPreview(); });
@@ -1028,6 +1033,7 @@
       b.theme.accent = v('wAcc');
       b.theme.background = v('wBg');
       b.theme.fontFamily = v('wFuente');
+      b.theme.patron = v('wPatron');
       b.theme.logoTexto = v('wLogoTexto');
       b.theme.logoAcento = v('wLogoAcento');
       b.theme.lema = v('wLema');
@@ -1107,6 +1113,63 @@
       '<input class="input" type="color" id="' + id + '" value="' + U.esc(valor) + '" ' +
       'style="height:44px;padding:4px"></label>'
     );
+  }
+
+  /* El motivo de marca: la banda que corta la portada y las fichas que
+     acompañan al logotipo. Lista cerrada (NASCAR.PATRONES); la empresa
+     elige, nunca escribe estilos. */
+  function campoPatron(id, valor) {
+    return (
+      '<label class="campo"><span>Motivo de marca</span>' +
+      '<select class="select" id="' + id + '">' +
+      (NASCAR.PATRONES || [])
+        .map(
+          (p) =>
+            '<option value="' + p.id + '"' + (valor === p.id ? ' selected' : '') + '>' +
+            U.esc(p.nombre) + ' \u2014 ' + U.esc(p.muestra) + '</option>'
+        )
+        .join('') +
+      '</select>' +
+      '<small class="mini tenue">La banda bajo la portada y el icono de sus botones.</small>' +
+      '</label>'
+    );
+  }
+
+  /* Cómo se dibuja ese motivo DENTRO de una vista previa. El panel de
+     Taseca no es de ninguna empresa, así que no lleva `data-patron` y no
+     puede aprovechar css/styles.css: aquí se repite el dibujo en línea,
+     con los colores del tema que se esté editando. */
+  function estiloPatron(t) {
+    switch (t.patron) {
+      case 'diagonales':
+        return 'height:14px;background-color:' + t.primary +
+          ';background-image:repeating-linear-gradient(-45deg,' + t.secondary +
+          ' 0 7px,transparent 7px 14px)';
+      case 'tricolor':
+        return 'height:10px;background-image:linear-gradient(90deg,' + t.primary + ' 0 33.34%,' +
+          t.accent + ' 33.34% 66.67%,' + t.secondary + ' 66.67% 100%)';
+      case 'puntos':
+        return 'height:14px;background-color:' + t.background + ';background-image:radial-gradient(' +
+          t.accent + ' 28%,transparent 30%);background-size:14px 14px';
+      case 'degradado':
+        return 'height:8px;background-image:linear-gradient(90deg,' + t.primary + ',' +
+          t.accent + ' 50%,' + t.secondary + ')';
+      case 'liso':
+        return 'height:6px;background-color:' + t.accent;
+      case 'ninguno':
+        return 'height:1px;background-color:rgba(255,255,255,.09)';
+      default:
+        return 'height:14px;background-color:#000;background-image:' +
+          'linear-gradient(45deg,#fff 25%,transparent 25%,transparent 75%,#fff 75%),' +
+          'linear-gradient(45deg,#fff 25%,transparent 25%,transparent 75%,#fff 75%);' +
+          'background-size:14px 14px;background-position:0 0,7px 7px';
+    }
+  }
+
+  /* El emblema que ese motivo pone en los botones, para la vista previa. */
+  function emblemaDe(t) {
+    const p = S.patron(t.patron);
+    return p && p.emblema ? p.emblema + ' ' : '';
   }
 
   /* =================================================================
@@ -1202,6 +1265,7 @@
           )
           .join('') +
         '</select></label>' +
+        campoPatron('tPatron', t.patron) +
         '<div class="rejilla-2">' +
         campo('tLogoTexto', 'Logotipo · primera parte', t.logoTexto) +
         campo('tLogoAcento', 'Logotipo · parte en acento', t.logoAcento) +
@@ -1229,6 +1293,7 @@
       t.accent = v('tAcc');
       t.background = v('tBg');
       t.fontFamily = v('tFuente');
+      t.patron = v('tPatron');
       t.logoTexto = v('tLogoTexto');
       t.logoAcento = v('tLogoAcento');
       t.iniciales = v('tIniciales');
@@ -1245,20 +1310,22 @@
       U.$('#tPreview', m.raiz).innerHTML =
         '<div style="border-radius:12px;border:1px solid var(--platform-border-soft);overflow:hidden;' +
         'background:' + t.background + ';font-family:' + familia + ';color:#e8ecf2">' +
-        '<div style="background:linear-gradient(90deg,' + t.primary + ',' + t.secondary + ');height:4px"></div>' +
+        '<div style="' + estiloPatron(t) + '"></div>' +
         '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px">' + marca +
         '<div style="flex:1"></div>' +
         '<span style="background:' + t.primary + ';color:#fff;border-radius:999px;padding:4px 12px;' +
-        'font-size:11px">Botón</span></div>' +
+        'font-size:11px">' + emblemaDe(t) + 'Botón</span></div>' +
         '<div style="padding:0 16px 16px"><h4 style="margin:0;font-family:inherit">Encabezado</h4>' +
         '<p style="margin:4px 0 0;font-size:12px;opacity:.7">' + U.esc(t.lema || 'Texto de ejemplo') +
         '</p></div></div>';
     };
 
-    ['#tPrim', '#tSec', '#tAcc', '#tBg', '#tFuente', '#tLogoTexto', '#tLogoAcento', '#tLema'].forEach((sel) =>
-      U.$(sel, m.raiz).addEventListener('input', () => { leer(); preview(); })
+    ['#tPrim', '#tSec', '#tAcc', '#tBg', '#tFuente', '#tPatron', '#tLogoTexto', '#tLogoAcento', '#tLema'].forEach(
+      (sel) => U.$(sel, m.raiz).addEventListener('input', () => { leer(); preview(); })
     );
-    U.$('#tFuente', m.raiz).addEventListener('change', () => { leer(); preview(); });
+    ['#tFuente', '#tPatron'].forEach((sel) =>
+      U.$(sel, m.raiz).addEventListener('change', () => { leer(); preview(); })
+    );
 
     U.$('#tLogo', m.raiz).addEventListener('change', function () {
       const archivo = this.files && this.files[0];

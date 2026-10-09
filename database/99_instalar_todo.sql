@@ -65,6 +65,10 @@
 \i 17_integridad_multiempresa.sql
 \echo '== 17 · Pruebas de integridad (se deshacen con ROLLBACK)'
 \i 17_pruebas_integridad.sql
+\echo '== 20 · Motivo de marca de cada empresa'
+\i 20_motivo_marca.sql
+\echo '== 20 · Pruebas del motivo de marca (se deshacen con ROLLBACK)'
+\i 20_pruebas_motivo_marca.sql
 \echo '== 19 · Seguridad a nivel de fila en todas las tablas'
 \i 19_rls.sql
 

@@ -53,12 +53,43 @@ NASCAR.Tema = (function () {
     cargarFuente(t.fontFamily);
     raiz.style.setProperty('--f-body', S.familiaTipografica(t.fontFamily));
 
+    // --- Motivo de marca (la banda de la portada y las fichas)
+    aplicarPatron(t);
+
     // --- Marca visible
     pintarLogotipo(t);
     pintarFavicon(t);
     pintarTitulo();
 
     return t;
+  }
+
+  /**
+   * El motivo de marca.
+   *
+   * Es un solo atributo en <html>; el dibujo de cada motivo vive en
+   * css/styles.css, que lo pinta con los colores del tema. La empresa
+   * elige de una lista cerrada (NASCAR.PATRONES): de aquí no sale CSS
+   * suyo a ninguna parte.
+   *
+   * De paso se cambia el emblema de los botones. La bandera a cuadros
+   * es de la carrera, no de todos los negocios, así que un restaurante
+   * cualquiera no tiene por qué llevarla.
+   */
+  function aplicarPatron(t) {
+    const p = S.patron ? S.patron(t.patron) : null;
+    if (!p) return;
+    document.documentElement.setAttribute('data-patron', p.id);
+    pintarEmblemas(p.emblema || '');
+  }
+
+  /* Los HTML traen el emblema escrito para que se vea algo antes de que
+     cargue nada; aquí se reemplaza por el que toque, o se quita. */
+  function pintarEmblemas(emblema) {
+    document.querySelectorAll('[data-emblema]').forEach(function (nodo) {
+      nodo.textContent = emblema;
+      nodo.classList.toggle('oculto', !emblema);
+    });
   }
 
   /* #rrggbb -> rgba(r,g,b,a). Si el color no es hexadecimal se devuelve
@@ -151,5 +182,5 @@ NASCAR.Tema = (function () {
     if (S.onChange) S.onChange(() => aplicar());
   });
 
-  return { aplicar: aplicar };
+  return { aplicar: aplicar, aplicarPatron: aplicarPatron };
 })();

@@ -33,6 +33,7 @@ PARTES = [
     ('15_fase2_configuracion_plataforma.sql','Fase 2 · configuración, ajustes y plataforma'),
     ('16_pagos_en_caja.sql',                 'Todos los pagos se confirman en caja'),
     ('17_integridad_multiempresa.sql',       'Chequeo de relaciones y red de seguridad'),
+    ('20_motivo_marca.sql',                  'El motivo de marca de cada empresa'),
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
 ]
 

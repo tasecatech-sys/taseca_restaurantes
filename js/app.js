@@ -162,7 +162,8 @@
     // Las categorías de la unidad elegida, no las de toda la empresa
     const deUnidad = unidadPortal ? S.getCategorias({ sucursalId: unidadPortal }) : [];
     if (categoriaActiva !== 'todos' && !deUnidad.some((c) => c.id === categoriaActiva)) categoriaActiva = 'todos';
-    const cats = [{ id: 'todos', nombre: 'Todo', icono: '🏁' }].concat(deUnidad);
+    // El emblema es el del motivo de la empresa; sin motivo propio, un punto
+    const cats = [{ id: 'todos', nombre: 'Todo', icono: S.emblema() || '•' }].concat(deUnidad);
     cont.innerHTML = cats
       .map(
         (c) =>
@@ -374,7 +375,8 @@
     const tipo = unidades.length ? S.getTipoNegocio(unidades[0].tipoNegocio) : null;
     mostrarSi($('#pieTipo'), tipo ? tipo.nombre : '');
     mostrarSi($('#pieDescripcion'), cfg.descripcion);
-    mostrarSi($('#pieCiudad'), ciudad ? 'Hecho con 🏁 en ' + ciudad : '');
+    const emblema = S.emblema();
+    mostrarSi($('#pieCiudad'), ciudad ? (emblema ? 'Hecho con ' + emblema + ' en ' : 'Hecho en ') + ciudad : '');
     const nit = $('#pieNit');
     if (nit) {
       const valor = ((cfg.pago || {}).nit || '').trim();
@@ -760,7 +762,8 @@
 
     $('#carritoPie').innerHTML =
       '<div class="totales" id="totalesPago"></div>' +
-      '<button class="btn btn--rojo btn--bloque" data-accion="confirmar-pedido">🏁 Confirmar pedido</button>' +
+      '<button class="btn btn--rojo btn--bloque" data-accion="confirmar-pedido">' +
+      (S.emblema() ? S.emblema() + ' ' : '') + 'Confirmar pedido</button>' +
       '<button class="btn btn--fantasma btn--bloque mt-8" data-accion="volver-datos">← Volver a mis datos</button>';
 
     function pintarDetalle() {

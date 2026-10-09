@@ -268,8 +268,12 @@ textarea {
   color: var(--ambar);
 }
 
-/* Bandera a cuadros */
+/* Bandera a cuadros. Es el motivo `cuadros` y, a la vez, lo que se ve
+   mientras una empresa no elija otro: ver MOTIVO DE MARCA, más abajo.
+   `--patron-celda` es el tamaño del dibujo que pide este elemento; los
+   demás motivos lo usan para salir a la medida de donde se pinten. */
 .cuadros {
+  --patron-celda: 14px;
   background-color: #000;
   background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%),
     linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%);
@@ -277,8 +281,100 @@ textarea {
   background-position: 0 0, 7px 7px;
 }
 .cuadros--fina {
+  --patron-celda: 8px;
   background-size: 8px 8px;
   background-position: 0 0, 4px 4px;
+}
+
+/* =========================== MOTIVO DE MARCA ============================
+   La banda que corta la portada bajo la primera pantalla, y las fichas que
+   acompañan al logotipo, son el mismo dibujo. Qué dibujo es lo decide la
+   empresa con `theme.patron`: js/tema.js lo escribe en
+   <html data-patron="..."> y de aquí sale el resto.
+
+   La empresa ELIGE de una lista (NASCAR.PATRONES), nunca escribe CSS. Y
+   los motivos se pintan con los colores de su propio tema, así que cada
+   negocio ve el suyo sin que nadie toque esta hoja.
+
+   `cuadros` no tiene bloque: es lo de arriba, el valor de partida.
+   ======================================================================== */
+
+/* --- Diagonales: las dos franjas de color, inclinadas --- */
+[data-patron='diagonales'] {
+  --patron-alto: 16px;
+}
+[data-patron='diagonales'] .cuadros,
+[data-patron='diagonales'] .hero::after {
+  background-color: var(--azul);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--rojo) 0 calc(var(--patron-celda) / 2),
+    transparent calc(var(--patron-celda) / 2) var(--patron-celda)
+  );
+  background-size: auto;
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Tres franjas: principal, acento y secundario, en bloque --- */
+[data-patron='tricolor'] {
+  --patron-alto: 10px;
+}
+[data-patron='tricolor'] .cuadros,
+[data-patron='tricolor'] .hero::after {
+  background-color: var(--azul);
+  background-image: linear-gradient(
+    90deg,
+    var(--azul) 0 33.34%,
+    var(--azul-claro) 33.34% 66.67%,
+    var(--rojo) 66.67% 100%
+  );
+  background-size: 100% 100%;
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Puntos: lunares del color de acento --- */
+[data-patron='puntos'] {
+  --patron-alto: 16px;
+}
+[data-patron='puntos'] .cuadros,
+[data-patron='puntos'] .hero::after {
+  background-color: var(--negro-800);
+  background-image: radial-gradient(var(--azul-claro) 28%, transparent 30%);
+  background-size: var(--patron-celda) var(--patron-celda);
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Degradado: una línea que pasa de un color al otro --- */
+[data-patron='degradado'] {
+  --patron-alto: 8px;
+}
+[data-patron='degradado'] .cuadros,
+[data-patron='degradado'] .hero::after {
+  background-color: var(--azul);
+  background-image: linear-gradient(90deg, var(--azul), var(--azul-claro) 50%, var(--rojo));
+  background-size: 100% 100%;
+  background-position: 0 0;
+  opacity: 1;
+}
+
+/* --- Línea lisa: una raya fina, sin dibujo --- */
+[data-patron='liso'] {
+  --patron-alto: 6px;
+}
+[data-patron='liso'] .cuadros,
+[data-patron='liso'] .hero::after {
+  background-color: var(--azul-claro);
+  background-image: none;
+  opacity: 1;
+}
+
+/* --- Sin banda: el corte limpio entre secciones --- */
+[data-patron='ninguno'] .cuadros,
+[data-patron='ninguno'] .hero::after {
+  display: none;
 }
 
 /* Franja de velocidad azul/rojo */
@@ -676,6 +772,7 @@ textarea {
 
 /* ============================ 06. HERO ================================== */
 .hero {
+  --patron-celda: 22px; /* el tamaño del motivo en la banda de abajo */
   position: relative;
   padding: 108px 0 96px;
   overflow: hidden;
@@ -702,7 +799,7 @@ textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 22px;
+  height: var(--patron-alto, 22px);
   background-color: #000;
   background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%),
     linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%);
@@ -4881,7 +4978,7 @@ tr.fila--sin td {
       <p class="hero__texto" id="heroTexto"></p>
 
       <div class="hero__cta">
-        <a href="#dia" class="btn btn--rojo">🏁 Ver platos de hoy</a>
+        <a href="#dia" class="btn btn--rojo"><span data-emblema>🏁</span> Ver platos de hoy</a>
         <a href="#carta" class="btn btn--fantasma">Ver la carta</a>
       </div>
 
@@ -5151,7 +5248,7 @@ tr.fila--sin td {
     </div>
     <div class="fila">
       <button class="btn btn--fantasma btn--sm" data-accion="ver-pedido">Ver pedido</button>
-      <button class="btn btn--rojo" data-accion="enviar">🏁 Enviar a cocina</button>
+      <button class="btn btn--rojo" data-accion="enviar"><span data-emblema>🏁</span> Enviar a cocina</button>
     </div>
   </div>
 </div>
@@ -6385,6 +6482,7 @@ NASCAR.EMPRESAS = [
       accent: '#4d8cff',
       background: '#06080c',
       fontFamily: 'barlow',
+      patron: 'cuadros', // la bandera a cuadros de siempre
       iniciales: 'NA',
       lema: 'Parrilla, tradicional y domicilios',
     },
@@ -6514,6 +6612,67 @@ NASCAR.TIPOGRAFIAS = [
   },
 ];
 
+/* -------------------------------------------------------------------------
+   MOTIVOS DE MARCA
+
+   La banda decorativa que corta la portada bajo la primera pantalla, y
+   las fichas que acompañan al logotipo. Es una lista CERRADA igual que
+   las tipografías: el dibujo de cada motivo vive en css/styles.css bajo
+   `html[data-patron="..."]`, así que por aquí no entra CSS de nadie.
+
+   `emblema` es el icono que la empresa pone en sus botones principales.
+   La bandera a cuadros es de la carrera, no de todos los negocios: los
+   demás motivos no ponen ninguno.
+
+   `cuadros` es el de siempre -el que NASCAR lleva desde el principio- y
+   es además lo que se ve si una empresa todavía no ha elegido, para que
+   ninguna página publicada cambie de aspecto por esta función.
+   ------------------------------------------------------------------------- */
+NASCAR.PATRONES = [
+  {
+    id: 'cuadros',
+    nombre: 'Bandera a cuadros',
+    muestra: 'La de carreras, en blanco y negro',
+    emblema: '🏁',
+  },
+  {
+    id: 'diagonales',
+    nombre: 'Diagonales',
+    muestra: 'Rayas inclinadas con tus dos colores',
+    emblema: '',
+  },
+  {
+    id: 'tricolor',
+    nombre: 'Tres franjas',
+    muestra: 'Principal, acento y secundario, en bloque',
+    emblema: '',
+  },
+  {
+    id: 'puntos',
+    nombre: 'Puntos',
+    muestra: 'Lunares sobre el color de fondo',
+    emblema: '',
+  },
+  {
+    id: 'degradado',
+    nombre: 'Degradado',
+    muestra: 'Una línea que pasa de un color al otro',
+    emblema: '',
+  },
+  {
+    id: 'liso',
+    nombre: 'Línea lisa',
+    muestra: 'Una raya fina del color de acento',
+    emblema: '',
+  },
+  {
+    id: 'ninguno',
+    nombre: 'Sin banda',
+    muestra: 'Nada: el corte limpio entre secciones',
+    emblema: '',
+  },
+];
+
 /* El tema con el que Taseca entrega una empresa nueva. Sobrio y neutro:
    es un punto de partida, no la identidad definitiva del cliente. Desde
    el panel se personaliza después. */
@@ -6527,6 +6686,9 @@ NASCAR.TEMA_BASE = {
   accent: '#38bdf8',
   background: '#0b0f16',
   fontFamily: 'inter',
+  /* Neutro a propósito: una empresa nueva NO nace con la bandera a
+     cuadros de NASCAR. El motivo se elige después, en el panel. */
+  patron: 'degradado',
   iniciales: '',
   lema: '',
 };
@@ -6545,7 +6707,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🍽️',
     descripcion: 'Carta, mesas y domicilios, con inventario y cierre diario.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#c0392b', secondary: '#e67e22', accent: '#f1c40f', fontFamily: 'poppins' },
+    theme: { primary: '#c0392b', secondary: '#e67e22', accent: '#f1c40f', fontFamily: 'poppins', patron: 'degradado' },
   },
   {
     id: 'bar',
@@ -6553,7 +6715,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🍺',
     descripcion: 'Barra y mesas, con control de existencias y cierre de caja.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#6d28d9', secondary: '#a855f7', accent: '#22d3ee', fontFamily: 'inter' },
+    theme: { primary: '#6d28d9', secondary: '#a855f7', accent: '#22d3ee', fontFamily: 'inter', patron: 'diagonales' },
   },
   {
     id: 'cafeteria',
@@ -6561,7 +6723,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '☕',
     descripcion: 'Rotación rápida y carta corta, con inventario.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#92400e', secondary: '#b45309', accent: '#f59e0b', fontFamily: 'lora' },
+    theme: { primary: '#92400e', secondary: '#b45309', accent: '#f59e0b', fontFamily: 'lora', patron: 'liso' },
   },
   {
     id: 'comercio',
@@ -6569,7 +6731,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🛍️',
     descripcion: 'Venta de producto con existencias, sin cierre de cocina.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#0f766e', secondary: '#14b8a6', accent: '#5eead4', fontFamily: 'inter' },
+    theme: { primary: '#0f766e', secondary: '#14b8a6', accent: '#5eead4', fontFamily: 'inter', patron: 'puntos' },
   },
   {
     id: 'servicios',
@@ -6577,7 +6739,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🧰',
     descripcion: 'Sin inventario: sólo la operación, los pagos y los gastos.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#1d4ed8', secondary: '#475569', accent: '#60a5fa', fontFamily: 'inter' },
+    theme: { primary: '#1d4ed8', secondary: '#475569', accent: '#60a5fa', fontFamily: 'inter', patron: 'tricolor' },
   },
   {
     id: 'personalizado',
@@ -8003,6 +8165,24 @@ NASCAR.Store = (function () {
     return lista.find((t) => t.id === id) || lista[0] || null;
   }
 
+  /* El motivo de marca: la banda decorativa y las fichas del logotipo.
+     Otra lista cerrada (NASCAR.PATRONES); el dibujo de cada uno está en
+     css/styles.css. Si la empresa no ha elegido —o eligió algo que ya no
+     existe— se devuelve `cuadros`, que es como se ha visto siempre: así
+     esta función no le cambia el aspecto a nadie sin pedirlo. */
+  function patron(id) {
+    const lista = NASCAR.PATRONES || [];
+    return lista.find((p) => p.id === id) || lista.find((p) => p.id === 'cuadros') || lista[0] || null;
+  }
+
+  /* El icono que la empresa pone en sus botones principales. La bandera
+     a cuadros es de la carrera, no de todos los negocios: los demás
+     motivos no ponen ninguno. */
+  function emblema(empresaId) {
+    const p = patron(getTheme(empresaId).patron);
+    return p ? p.emblema || '' : '';
+  }
+
   /* Un color sólo puede ser un hexadecimal. Cualquier otra cosa —una
      función CSS, una variable, un `url()`— se descarta: es la puerta por
      la que se colaría CSS arbitrario. */
@@ -8038,6 +8218,9 @@ NASCAR.Store = (function () {
       background: color(t.background, base.background || '#0b0f16'),
 
       fontFamily: fuente ? fuente.id : 'inter',
+      /* Sin motivo elegido se queda el de siempre, no el del tema base:
+         una empresa ya publicada no cambia de aspecto sola. */
+      patron: patron(t.patron || 'cuadros').id,
 
       iniciales: String(t.iniciales || inicialesDe(nombre)).slice(0, 3).toUpperCase(),
       lema: String(t.lema || '').slice(0, 80),
@@ -12532,6 +12715,8 @@ NASCAR.Store = (function () {
     altaEmpresa: altaEmpresa,
     familiaTipografica: familiaTipografica,
     tipografia: tipografia,
+    patron: patron,
+    emblema: emblema,
 
     // --- Cruce de información / caja de la jornada ---
     getBases: getBases,
@@ -13391,6 +13576,7 @@ NASCAR.Remoto = (function () {
         accent: e.color_acento || '',
         background: e.color_fondo || '',
         fontFamily: e.tipografia || '',
+        patron: e.patron || '',
         iniciales: e.iniciales || '',
         lema: e.lema || '',
       },
@@ -14755,6 +14941,7 @@ NASCAR.Remoto = (function () {
       accent: colorLargo(t.accent),
       background: colorLargo(t.background),
       fontFamily: t.fontFamily || '',
+      patron: t.patron || '',
       logoTexto: t.logoTexto || '',
       logoAcento: t.logoAcento || '',
       iniciales: t.iniciales || '',
@@ -22019,12 +22206,43 @@ NASCAR.Tema = (function () {
     cargarFuente(t.fontFamily);
     raiz.style.setProperty('--f-body', S.familiaTipografica(t.fontFamily));
 
+    // --- Motivo de marca (la banda de la portada y las fichas)
+    aplicarPatron(t);
+
     // --- Marca visible
     pintarLogotipo(t);
     pintarFavicon(t);
     pintarTitulo();
 
     return t;
+  }
+
+  /**
+   * El motivo de marca.
+   *
+   * Es un solo atributo en <html>; el dibujo de cada motivo vive en
+   * css/styles.css, que lo pinta con los colores del tema. La empresa
+   * elige de una lista cerrada (NASCAR.PATRONES): de aquí no sale CSS
+   * suyo a ninguna parte.
+   *
+   * De paso se cambia el emblema de los botones. La bandera a cuadros
+   * es de la carrera, no de todos los negocios, así que un restaurante
+   * cualquiera no tiene por qué llevarla.
+   */
+  function aplicarPatron(t) {
+    const p = S.patron ? S.patron(t.patron) : null;
+    if (!p) return;
+    document.documentElement.setAttribute('data-patron', p.id);
+    pintarEmblemas(p.emblema || '');
+  }
+
+  /* Los HTML traen el emblema escrito para que se vea algo antes de que
+     cargue nada; aquí se reemplaza por el que toque, o se quita. */
+  function pintarEmblemas(emblema) {
+    document.querySelectorAll('[data-emblema]').forEach(function (nodo) {
+      nodo.textContent = emblema;
+      nodo.classList.toggle('oculto', !emblema);
+    });
   }
 
   /* #rrggbb -> rgba(r,g,b,a). Si el color no es hexadecimal se devuelve
@@ -22117,7 +22335,7 @@ NASCAR.Tema = (function () {
     if (S.onChange) S.onChange(() => aplicar());
   });
 
-  return { aplicar: aplicar };
+  return { aplicar: aplicar, aplicarPatron: aplicarPatron };
 })();
 
 
@@ -22640,7 +22858,8 @@ NASCAR.Avisos = (function () {
     // Las categorías de la unidad elegida, no las de toda la empresa
     const deUnidad = unidadPortal ? S.getCategorias({ sucursalId: unidadPortal }) : [];
     if (categoriaActiva !== 'todos' && !deUnidad.some((c) => c.id === categoriaActiva)) categoriaActiva = 'todos';
-    const cats = [{ id: 'todos', nombre: 'Todo', icono: '🏁' }].concat(deUnidad);
+    // El emblema es el del motivo de la empresa; sin motivo propio, un punto
+    const cats = [{ id: 'todos', nombre: 'Todo', icono: S.emblema() || '•' }].concat(deUnidad);
     cont.innerHTML = cats
       .map(
         (c) =>
@@ -22852,7 +23071,8 @@ NASCAR.Avisos = (function () {
     const tipo = unidades.length ? S.getTipoNegocio(unidades[0].tipoNegocio) : null;
     mostrarSi($('#pieTipo'), tipo ? tipo.nombre : '');
     mostrarSi($('#pieDescripcion'), cfg.descripcion);
-    mostrarSi($('#pieCiudad'), ciudad ? 'Hecho con 🏁 en ' + ciudad : '');
+    const emblema = S.emblema();
+    mostrarSi($('#pieCiudad'), ciudad ? (emblema ? 'Hecho con ' + emblema + ' en ' : 'Hecho en ') + ciudad : '');
     const nit = $('#pieNit');
     if (nit) {
       const valor = ((cfg.pago || {}).nit || '').trim();
@@ -23238,7 +23458,8 @@ NASCAR.Avisos = (function () {
 
     $('#carritoPie').innerHTML =
       '<div class="totales" id="totalesPago"></div>' +
-      '<button class="btn btn--rojo btn--bloque" data-accion="confirmar-pedido">🏁 Confirmar pedido</button>' +
+      '<button class="btn btn--rojo btn--bloque" data-accion="confirmar-pedido">' +
+      (S.emblema() ? S.emblema() + ' ' : '') + 'Confirmar pedido</button>' +
       '<button class="btn btn--fantasma btn--bloque mt-8" data-accion="volver-datos">← Volver a mis datos</button>';
 
     function pintarDetalle() {

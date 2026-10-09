@@ -207,6 +207,7 @@ NASCAR.EMPRESAS = [
       accent: '#4d8cff',
       background: '#06080c',
       fontFamily: 'barlow',
+      patron: 'cuadros', // la bandera a cuadros de siempre
       iniciales: 'NA',
       lema: 'Parrilla, tradicional y domicilios',
     },
@@ -336,6 +337,67 @@ NASCAR.TIPOGRAFIAS = [
   },
 ];
 
+/* -------------------------------------------------------------------------
+   MOTIVOS DE MARCA
+
+   La banda decorativa que corta la portada bajo la primera pantalla, y
+   las fichas que acompañan al logotipo. Es una lista CERRADA igual que
+   las tipografías: el dibujo de cada motivo vive en css/styles.css bajo
+   `html[data-patron="..."]`, así que por aquí no entra CSS de nadie.
+
+   `emblema` es el icono que la empresa pone en sus botones principales.
+   La bandera a cuadros es de la carrera, no de todos los negocios: los
+   demás motivos no ponen ninguno.
+
+   `cuadros` es el de siempre -el que NASCAR lleva desde el principio- y
+   es además lo que se ve si una empresa todavía no ha elegido, para que
+   ninguna página publicada cambie de aspecto por esta función.
+   ------------------------------------------------------------------------- */
+NASCAR.PATRONES = [
+  {
+    id: 'cuadros',
+    nombre: 'Bandera a cuadros',
+    muestra: 'La de carreras, en blanco y negro',
+    emblema: '🏁',
+  },
+  {
+    id: 'diagonales',
+    nombre: 'Diagonales',
+    muestra: 'Rayas inclinadas con tus dos colores',
+    emblema: '',
+  },
+  {
+    id: 'tricolor',
+    nombre: 'Tres franjas',
+    muestra: 'Principal, acento y secundario, en bloque',
+    emblema: '',
+  },
+  {
+    id: 'puntos',
+    nombre: 'Puntos',
+    muestra: 'Lunares sobre el color de fondo',
+    emblema: '',
+  },
+  {
+    id: 'degradado',
+    nombre: 'Degradado',
+    muestra: 'Una línea que pasa de un color al otro',
+    emblema: '',
+  },
+  {
+    id: 'liso',
+    nombre: 'Línea lisa',
+    muestra: 'Una raya fina del color de acento',
+    emblema: '',
+  },
+  {
+    id: 'ninguno',
+    nombre: 'Sin banda',
+    muestra: 'Nada: el corte limpio entre secciones',
+    emblema: '',
+  },
+];
+
 /* El tema con el que Taseca entrega una empresa nueva. Sobrio y neutro:
    es un punto de partida, no la identidad definitiva del cliente. Desde
    el panel se personaliza después. */
@@ -349,6 +411,9 @@ NASCAR.TEMA_BASE = {
   accent: '#38bdf8',
   background: '#0b0f16',
   fontFamily: 'inter',
+  /* Neutro a propósito: una empresa nueva NO nace con la bandera a
+     cuadros de NASCAR. El motivo se elige después, en el panel. */
+  patron: 'degradado',
   iniciales: '',
   lema: '',
 };
@@ -367,7 +432,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🍽️',
     descripcion: 'Carta, mesas y domicilios, con inventario y cierre diario.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#c0392b', secondary: '#e67e22', accent: '#f1c40f', fontFamily: 'poppins' },
+    theme: { primary: '#c0392b', secondary: '#e67e22', accent: '#f1c40f', fontFamily: 'poppins', patron: 'degradado' },
   },
   {
     id: 'bar',
@@ -375,7 +440,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🍺',
     descripcion: 'Barra y mesas, con control de existencias y cierre de caja.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#6d28d9', secondary: '#a855f7', accent: '#22d3ee', fontFamily: 'inter' },
+    theme: { primary: '#6d28d9', secondary: '#a855f7', accent: '#22d3ee', fontFamily: 'inter', patron: 'diagonales' },
   },
   {
     id: 'cafeteria',
@@ -383,7 +448,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '☕',
     descripcion: 'Rotación rápida y carta corta, con inventario.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#92400e', secondary: '#b45309', accent: '#f59e0b', fontFamily: 'lora' },
+    theme: { primary: '#92400e', secondary: '#b45309', accent: '#f59e0b', fontFamily: 'lora', patron: 'liso' },
   },
   {
     id: 'comercio',
@@ -391,7 +456,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🛍️',
     descripcion: 'Venta de producto con existencias, sin cierre de cocina.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#0f766e', secondary: '#14b8a6', accent: '#5eead4', fontFamily: 'inter' },
+    theme: { primary: '#0f766e', secondary: '#14b8a6', accent: '#5eead4', fontFamily: 'inter', patron: 'puntos' },
   },
   {
     id: 'servicios',
@@ -399,7 +464,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
     icono: '🧰',
     descripcion: 'Sin inventario: sólo la operación, los pagos y los gastos.',
     modulos: { basico: true, stock: true, cierre: true },
-    theme: { primary: '#1d4ed8', secondary: '#475569', accent: '#60a5fa', fontFamily: 'inter' },
+    theme: { primary: '#1d4ed8', secondary: '#475569', accent: '#60a5fa', fontFamily: 'inter', patron: 'tricolor' },
   },
   {
     id: 'personalizado',

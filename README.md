@@ -820,7 +820,7 @@ Taseca → Empresas → **Nueva empresa**. Un asistente de tres pasos:
 | Paso | Qué se define |
 |---|---|
 | **1 · Información** | Nombre comercial, razón social, NIT, teléfono, WhatsApp, correo, dirección, ciudad y estado |
-| **2 · Identidad visual** | Plantilla de partida, los cuatro colores, tipografía, logo, favicon, logotipo de texto y lema — con **vista previa** de cómo verá el cliente su panel |
+| **2 · Identidad visual** | Plantilla de partida, los cuatro colores, tipografía, motivo de marca, logo, favicon, logotipo de texto y lema — con **vista previa** de cómo verá el cliente su panel |
 | **3 · Módulos y acceso** | Qué módulos contrata y, opcionalmente, su administrador inicial |
 
 Al pulsar **Crear empresa**, `store.altaEmpresa()` deja todo listo de una vez:
@@ -845,14 +845,15 @@ empresa = {
   modulos: { basico, stock, cierre },
   theme: { logo, favicon, logoTexto, logoAcento,
            primary, secondary, accent, background,
-           fontFamily, iniciales, lema }
+           fontFamily, patron, iniciales, lema }
 }
 ```
 
 La personalización es **controlada**: los colores tienen que ser hexadecimales,
-las imágenes sólo pueden venir como `data:` de imagen, y la tipografía sale de
-una **lista cerrada** (`NASCAR.TIPOGRAFIAS`: Barlow, Inter, Poppins, Lora, del
-sistema). No se admite CSS arbitrario por ninguna vía.
+las imágenes sólo pueden venir como `data:` de imagen, y tanto la tipografía
+como el motivo salen de **listas cerradas** (`NASCAR.TIPOGRAFIAS`: Barlow,
+Inter, Poppins, Lora, del sistema; `NASCAR.PATRONES`, abajo). No se admite CSS
+arbitrario por ninguna vía.
 
 Una empresa nueva parte del **tema base de Taseca** —sobrio y neutro— y desde
 ahí se personaliza. Nunca hereda el tema de otra.
@@ -868,6 +869,7 @@ theme.secondary   → --rojo
 theme.accent      → --azul-claro
 theme.background  → --negro-900
 theme.fontFamily  → --f-body   (y carga la fuente si hace falta)
+theme.patron      → <html data-patron="…">
 ```
 
 Esto es lo que hace que **una sola aplicación** sirva a muchas empresas. No hay
@@ -875,8 +877,45 @@ una copia por cliente: hay una app que carga empresa + tema + módulos +
 configuración.
 
 **Y por eso NASCAR no cambia**: su tema guarda exactamente los valores que
-llevaban años escritos en el CSS (`#0b5fff`, `#e4002b`, Barlow, `NAS`+`CAR`).
-Al aplicarse escribe encima lo mismo que ya había.
+llevaban años escritos en el CSS (`#0b5fff`, `#e4002b`, Barlow, `NAS`+`CAR`,
+bandera a cuadros). Al aplicarse escribe encima lo mismo que ya había.
+
+### El motivo de marca
+
+La banda que corta la portada bajo la primera pantalla, las fichas que
+acompañan al logotipo y el icono de los botones principales eran la bandera a
+cuadros de NASCAR, escrita a la fuerza en el CSS. Ahora son un dato más del
+tema: `theme.patron`.
+
+| Motivo | Cómo se ve | Emblema |
+|---|---|---|
+| `cuadros` | La bandera de carreras, blanco y negro | 🏁 |
+| `diagonales` | Rayas inclinadas con el principal y el secundario | — |
+| `tricolor` | Principal, acento y secundario en bloque | — |
+| `puntos` | Lunares del color de acento | — |
+| `degradado` | Una línea que pasa de un color al otro | — |
+| `liso` | Una raya fina del color de acento | — |
+| `ninguno` | Sin banda: corte limpio entre secciones | — |
+
+La lista está en `js/data.js` (`NASCAR.PATRONES`) y el dibujo de cada uno en
+`css/styles.css`, bajo `html[data-patron="…"]`, pintado con los colores del
+tema de esa empresa. La base sólo guarda **cuál** eligió
+(`core.empresas.patron`): por ahí no entra CSS de nadie, igual que con la
+tipografía.
+
+Se elige en el panel de Taseca, al dar de alta la empresa o después, desde
+**Administrar tema**, con vista previa.
+
+- Lo que ya está publicado **no cambia**: una empresa sin motivo elegido se ve
+  con `cuadros`, que es exactamente lo que se le veía antes.
+- Una empresa **nueva** nace con el motivo que proponga su plantilla, que nunca
+  es el de carreras: la bandera a cuadros es de NASCAR, no de todos los
+  negocios.
+- El **emblema** acompaña al motivo: sólo `cuadros` pone icono en los botones
+  («🏁 Ver platos de hoy»). Con cualquier otro motivo los botones van limpios.
+
+El script de base de datos es `database/20_motivo_marca.sql`, con sus pruebas
+en `database/20_pruebas_motivo_marca.sql`.
 
 ### Plantillas
 
