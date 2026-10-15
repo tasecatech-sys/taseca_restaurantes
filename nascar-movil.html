@@ -1547,6 +1547,64 @@ textarea {
   background: rgba(228, 0, 43, 0.09);
 }
 
+/* Lista de casillas dentro de un formulario: muchas opciones cortas en poco
+   sitio, con su propio desplazamiento para que el modal no crezca. */
+.lista-check {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--r);
+  background: var(--negro-800);
+  margin-top: 8px;
+}
+.lista-check__fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--borde);
+  cursor: pointer;
+  transition: var(--t);
+}
+.lista-check__fila:last-child {
+  border-bottom: 0;
+}
+.lista-check__fila:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.lista-check__fila input {
+  accent-color: var(--rojo);
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.lista-check__fila b {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--humo);
+}
+.lista-check__fila i {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-osc);
+  white-space: nowrap;
+}
+.lista-check__fila:has(input:checked) {
+  background: rgba(228, 0, 43, 0.1);
+}
+.lista-check__fila:has(input:checked) b {
+  color: var(--blanco);
+}
+/* El contador, debajo de la explicación */
+.bloque-n {
+  display: block;
+  margin-top: 4px;
+  color: var(--humo);
+}
+
 .caja-datos {
   padding: 16px;
   border: 1px dashed var(--borde-fuerte);
@@ -5542,6 +5600,10 @@ tr.fila--sin td {
       </div>
 
       <div class="kpis" id="kpisEntregas"></div>
+
+      <!-- De qué sede se reparte. Con una sola, no se muestra. -->
+      <div class="filtros" id="entregasSedes"></div>
+
       <div class="op-lista" id="listaEntregas"></div>
     </section>
 
@@ -19294,13 +19356,27 @@ NASCAR.Gestion = (function () {
         '</div>' +
 
         '<p class="mini tenue" style="margin:-4px 0 12px">Unidad: ' + (p.sucursales || []).map(badgeUnidad).join(' ') + '</p>' +
-        '<label class="campo"><span>¿Qué producto de la carta descuenta este stock?</span>' +
-        '<select class="select" id="sRef"><option value="">Ninguno (no se vende directamente)</option>' +
-        carta.map((c) => '<option value="' + c.id + '"' +
-          (p.ventaRefIds.indexOf(c.id) >= 0 ? ' selected' : '') + '>' + U.esc(c.nombre) + '</option>').join('') +
-        '</select>' +
-        '<span class="mini tenue">De aquí sale el campo <b>Z</b> (ventas) del cruce de inventario. ' +
-        'Si no se vende directo, Z queda en 0.</span></label>' +
+        '<div class="campo"><span>¿Qué productos de la carta descuentan este stock?</span>' +
+        (carta.length
+          ? '<input class="input" id="sBuscaRef" placeholder="Buscar en la carta…" autocomplete="off">' +
+            '<div class="lista-check" id="sRefs">' +
+            carta
+              .map(
+                (c) =>
+                  '<label class="lista-check__fila" data-busca="' +
+                  U.esc((c.nombre + ' ' + (c.categoria || '')).toLowerCase()) + '">' +
+                  '<input type="checkbox" value="' + U.esc(c.id) + '"' +
+                  (p.ventaRefIds.indexOf(c.id) >= 0 ? ' checked' : '') + '>' +
+                  '<b>' + U.esc(c.nombre) + '</b>' +
+                  (c.categoria ? '<i>' + U.esc(c.categoria) + '</i>' : '') +
+                  '</label>'
+              )
+              .join('') +
+            '</div>'
+          : '<p class="mini ambar">Esta unidad todavía no tiene carta. Crea los platos primero.</p>') +
+        '<span class="mini tenue">De aquí sale el campo <b>Z</b> (ventas) del cruce de inventario: se suma ' +
+        'lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
+        '<b id="sRefsN" class="bloque-n"></b></span></div>' +
 
         '<label class="fila mini" style="gap:8px;margin:6px 0 16px">' +
         '<input type="checkbox" id="sActivo"' + (p.activo ? ' checked' : '') +
@@ -19311,9 +19387,38 @@ NASCAR.Gestion = (function () {
         '<button class="btn btn--rojo" id="sSi">Guardar</button></div>',
     });
 
+    /* Cuántos van marcados, y el buscador de la lista. */
+    const marcados = () =>
+      U.$$('#sRefs input:checked', m.raiz).map((i) => i.value);
+
+    function contarRefs() {
+      const n = U.$('#sRefsN', m.raiz);
+      if (!n) return;
+      const cuantos = marcados().length;
+      n.textContent = cuantos === 0 ? 'Ninguno marcado'
+        : cuantos === 1 ? '1 producto marcado'
+        : cuantos + ' productos marcados';
+    }
+
+    const lista = U.$('#sRefs', m.raiz);
+    if (lista) {
+      lista.addEventListener('change', contarRefs);
+      contarRefs();
+    }
+
+    const busca = U.$('#sBuscaRef', m.raiz);
+    if (busca)
+      busca.addEventListener('input', function () {
+        const q = busca.value.trim().toLowerCase();
+        U.$$('#sRefs .lista-check__fila', m.raiz).forEach(function (f) {
+          // Lo ya marcado no se esconde nunca: si no, se pierde de vista
+          const visible = !q || f.dataset.busca.indexOf(q) >= 0 || f.querySelector('input').checked;
+          f.classList.toggle('oculto', !visible);
+        });
+      });
+
     U.$('#sNo', m.raiz).onclick = m.cerrar;
     U.$('#sSi', m.raiz).onclick = function () {
-      const ref = U.$('#sRef', m.raiz).value;
       try {
         S.guardarProductoStock(
           {
@@ -19324,7 +19429,7 @@ NASCAR.Gestion = (function () {
             unidad: U.$('#sUnidad', m.raiz).value.trim() || 'unidad',
             stockActual: U.$('#sActual', m.raiz).value,
             stockMinimo: U.$('#sMinimo', m.raiz).value,
-            ventaRefIds: ref ? [ref] : [],
+            ventaRefIds: marcados(),
             activo: U.$('#sActivo', m.raiz).checked,
             sucursales: p.sucursales,
           },
@@ -20436,61 +20541,80 @@ NASCAR.Operacion = (function () {
 
   }
 
-  /* Qué sede atiende esta cocina: 'todas' o el id de una. Vive sólo mientras
-     la pantalla está abierta. Quien está asignado a un local no elige: es el
-     suyo y punto. */
-  let sedeCocina = 'todas';
+  /* -----------------------------------------------------------------
+     LAS SEDES DE UNA PANTALLA DE OPERACIÓN
 
-  function sedesDeCocina() {
+     Cocina y Entregas trabajan igual: lo que se ve lo decide el USUARIO,
+     no el selector de sede del panel ni la dirección. Quien está asignado
+     a un local ve el suyo y no elige; quien tiene varios, elige entre
+     ésos; quien no tiene ninguno asignado los ve todos.
+
+     La sede elegida vive sólo mientras la pantalla está abierta.
+     ----------------------------------------------------------------- */
+  function sedesDelUsuario() {
     const suyas = A.unidadesDelUsuario ? A.unidadesDelUsuario() : [];
     const todas = S.getSucursales();
     return suyas.length ? todas.filter((u) => suyas.indexOf(Number(u.id)) >= 0) : todas;
   }
 
-  function pintarSedesCocina(sedes, porSede) {
-    const caja = $('#cocinaSedes');
+  /* Qué sede toca mirar: la suya si está atado a una; la elegida si sigue a
+     su alcance; si no, todas. */
+  function sedeVigente(elegida, sedes) {
+    const atada = A.sucursalDelUsuario();
+    if (atada) return atada;
+    if (elegida !== 'todas' && !sedes.some((u) => Number(u.id) === Number(elegida))) return 'todas';
+    return elegida;
+  }
+
+  /* Deja los pedidos de la sede elegida; viendo «todas», sólo los de las
+     sedes en las que este usuario puede trabajar. */
+  function soloDeSusSedes(pedidos, elegida, sedes) {
+    if (elegida !== 'todas') return pedidos;
+    if (!sedes.length) return pedidos;
+    const permitidas = sedes.map((u) => Number(u.id));
+    return pedidos.filter((p) => permitidas.indexOf(Number(p.sucursalId)) >= 0);
+  }
+
+  function pintarSedes(selector, atributo, elegida, sedes, porSede, etiquetaTodas) {
+    const caja = $(selector);
     if (!caja) return;
     if (sedes.length < 2) {
       caja.innerHTML = '';
       return;
     }
     const chip = (valor, texto, n) =>
-      '<button class="chip' + (String(sedeCocina) === String(valor) ? ' is-activo' : '') +
-      '" data-sede-cocina="' + valor + '">' + texto +
+      '<button class="chip' + (String(elegida) === String(valor) ? ' is-activo' : '') +
+      '" data-' + atributo + '="' + valor + '">' + texto +
       (n ? ' <b>' + n + '</b>' : '') + '</button>';
 
     caja.innerHTML =
-      chip('todas', '🍳 Todas', Object.values(porSede).reduce((a, b) => a + b, 0)) +
+      chip('todas', etiquetaTodas, Object.values(porSede).reduce((a, b) => a + b, 0)) +
       sedes.map((u) => chip(u.id, U.esc(u.corto || u.nombre), porSede[u.id] || 0)).join('');
   }
 
-  function pintarCocina() {
-    const atada = A.sucursalDelUsuario();
-    const sedes = sedesDeCocina();
+  /* Cuántos pedidos tiene cada sede, para el número del chip. */
+  function conteoPorSede(estados) {
+    const porSede = {};
+    S.getPedidos({ activos: true })
+      .filter((p) => estados.indexOf(p.estado) >= 0)
+      .forEach((p) => (porSede[p.sucursalId] = (porSede[p.sucursalId] || 0) + 1));
+    return porSede;
+  }
 
-    /* Sin elección previa: si sólo puede ver una sede, ésa; si no, todas.
-       Y si la sede elegida ya no está a su alcance, vuelve a todas. */
-    if (atada) sedeCocina = atada;
-    else if (sedeCocina !== 'todas' && !sedes.some((u) => Number(u.id) === Number(sedeCocina)))
-      sedeCocina = 'todas';
+  let sedeCocina = 'todas';
+
+  function pintarCocina() {
+    const sedes = sedesDelUsuario();
+    sedeCocina = sedeVigente(sedeCocina, sedes);
 
     const filtro = { activos: true };
     if (sedeCocina !== 'todas') filtro.sucursalId = Number(sedeCocina);
 
-    let pedidos = S.getPedidos(filtro).filter(
-      (p) => p.estado === 'nuevo' || p.estado === 'preparacion'
-    );
-    // Viendo "todas", sólo las sedes en las que este usuario puede trabajar
-    if (sedeCocina === 'todas' && sedes.length) {
-      const permitidas = sedes.map((u) => Number(u.id));
-      pedidos = pedidos.filter((p) => permitidas.indexOf(Number(p.sucursalId)) >= 0);
-    }
+    const enCocina = (p) => p.estado === 'nuevo' || p.estado === 'preparacion';
+    const pedidos = soloDeSusSedes(S.getPedidos(filtro).filter(enCocina), sedeCocina, sedes);
 
-    const porSede = {};
-    S.getPedidos({ activos: true })
-      .filter((p) => p.estado === 'nuevo' || p.estado === 'preparacion')
-      .forEach((p) => (porSede[p.sucursalId] = (porSede[p.sucursalId] || 0) + 1));
-    pintarSedesCocina(sedes, porSede);
+    pintarSedes('#cocinaSedes', 'sede-cocina', sedeCocina, sedes,
+                conteoPorSede(['nuevo', 'preparacion']), '🍳 Todas');
     // En cocina lo más viejo va primero: es lo que lleva más esperando.
     pedidos.sort((a, b) => (a.creado < b.creado ? -1 : 1));
 
@@ -20552,6 +20676,15 @@ NASCAR.Operacion = (function () {
      🛵  ENTREGAS
      ================================================================= */
   function conectarEntregas() {
+    const sedes = $('#entregasSedes');
+    if (sedes)
+      sedes.addEventListener('click', function (e) {
+        const b = e.target.closest('[data-sede-entrega]');
+        if (!b) return;
+        sedeEntrega = b.dataset.sedeEntrega;
+        pintarEntregas();
+      });
+
     $('#listaEntregas').addEventListener('click', function (e) {
       const b = e.target.closest('[data-avanzar-entrega]');
       if (b) {
@@ -20587,23 +20720,33 @@ NASCAR.Operacion = (function () {
     });
   }
 
-  function pintarEntregas() {
-    const sucId = A.sucursalDelUsuario() || Number(ctx.sucursalGlobal()) || null;
-    const filtro = { tipo: 'domicilio', activos: true };
-    if (sucId) filtro.sucursalId = sucId;
+  /* De qué sede se reparte: 'todas' o el id de una. Igual que en cocina. */
+  let sedeEntrega = 'todas';
 
-    const pedidos = S.getPedidos(filtro).filter(
-      (p) => p.estado === 'listo' || p.estado === 'camino'
-    );
+  function pintarEntregas() {
+    /* Las sedes del DOMICILIARIO, no la del selector de arriba del panel.
+       Atarlo a `ctx.sucursalGlobal()` era el fallo: con el selector en otra
+       sede, los domicilios listos de la suya no le aparecían nunca. */
+    const sedes = sedesDelUsuario();
+    sedeEntrega = sedeVigente(sedeEntrega, sedes);
+
+    const filtro = { tipo: 'domicilio', activos: true };
+    if (sedeEntrega !== 'todas') filtro.sucursalId = Number(sedeEntrega);
+
+    const enRuta = (p) => p.estado === 'listo' || p.estado === 'camino';
+    const pedidos = soloDeSusSedes(S.getPedidos(filtro).filter(enRuta), sedeEntrega, sedes);
     pedidos.sort((a, b) => (a.creado < b.creado ? -1 : 1));
 
+    pintarSedes('#entregasSedes', 'sede-entrega', sedeEntrega, sedes,
+                conteoPorSede(['listo', 'camino']), '🛵 Todas');
+
     const paraRecoger = pedidos.filter((p) => p.estado === 'listo');
-    const enRuta = pedidos.filter((p) => p.estado === 'camino');
+    const despachados = pedidos.filter((p) => p.estado === 'camino');
     const porCobrar = pedidos.filter((p) => p.estadoPago !== 'confirmado');
 
     $('#kpisEntregas').innerHTML =
       kpi('Listos para salir', paraRecoger.length, 'Recoger en cocina', paraRecoger.length ? 'rojo' : 'verde') +
-      kpi('En camino', enRuta.length, 'Ya salieron', 'ambar') +
+      kpi('En camino', despachados.length, 'Ya salieron', 'ambar') +
       kpi('Por cobrar en ruta', porCobrar.length, U.money(porCobrar.reduce((s, p) => s + p.total, 0)), 'azul');
 
     $('#listaEntregas').innerHTML = pedidos.length

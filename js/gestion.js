@@ -811,13 +811,27 @@ NASCAR.Gestion = (function () {
         '</div>' +
 
         '<p class="mini tenue" style="margin:-4px 0 12px">Unidad: ' + (p.sucursales || []).map(badgeUnidad).join(' ') + '</p>' +
-        '<label class="campo"><span>¿Qué producto de la carta descuenta este stock?</span>' +
-        '<select class="select" id="sRef"><option value="">Ninguno (no se vende directamente)</option>' +
-        carta.map((c) => '<option value="' + c.id + '"' +
-          (p.ventaRefIds.indexOf(c.id) >= 0 ? ' selected' : '') + '>' + U.esc(c.nombre) + '</option>').join('') +
-        '</select>' +
-        '<span class="mini tenue">De aquí sale el campo <b>Z</b> (ventas) del cruce de inventario. ' +
-        'Si no se vende directo, Z queda en 0.</span></label>' +
+        '<div class="campo"><span>¿Qué productos de la carta descuentan este stock?</span>' +
+        (carta.length
+          ? '<input class="input" id="sBuscaRef" placeholder="Buscar en la carta…" autocomplete="off">' +
+            '<div class="lista-check" id="sRefs">' +
+            carta
+              .map(
+                (c) =>
+                  '<label class="lista-check__fila" data-busca="' +
+                  U.esc((c.nombre + ' ' + (c.categoria || '')).toLowerCase()) + '">' +
+                  '<input type="checkbox" value="' + U.esc(c.id) + '"' +
+                  (p.ventaRefIds.indexOf(c.id) >= 0 ? ' checked' : '') + '>' +
+                  '<b>' + U.esc(c.nombre) + '</b>' +
+                  (c.categoria ? '<i>' + U.esc(c.categoria) + '</i>' : '') +
+                  '</label>'
+              )
+              .join('') +
+            '</div>'
+          : '<p class="mini ambar">Esta unidad todavía no tiene carta. Crea los platos primero.</p>') +
+        '<span class="mini tenue">De aquí sale el campo <b>Z</b> (ventas) del cruce de inventario: se suma ' +
+        'lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
+        '<b id="sRefsN" class="bloque-n"></b></span></div>' +
 
         '<label class="fila mini" style="gap:8px;margin:6px 0 16px">' +
         '<input type="checkbox" id="sActivo"' + (p.activo ? ' checked' : '') +
@@ -828,9 +842,38 @@ NASCAR.Gestion = (function () {
         '<button class="btn btn--rojo" id="sSi">Guardar</button></div>',
     });
 
+    /* Cuántos van marcados, y el buscador de la lista. */
+    const marcados = () =>
+      U.$$('#sRefs input:checked', m.raiz).map((i) => i.value);
+
+    function contarRefs() {
+      const n = U.$('#sRefsN', m.raiz);
+      if (!n) return;
+      const cuantos = marcados().length;
+      n.textContent = cuantos === 0 ? 'Ninguno marcado'
+        : cuantos === 1 ? '1 producto marcado'
+        : cuantos + ' productos marcados';
+    }
+
+    const lista = U.$('#sRefs', m.raiz);
+    if (lista) {
+      lista.addEventListener('change', contarRefs);
+      contarRefs();
+    }
+
+    const busca = U.$('#sBuscaRef', m.raiz);
+    if (busca)
+      busca.addEventListener('input', function () {
+        const q = busca.value.trim().toLowerCase();
+        U.$$('#sRefs .lista-check__fila', m.raiz).forEach(function (f) {
+          // Lo ya marcado no se esconde nunca: si no, se pierde de vista
+          const visible = !q || f.dataset.busca.indexOf(q) >= 0 || f.querySelector('input').checked;
+          f.classList.toggle('oculto', !visible);
+        });
+      });
+
     U.$('#sNo', m.raiz).onclick = m.cerrar;
     U.$('#sSi', m.raiz).onclick = function () {
-      const ref = U.$('#sRef', m.raiz).value;
       try {
         S.guardarProductoStock(
           {
@@ -841,7 +884,7 @@ NASCAR.Gestion = (function () {
             unidad: U.$('#sUnidad', m.raiz).value.trim() || 'unidad',
             stockActual: U.$('#sActual', m.raiz).value,
             stockMinimo: U.$('#sMinimo', m.raiz).value,
-            ventaRefIds: ref ? [ref] : [],
+            ventaRefIds: marcados(),
             activo: U.$('#sActivo', m.raiz).checked,
             sucursales: p.sucursales,
           },

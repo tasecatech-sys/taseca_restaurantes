@@ -1521,6 +1521,64 @@ textarea {
   background: rgba(228, 0, 43, 0.09);
 }
 
+/* Lista de casillas dentro de un formulario: muchas opciones cortas en poco
+   sitio, con su propio desplazamiento para que el modal no crezca. */
+.lista-check {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--r);
+  background: var(--negro-800);
+  margin-top: 8px;
+}
+.lista-check__fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--borde);
+  cursor: pointer;
+  transition: var(--t);
+}
+.lista-check__fila:last-child {
+  border-bottom: 0;
+}
+.lista-check__fila:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.lista-check__fila input {
+  accent-color: var(--rojo);
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.lista-check__fila b {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--humo);
+}
+.lista-check__fila i {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-osc);
+  white-space: nowrap;
+}
+.lista-check__fila:has(input:checked) {
+  background: rgba(228, 0, 43, 0.1);
+}
+.lista-check__fila:has(input:checked) b {
+  color: var(--blanco);
+}
+/* El contador, debajo de la explicación */
+.bloque-n {
+  display: block;
+  margin-top: 4px;
+  color: var(--humo);
+}
+
 .caja-datos {
   padding: 16px;
   border: 1px dashed var(--borde-fuerte);

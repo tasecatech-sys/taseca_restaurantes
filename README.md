@@ -442,9 +442,16 @@ qué funciones hay son los **módulos de la empresa**. No existe un módulo
 
 **Producto de inventario ≠ producto de venta.** El stock es lo que se cuenta
 (*Arepa, Queso, Pollo*); la carta es lo que se vende (*Arepa de pollo*). Siguen
-siendo dos catálogos distintos, unidos sólo por el enlace opcional `ventaRefIds`
-(qué producto de la carta descuenta ese stock en el cruce). No hay recetas ni
-consumo por ingredientes todavía.
+siendo dos catálogos distintos, unidos sólo por el enlace opcional
+`ventaRefIds`: **qué productos de la carta descuentan ese stock** en el cruce.
+
+Son varios, no uno: el insumo *Arepas* lo gastan la *Arepa Norteña*, la *Arepa
+Paisa* y la *Arepa Avengers*, y su Z suma lo vendido de todas. En el formulario
+de stock se marcan con casillas, con buscador para cartas largas.
+
+Lo que sigue sin existir es el **consumo por cantidades**: hoy cada venta
+descuenta una unidad del insumo, no «1 pan y 2 lonchas de queso». Eso es el
+módulo de recetas, y `core.producto_insumos.cantidad` es su punto de enganche.
 
 ### El catálogo real de NASCAR
 
@@ -1664,10 +1671,10 @@ platos que ya vende, con códigos `C001–C027` (comidas) y `B001–B006` (bar).
 No se inventó ningún producto.
 
 Cuando existan los códigos reales que ya usan las meseras en el papel, se
-reemplaza esa lista completa. Cada producto lleva un campo `ventaRefIds` que
-lo enlaza con lo que se vende — de ahí sale Z. Un producto que no se venda
-directamente lleva `ventaRefIds: []` y su Z queda en 0 hasta que exista un
-módulo de recetas.
+reemplaza esa lista completa. Cada producto lleva un campo `ventaRefIds` con
+**todos** los productos de la carta que lo gastan — de ahí sale Z, sumando lo
+vendido de cada uno. Un producto que no se venda directamente lleva
+`ventaRefIds: []` y su Z queda en 0.
 
 ---
 

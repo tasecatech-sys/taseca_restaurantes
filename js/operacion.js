@@ -402,61 +402,80 @@ NASCAR.Operacion = (function () {
 
   }
 
-  /* Qué sede atiende esta cocina: 'todas' o el id de una. Vive sólo mientras
-     la pantalla está abierta. Quien está asignado a un local no elige: es el
-     suyo y punto. */
-  let sedeCocina = 'todas';
+  /* -----------------------------------------------------------------
+     LAS SEDES DE UNA PANTALLA DE OPERACIÓN
 
-  function sedesDeCocina() {
+     Cocina y Entregas trabajan igual: lo que se ve lo decide el USUARIO,
+     no el selector de sede del panel ni la dirección. Quien está asignado
+     a un local ve el suyo y no elige; quien tiene varios, elige entre
+     ésos; quien no tiene ninguno asignado los ve todos.
+
+     La sede elegida vive sólo mientras la pantalla está abierta.
+     ----------------------------------------------------------------- */
+  function sedesDelUsuario() {
     const suyas = A.unidadesDelUsuario ? A.unidadesDelUsuario() : [];
     const todas = S.getSucursales();
     return suyas.length ? todas.filter((u) => suyas.indexOf(Number(u.id)) >= 0) : todas;
   }
 
-  function pintarSedesCocina(sedes, porSede) {
-    const caja = $('#cocinaSedes');
+  /* Qué sede toca mirar: la suya si está atado a una; la elegida si sigue a
+     su alcance; si no, todas. */
+  function sedeVigente(elegida, sedes) {
+    const atada = A.sucursalDelUsuario();
+    if (atada) return atada;
+    if (elegida !== 'todas' && !sedes.some((u) => Number(u.id) === Number(elegida))) return 'todas';
+    return elegida;
+  }
+
+  /* Deja los pedidos de la sede elegida; viendo «todas», sólo los de las
+     sedes en las que este usuario puede trabajar. */
+  function soloDeSusSedes(pedidos, elegida, sedes) {
+    if (elegida !== 'todas') return pedidos;
+    if (!sedes.length) return pedidos;
+    const permitidas = sedes.map((u) => Number(u.id));
+    return pedidos.filter((p) => permitidas.indexOf(Number(p.sucursalId)) >= 0);
+  }
+
+  function pintarSedes(selector, atributo, elegida, sedes, porSede, etiquetaTodas) {
+    const caja = $(selector);
     if (!caja) return;
     if (sedes.length < 2) {
       caja.innerHTML = '';
       return;
     }
     const chip = (valor, texto, n) =>
-      '<button class="chip' + (String(sedeCocina) === String(valor) ? ' is-activo' : '') +
-      '" data-sede-cocina="' + valor + '">' + texto +
+      '<button class="chip' + (String(elegida) === String(valor) ? ' is-activo' : '') +
+      '" data-' + atributo + '="' + valor + '">' + texto +
       (n ? ' <b>' + n + '</b>' : '') + '</button>';
 
     caja.innerHTML =
-      chip('todas', '🍳 Todas', Object.values(porSede).reduce((a, b) => a + b, 0)) +
+      chip('todas', etiquetaTodas, Object.values(porSede).reduce((a, b) => a + b, 0)) +
       sedes.map((u) => chip(u.id, U.esc(u.corto || u.nombre), porSede[u.id] || 0)).join('');
   }
 
-  function pintarCocina() {
-    const atada = A.sucursalDelUsuario();
-    const sedes = sedesDeCocina();
+  /* Cuántos pedidos tiene cada sede, para el número del chip. */
+  function conteoPorSede(estados) {
+    const porSede = {};
+    S.getPedidos({ activos: true })
+      .filter((p) => estados.indexOf(p.estado) >= 0)
+      .forEach((p) => (porSede[p.sucursalId] = (porSede[p.sucursalId] || 0) + 1));
+    return porSede;
+  }
 
-    /* Sin elección previa: si sólo puede ver una sede, ésa; si no, todas.
-       Y si la sede elegida ya no está a su alcance, vuelve a todas. */
-    if (atada) sedeCocina = atada;
-    else if (sedeCocina !== 'todas' && !sedes.some((u) => Number(u.id) === Number(sedeCocina)))
-      sedeCocina = 'todas';
+  let sedeCocina = 'todas';
+
+  function pintarCocina() {
+    const sedes = sedesDelUsuario();
+    sedeCocina = sedeVigente(sedeCocina, sedes);
 
     const filtro = { activos: true };
     if (sedeCocina !== 'todas') filtro.sucursalId = Number(sedeCocina);
 
-    let pedidos = S.getPedidos(filtro).filter(
-      (p) => p.estado === 'nuevo' || p.estado === 'preparacion'
-    );
-    // Viendo "todas", sólo las sedes en las que este usuario puede trabajar
-    if (sedeCocina === 'todas' && sedes.length) {
-      const permitidas = sedes.map((u) => Number(u.id));
-      pedidos = pedidos.filter((p) => permitidas.indexOf(Number(p.sucursalId)) >= 0);
-    }
+    const enCocina = (p) => p.estado === 'nuevo' || p.estado === 'preparacion';
+    const pedidos = soloDeSusSedes(S.getPedidos(filtro).filter(enCocina), sedeCocina, sedes);
 
-    const porSede = {};
-    S.getPedidos({ activos: true })
-      .filter((p) => p.estado === 'nuevo' || p.estado === 'preparacion')
-      .forEach((p) => (porSede[p.sucursalId] = (porSede[p.sucursalId] || 0) + 1));
-    pintarSedesCocina(sedes, porSede);
+    pintarSedes('#cocinaSedes', 'sede-cocina', sedeCocina, sedes,
+                conteoPorSede(['nuevo', 'preparacion']), '🍳 Todas');
     // En cocina lo más viejo va primero: es lo que lleva más esperando.
     pedidos.sort((a, b) => (a.creado < b.creado ? -1 : 1));
 
@@ -518,6 +537,15 @@ NASCAR.Operacion = (function () {
      🛵  ENTREGAS
      ================================================================= */
   function conectarEntregas() {
+    const sedes = $('#entregasSedes');
+    if (sedes)
+      sedes.addEventListener('click', function (e) {
+        const b = e.target.closest('[data-sede-entrega]');
+        if (!b) return;
+        sedeEntrega = b.dataset.sedeEntrega;
+        pintarEntregas();
+      });
+
     $('#listaEntregas').addEventListener('click', function (e) {
       const b = e.target.closest('[data-avanzar-entrega]');
       if (b) {
@@ -553,23 +581,33 @@ NASCAR.Operacion = (function () {
     });
   }
 
-  function pintarEntregas() {
-    const sucId = A.sucursalDelUsuario() || Number(ctx.sucursalGlobal()) || null;
-    const filtro = { tipo: 'domicilio', activos: true };
-    if (sucId) filtro.sucursalId = sucId;
+  /* De qué sede se reparte: 'todas' o el id de una. Igual que en cocina. */
+  let sedeEntrega = 'todas';
 
-    const pedidos = S.getPedidos(filtro).filter(
-      (p) => p.estado === 'listo' || p.estado === 'camino'
-    );
+  function pintarEntregas() {
+    /* Las sedes del DOMICILIARIO, no la del selector de arriba del panel.
+       Atarlo a `ctx.sucursalGlobal()` era el fallo: con el selector en otra
+       sede, los domicilios listos de la suya no le aparecían nunca. */
+    const sedes = sedesDelUsuario();
+    sedeEntrega = sedeVigente(sedeEntrega, sedes);
+
+    const filtro = { tipo: 'domicilio', activos: true };
+    if (sedeEntrega !== 'todas') filtro.sucursalId = Number(sedeEntrega);
+
+    const enRuta = (p) => p.estado === 'listo' || p.estado === 'camino';
+    const pedidos = soloDeSusSedes(S.getPedidos(filtro).filter(enRuta), sedeEntrega, sedes);
     pedidos.sort((a, b) => (a.creado < b.creado ? -1 : 1));
 
+    pintarSedes('#entregasSedes', 'sede-entrega', sedeEntrega, sedes,
+                conteoPorSede(['listo', 'camino']), '🛵 Todas');
+
     const paraRecoger = pedidos.filter((p) => p.estado === 'listo');
-    const enRuta = pedidos.filter((p) => p.estado === 'camino');
+    const despachados = pedidos.filter((p) => p.estado === 'camino');
     const porCobrar = pedidos.filter((p) => p.estadoPago !== 'confirmado');
 
     $('#kpisEntregas').innerHTML =
       kpi('Listos para salir', paraRecoger.length, 'Recoger en cocina', paraRecoger.length ? 'rojo' : 'verde') +
-      kpi('En camino', enRuta.length, 'Ya salieron', 'ambar') +
+      kpi('En camino', despachados.length, 'Ya salieron', 'ambar') +
       kpi('Por cobrar en ruta', porCobrar.length, U.money(porCobrar.reduce((s, p) => s + p.total, 0)), 'azul');
 
     $('#listaEntregas').innerHTML = pedidos.length
