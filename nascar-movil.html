@@ -1794,6 +1794,38 @@ textarea {
   text-align: center;
   color: var(--gris-osc);
 }
+
+/* «En vivo»: el punto que late mientras la pantalla se refresca sola. Sólo
+   aparece si al pedido todavía le queda camino. */
+.seg-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  background: rgba(18, 183, 106, 0.12);
+  color: var(--verde);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  vertical-align: 1px;
+}
+.seg-vivo i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: seg-latido 1.8s ease-in-out infinite;
+}
+@keyframes seg-latido {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
 .seg-datos {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1846,7 +1878,8 @@ textarea {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .seg-actual__ico--vivo {
+  .seg-actual__ico--vivo,
+  .seg-vivo i {
     animation: none;
   }
   .seg-pasos__riel i {
@@ -13208,6 +13241,11 @@ NASCAR.Remoto = (function () {
   const comprobantesPendientes = {}; // pedidoId -> { dataUrl, nombreArchivo }
   const seguidos = {};               // código -> true (seguimiento sin sesión)
 
+  /* Estados en los que un pedido ya no se mueve. Se dejan de refrescar:
+     preguntar cada 8 segundos por algo que no va a cambiar es red y dinero
+     tirados (ver COSTOS_SUPABASE.md). */
+  const TERMINADOS = ['entregado', 'cancelado', 'anulado'];
+
   /* =====================================================================
      HTTP
      ===================================================================== */
@@ -13798,11 +13836,18 @@ NASCAR.Remoto = (function () {
         .catch(() => {});
       return;
     }
-    // Sin sesión: sólo los pedidos que el cliente está siguiendo
+    /* Sin sesión: sólo los pedidos que el cliente está siguiendo.
+
+       Van con las MISMAS cabeceras que el resto de peticiones. No es un
+       detalle: en Supabase, sin `apikey` y sin el esquema, la respuesta es
+       401, aquí se descartaba en silencio y el cliente se quedaba mirando un
+       estado viejo hasta que volvía a consultar a mano. */
     Object.keys(seguidos).forEach(function (codigo) {
+      const h = cabeceras('POST');
+      h['Content-Type'] = 'application/json';
       fetch(CFG.url + '/rpc/seguimiento', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: h,
         body: JSON.stringify({ p_codigo: codigo, p_empresa: CFG.empresa }),
       })
         .then((r) => (r.ok ? r.json() : null))
@@ -13810,7 +13855,12 @@ NASCAR.Remoto = (function () {
           if (!json) return;
           const nuevo = aPedido(json);
           const actual = buscarEnMemoria(nuevo.id);
+          /* El seguimiento no devuelve los datos del cliente (son suyos, no
+             viajan sin sesión): se conserva lo que el navegador ya sabía. */
+          if (actual) nuevo.cliente = actual.cliente;
           if (!actual || actual.actualizado !== nuevo.actualizado) ponerPedido(nuevo);
+          // Un pedido terminado ya no cambia: se deja de preguntar por él
+          if (TERMINADOS.indexOf(nuevo.estado) >= 0) delete seguidos[codigo];
         })
         .catch(() => {});
     });
@@ -23690,6 +23740,7 @@ NASCAR.Avisos = (function () {
     }
 
     ultimoPedido = pedido;
+    recordarPedido(pedido.codigo); // para seguirlo aunque recargue la página
     paso = 'listo';
     pintarCarrito();
     U.toast('¡Pedido ' + pedido.codigo + ' enviado a cocina!');
@@ -23698,7 +23749,64 @@ NASCAR.Avisos = (function () {
   /* =================================================================
      SEGUIMIENTO DE PEDIDO
      ================================================================= */
+
+  /* ---- Lo que este navegador recuerda ------------------------------
+     Del seguimiento se guardan SÓLO los códigos que el cliente ya consultó.
+     No son datos del servidor -el estado del pedido se le pregunta siempre a
+     la base-: es su propia navegación, como el carrito, y sirve para que al
+     recargar la página no tenga que volver a escribir el número.
+
+     Por empresa, porque el mismo teléfono puede pedir en varios negocios.
+     Caducan a las 24 horas y no se guardan más de cinco: un código viejo no
+     le sirve a nadie y la lista no tiene por qué crecer sola.
+
+     En modo privado el navegador puede negarse a guardar. No pasa nada: todo
+     sigue funcionando, simplemente no recuerda. */
+  const CLAVE_SEGUIDOS = 'nascar.seguidos.v1';
+  const SEGUIDOS_MAX = 5;
+  const SEGUIDOS_HORAS = 24;
+
+  function llaveEmpresa() {
+    const e = S.getEmpresaActual && S.getEmpresaActual();
+    return (e && e.id) || (NASCAR.BACKEND && NASCAR.BACKEND.empresa) || 'local';
+  }
+
+  function guardados() {
+    try {
+      return JSON.parse(localStorage.getItem(CLAVE_SEGUIDOS) || '{}') || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function pedidosRecordados() {
+    const limite = Date.now() - SEGUIDOS_HORAS * 3600 * 1000;
+    const mios = guardados()[llaveEmpresa()];
+    return (Array.isArray(mios) ? mios : []).filter((x) => x && x.codigo && x.ts > limite);
+  }
+
+  function recordarPedido(codigo) {
+    const c = String(codigo || '').trim().toUpperCase();
+    if (!c) return;
+    const lista = pedidosRecordados().filter((x) => x.codigo !== c);
+    lista.push({ codigo: c, ts: Date.now() });
+    const todo = guardados();
+    todo[llaveEmpresa()] = lista.slice(-SEGUIDOS_MAX);
+    try {
+      localStorage.setItem(CLAVE_SEGUIDOS, JSON.stringify(todo));
+    } catch (e) {
+      /* sin permiso para guardar: se sigue, sólo que sin recordar */
+    }
+  }
+
+  function ultimoRecordado() {
+    const lista = pedidosRecordados();
+    return lista.length ? lista[lista.length - 1].codigo : '';
+  }
+
   function abrirSeguimiento(codigoInicial) {
+    // Sin código a la vista, el último que siguió este navegador
+    const inicial = codigoInicial || ultimoRecordado();
     const m = U.modal({
       titulo: 'Seguir mi pedido',
       ancho: 500,
@@ -23706,13 +23814,36 @@ NASCAR.Avisos = (function () {
         '<form class="seg-buscar" id="sForm">' +
         '<label class="campo"><span>Número del pedido</span>' +
         '<input class="input" id="sCodigo" inputmode="numeric" autocomplete="off" placeholder="Ej. 00027" value="' +
-        U.esc(codigoInicial || '') + '" style="text-transform:uppercase"></label>' +
+        U.esc(inicial) + '" style="text-transform:uppercase"></label>' +
         '<button class="btn btn--azul" id="sBuscar" type="submit">Consultar</button>' +
         '</form>' +
         '<div id="sResultado" class="mt-16" aria-live="polite"></div>',
     });
 
     let consultado = ''; // lo último que se buscó, para refrescar solo
+    let seguido = '';    // su id, para releerlo sin volver a preguntar por código
+
+    /* El pedido que se está mostrando.
+
+         · Cuando el cliente pulsa Consultar se le pregunta a la base por el
+           código.
+         · De ahí en adelante se lee de la memoria, que js/remoto.js mantiene
+           al día cada pocos segundos.
+
+       La diferencia importa: la consulta por código es SÍNCRONA, así que
+       hacerla en cada repintado congelaría la pantalla cada vez que el local
+       mueve el pedido —y costaría una petición de más, porque el refresco de
+       fondo ya trajo ese mismo dato—. */
+    function pedidoMostrado(preguntar) {
+      if (preguntar || !seguido) {
+        const p = S.getPedidoPorCodigo(consultado);
+        seguido = p ? p.id : '';
+        // Encontrado: este navegador lo recuerda para la próxima visita
+        if (p) recordarPedido(p.codigo);
+        return p;
+      }
+      return S.getPedido(seguido) || S.getPedidoPorCodigo(consultado);
+    }
 
     /* Cada paso con su icono y un texto corto que cabe en el celular.
        «En camino» sólo existe para los domicilios: una mesa pasa de listo
@@ -23738,10 +23869,26 @@ NASCAR.Avisos = (function () {
       return isNaN(d) ? '' : d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
     }
 
-    function pintar() {
+    /* Pintar mientras ya se está pintando no sirve de nada: preguntar por el
+       código deja el pedido en la memoria del Store, el Store avisa del
+       cambio y ese aviso vuelve aquí dentro de la propia consulta. Sin este
+       candado cada apertura de la pantalla disparaba decenas de peticiones
+       —y todas devolvían lo mismo—. */
+    let pintando = false;
+
+    function pintar(preguntar) {
       const cont = U.$('#sResultado', m.raiz);
-      if (!cont || !consultado) return;
-      const p = S.getPedidoPorCodigo(consultado);
+      if (!cont || !consultado || pintando) return;
+      pintando = true;
+      try {
+        dibujar(cont, preguntar);
+      } finally {
+        pintando = false;
+      }
+    }
+
+    function dibujar(cont, preguntar) {
+      const p = pedidoMostrado(preguntar);
 
       if (!p) {
         cont.innerHTML =
@@ -23784,7 +23931,8 @@ NASCAR.Avisos = (function () {
         '<div class="seg-actual' + (fin ? ' seg-actual--verde' : '') + '">' +
         '<div class="seg-actual__ico' + (fin ? '' : ' seg-actual__ico--vivo') + '">' + actual.ico + '</div><div>' +
         '<span class="seg-actual__kicker">Paso ' + (i + 1) + ' de ' + pasos.length +
-        (ultimo ? ' · ' + hora(ultimo.ts) : '') + '</span>' +
+        (ultimo ? ' · ' + hora(ultimo.ts) : '') +
+        (fin ? '' : '<span class="seg-vivo"><i></i>En vivo</span>') + '</span>' +
         '<b>' + U.esc(actual.titulo) + '</b>' +
         '<p>' + U.esc(actual.texto) + '</p>' +
         '</div></div>' +
@@ -23805,7 +23953,7 @@ NASCAR.Avisos = (function () {
           .join('') +
         '</div>' +
 
-        (fin ? '' : '<p class="seg-nota">Esta pantalla se actualiza sola cuando el local cambia el estado.</p>') +
+        (fin ? '' : '<p class="seg-nota">Esta pantalla se actualiza sola: no hace falta volver a consultar.</p>') +
         datos;
     }
 
@@ -23816,7 +23964,8 @@ NASCAR.Avisos = (function () {
         U.$('#sCodigo', m.raiz).focus();
         return;
       }
-      pintar();
+      seguido = '';
+      pintar(true);
     }
 
     U.$('#sForm', m.raiz).addEventListener('submit', buscar);
@@ -23824,7 +23973,7 @@ NASCAR.Avisos = (function () {
     S.onChange(function () {
       if (document.body.contains(m.raiz)) pintar();
     });
-    if (codigoInicial) buscar();
+    if (inicial) buscar();
   }
 
   function insigniaPago(p) {

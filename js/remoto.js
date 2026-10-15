@@ -89,6 +89,11 @@ NASCAR.Remoto = (function () {
   const comprobantesPendientes = {}; // pedidoId -> { dataUrl, nombreArchivo }
   const seguidos = {};               // código -> true (seguimiento sin sesión)
 
+  /* Estados en los que un pedido ya no se mueve. Se dejan de refrescar:
+     preguntar cada 8 segundos por algo que no va a cambiar es red y dinero
+     tirados (ver COSTOS_SUPABASE.md). */
+  const TERMINADOS = ['entregado', 'cancelado', 'anulado'];
+
   /* =====================================================================
      HTTP
      ===================================================================== */
@@ -679,11 +684,18 @@ NASCAR.Remoto = (function () {
         .catch(() => {});
       return;
     }
-    // Sin sesión: sólo los pedidos que el cliente está siguiendo
+    /* Sin sesión: sólo los pedidos que el cliente está siguiendo.
+
+       Van con las MISMAS cabeceras que el resto de peticiones. No es un
+       detalle: en Supabase, sin `apikey` y sin el esquema, la respuesta es
+       401, aquí se descartaba en silencio y el cliente se quedaba mirando un
+       estado viejo hasta que volvía a consultar a mano. */
     Object.keys(seguidos).forEach(function (codigo) {
+      const h = cabeceras('POST');
+      h['Content-Type'] = 'application/json';
       fetch(CFG.url + '/rpc/seguimiento', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: h,
         body: JSON.stringify({ p_codigo: codigo, p_empresa: CFG.empresa }),
       })
         .then((r) => (r.ok ? r.json() : null))
@@ -691,7 +703,12 @@ NASCAR.Remoto = (function () {
           if (!json) return;
           const nuevo = aPedido(json);
           const actual = buscarEnMemoria(nuevo.id);
+          /* El seguimiento no devuelve los datos del cliente (son suyos, no
+             viajan sin sesión): se conserva lo que el navegador ya sabía. */
+          if (actual) nuevo.cliente = actual.cliente;
           if (!actual || actual.actualizado !== nuevo.actualizado) ponerPedido(nuevo);
+          // Un pedido terminado ya no cambia: se deja de preguntar por él
+          if (TERMINADOS.indexOf(nuevo.estado) >= 0) delete seguidos[codigo];
         })
         .catch(() => {});
     });

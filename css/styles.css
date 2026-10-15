@@ -1768,6 +1768,38 @@ textarea {
   text-align: center;
   color: var(--gris-osc);
 }
+
+/* «En vivo»: el punto que late mientras la pantalla se refresca sola. Sólo
+   aparece si al pedido todavía le queda camino. */
+.seg-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  background: rgba(18, 183, 106, 0.12);
+  color: var(--verde);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  vertical-align: 1px;
+}
+.seg-vivo i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: seg-latido 1.8s ease-in-out infinite;
+}
+@keyframes seg-latido {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
 .seg-datos {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1820,7 +1852,8 @@ textarea {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .seg-actual__ico--vivo {
+  .seg-actual__ico--vivo,
+  .seg-vivo i {
     animation: none;
   }
   .seg-pasos__riel i {

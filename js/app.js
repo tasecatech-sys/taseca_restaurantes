@@ -994,6 +994,7 @@
     }
 
     ultimoPedido = pedido;
+    recordarPedido(pedido.codigo); // para seguirlo aunque recargue la página
     paso = 'listo';
     pintarCarrito();
     U.toast('¡Pedido ' + pedido.codigo + ' enviado a cocina!');
@@ -1002,7 +1003,64 @@
   /* =================================================================
      SEGUIMIENTO DE PEDIDO
      ================================================================= */
+
+  /* ---- Lo que este navegador recuerda ------------------------------
+     Del seguimiento se guardan SÓLO los códigos que el cliente ya consultó.
+     No son datos del servidor -el estado del pedido se le pregunta siempre a
+     la base-: es su propia navegación, como el carrito, y sirve para que al
+     recargar la página no tenga que volver a escribir el número.
+
+     Por empresa, porque el mismo teléfono puede pedir en varios negocios.
+     Caducan a las 24 horas y no se guardan más de cinco: un código viejo no
+     le sirve a nadie y la lista no tiene por qué crecer sola.
+
+     En modo privado el navegador puede negarse a guardar. No pasa nada: todo
+     sigue funcionando, simplemente no recuerda. */
+  const CLAVE_SEGUIDOS = 'nascar.seguidos.v1';
+  const SEGUIDOS_MAX = 5;
+  const SEGUIDOS_HORAS = 24;
+
+  function llaveEmpresa() {
+    const e = S.getEmpresaActual && S.getEmpresaActual();
+    return (e && e.id) || (NASCAR.BACKEND && NASCAR.BACKEND.empresa) || 'local';
+  }
+
+  function guardados() {
+    try {
+      return JSON.parse(localStorage.getItem(CLAVE_SEGUIDOS) || '{}') || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function pedidosRecordados() {
+    const limite = Date.now() - SEGUIDOS_HORAS * 3600 * 1000;
+    const mios = guardados()[llaveEmpresa()];
+    return (Array.isArray(mios) ? mios : []).filter((x) => x && x.codigo && x.ts > limite);
+  }
+
+  function recordarPedido(codigo) {
+    const c = String(codigo || '').trim().toUpperCase();
+    if (!c) return;
+    const lista = pedidosRecordados().filter((x) => x.codigo !== c);
+    lista.push({ codigo: c, ts: Date.now() });
+    const todo = guardados();
+    todo[llaveEmpresa()] = lista.slice(-SEGUIDOS_MAX);
+    try {
+      localStorage.setItem(CLAVE_SEGUIDOS, JSON.stringify(todo));
+    } catch (e) {
+      /* sin permiso para guardar: se sigue, sólo que sin recordar */
+    }
+  }
+
+  function ultimoRecordado() {
+    const lista = pedidosRecordados();
+    return lista.length ? lista[lista.length - 1].codigo : '';
+  }
+
   function abrirSeguimiento(codigoInicial) {
+    // Sin código a la vista, el último que siguió este navegador
+    const inicial = codigoInicial || ultimoRecordado();
     const m = U.modal({
       titulo: 'Seguir mi pedido',
       ancho: 500,
@@ -1010,13 +1068,36 @@
         '<form class="seg-buscar" id="sForm">' +
         '<label class="campo"><span>Número del pedido</span>' +
         '<input class="input" id="sCodigo" inputmode="numeric" autocomplete="off" placeholder="Ej. 00027" value="' +
-        U.esc(codigoInicial || '') + '" style="text-transform:uppercase"></label>' +
+        U.esc(inicial) + '" style="text-transform:uppercase"></label>' +
         '<button class="btn btn--azul" id="sBuscar" type="submit">Consultar</button>' +
         '</form>' +
         '<div id="sResultado" class="mt-16" aria-live="polite"></div>',
     });
 
     let consultado = ''; // lo último que se buscó, para refrescar solo
+    let seguido = '';    // su id, para releerlo sin volver a preguntar por código
+
+    /* El pedido que se está mostrando.
+
+         · Cuando el cliente pulsa Consultar se le pregunta a la base por el
+           código.
+         · De ahí en adelante se lee de la memoria, que js/remoto.js mantiene
+           al día cada pocos segundos.
+
+       La diferencia importa: la consulta por código es SÍNCRONA, así que
+       hacerla en cada repintado congelaría la pantalla cada vez que el local
+       mueve el pedido —y costaría una petición de más, porque el refresco de
+       fondo ya trajo ese mismo dato—. */
+    function pedidoMostrado(preguntar) {
+      if (preguntar || !seguido) {
+        const p = S.getPedidoPorCodigo(consultado);
+        seguido = p ? p.id : '';
+        // Encontrado: este navegador lo recuerda para la próxima visita
+        if (p) recordarPedido(p.codigo);
+        return p;
+      }
+      return S.getPedido(seguido) || S.getPedidoPorCodigo(consultado);
+    }
 
     /* Cada paso con su icono y un texto corto que cabe en el celular.
        «En camino» sólo existe para los domicilios: una mesa pasa de listo
@@ -1042,10 +1123,26 @@
       return isNaN(d) ? '' : d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
     }
 
-    function pintar() {
+    /* Pintar mientras ya se está pintando no sirve de nada: preguntar por el
+       código deja el pedido en la memoria del Store, el Store avisa del
+       cambio y ese aviso vuelve aquí dentro de la propia consulta. Sin este
+       candado cada apertura de la pantalla disparaba decenas de peticiones
+       —y todas devolvían lo mismo—. */
+    let pintando = false;
+
+    function pintar(preguntar) {
       const cont = U.$('#sResultado', m.raiz);
-      if (!cont || !consultado) return;
-      const p = S.getPedidoPorCodigo(consultado);
+      if (!cont || !consultado || pintando) return;
+      pintando = true;
+      try {
+        dibujar(cont, preguntar);
+      } finally {
+        pintando = false;
+      }
+    }
+
+    function dibujar(cont, preguntar) {
+      const p = pedidoMostrado(preguntar);
 
       if (!p) {
         cont.innerHTML =
@@ -1088,7 +1185,8 @@
         '<div class="seg-actual' + (fin ? ' seg-actual--verde' : '') + '">' +
         '<div class="seg-actual__ico' + (fin ? '' : ' seg-actual__ico--vivo') + '">' + actual.ico + '</div><div>' +
         '<span class="seg-actual__kicker">Paso ' + (i + 1) + ' de ' + pasos.length +
-        (ultimo ? ' · ' + hora(ultimo.ts) : '') + '</span>' +
+        (ultimo ? ' · ' + hora(ultimo.ts) : '') +
+        (fin ? '' : '<span class="seg-vivo"><i></i>En vivo</span>') + '</span>' +
         '<b>' + U.esc(actual.titulo) + '</b>' +
         '<p>' + U.esc(actual.texto) + '</p>' +
         '</div></div>' +
@@ -1109,7 +1207,7 @@
           .join('') +
         '</div>' +
 
-        (fin ? '' : '<p class="seg-nota">Esta pantalla se actualiza sola cuando el local cambia el estado.</p>') +
+        (fin ? '' : '<p class="seg-nota">Esta pantalla se actualiza sola: no hace falta volver a consultar.</p>') +
         datos;
     }
 
@@ -1120,7 +1218,8 @@
         U.$('#sCodigo', m.raiz).focus();
         return;
       }
-      pintar();
+      seguido = '';
+      pintar(true);
     }
 
     U.$('#sForm', m.raiz).addEventListener('submit', buscar);
@@ -1128,7 +1227,7 @@
     S.onChange(function () {
       if (document.body.contains(m.raiz)) pintar();
     });
-    if (codigoInicial) buscar();
+    if (inicial) buscar();
   }
 
   function insigniaPago(p) {

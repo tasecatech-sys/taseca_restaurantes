@@ -1883,6 +1883,13 @@ Todo en `localStorage`, escrito **sólo** desde `store.js`:
 versión anterior se puede restaurar sin problema: lo que no traiga se completa
 con los valores de `data.js`.
 
+Hay una clave más, `nascar.seguidos.v1`, que **no** es del negocio y por eso no
+está en la tabla ni en el respaldo: guarda, en el teléfono del cliente, los
+códigos de pedido que él mismo consultó, para que al recargar la página
+«Seguir mi pedido» ya traiga el número puesto. Son códigos, no datos del
+servidor —el estado del pedido se le pregunta siempre a la base—, van separados
+por empresa, caducan a las 24 horas y no se guardan más de cinco.
+
 ---
 
 ## Detalles de diseño
