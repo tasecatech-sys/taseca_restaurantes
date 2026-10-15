@@ -917,6 +917,20 @@ Se elige en el panel de Taseca, al dar de alta la empresa o después, desde
 El script de base de datos es `database/20_motivo_marca.sql`, con sus pruebas
 en `database/20_pruebas_motivo_marca.sql`.
 
+### Que nada se cruce entre empresas ni entre sucursales
+
+Tres piezas, de menor a mayor alcance:
+
+| Script | Qué hace |
+|---|---|
+| `17_integridad_multiempresa.sql` | `api.fn_chequeo_integridad()`: 47 revisiones sobre los datos que ya hay. Dice si algo quedó cruzado. |
+| `22_relaciones_empresa_completas.sql` | El trigger `core.tg_relaciones_empresa` en las **once** tablas del camino de un pedido. Impide que se cruce, venga el dato de donde venga. |
+| `21_auditoria_pedido_inventario.sql` | La auditoría: monta dos empresas y tres sucursales e intenta cruzarlas por todos los caminos. 13 pruebas, todo dentro de un `ROLLBACK`. |
+
+La auditoría se puede correr cuando se quiera —en Supabase, pegar y Run— y no
+deja ningún dato. Empieza revisando **tus** datos reales y sólo después monta
+las empresas de prueba.
+
 ### Plantillas
 
 Restaurante, Bar, Cafetería, Comercio, Servicios y Personalizado. Son **sólo un

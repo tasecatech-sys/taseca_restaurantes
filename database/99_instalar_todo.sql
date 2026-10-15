@@ -65,6 +65,10 @@
 \i 17_integridad_multiempresa.sql
 \echo '== 17 · Pruebas de integridad (se deshacen con ROLLBACK)'
 \i 17_pruebas_integridad.sql
+\echo '== 22 · Red de seguridad completa en el camino de un pedido'
+\i 22_relaciones_empresa_completas.sql
+\echo '== 21 · Auditoría: un pedido y su inventario (se deshace con ROLLBACK)'
+\i 21_auditoria_pedido_inventario.sql
 \echo '== 20 · Motivo de marca de cada empresa'
 \i 20_motivo_marca.sql
 \echo '== 20 · Pruebas del motivo de marca (se deshacen con ROLLBACK)'
