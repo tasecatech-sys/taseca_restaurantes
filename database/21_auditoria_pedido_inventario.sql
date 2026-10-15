@@ -82,6 +82,39 @@ $$;
 
 
 /* ============================================================================
+   PARTE 0 · ¿ESTÁ PUESTA LA RED?
+
+   La prueba 13 comprueba las cinco tablas que blinda
+   database/22_relaciones_empresa_completas.sql. Si ese script no se ha
+   corrido, más vale decirlo aquí que dejar que falle doce pruebas después
+   con un error que no explica nada.
+   ============================================================================ */
+
+DO $$
+DECLARE
+    v_faltan TEXT;
+BEGIN
+    SELECT string_agg(x.tabla, ', ' ORDER BY x.tabla) INTO v_faltan
+      FROM unnest(ARRAY['cierres_inventario', 'menus_dia', 'pedido_historial',
+                        'comprobantes_pago', 'anulaciones']) AS x(tabla)
+     WHERE NOT EXISTS (
+            SELECT 1 FROM pg_trigger t
+              JOIN pg_class c ON c.oid = t.tgrelid
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              JOIN pg_proc p ON p.oid = t.tgfoid
+             WHERE n.nspname = 'core' AND c.relname = x.tabla
+               AND p.proname = 'tg_relaciones_empresa' AND NOT t.tgisinternal);
+
+    IF v_faltan IS NOT NULL THEN
+        RAISE EXCEPTION E'Falta correr database/22_relaciones_empresa_completas.sql antes de esta auditoría.\n'
+                        'Sin él estas tablas se quedan sin red: %', v_faltan;
+    END IF;
+    RAISE NOTICE '✔ 0  La red del script 22 está puesta en las cinco tablas que faltaban';
+END;
+$$;
+
+
+/* ============================================================================
    PARTE 1 · TUS DATOS DE VERDAD
    ============================================================================ */
 
@@ -415,10 +448,14 @@ BEGIN
     --      (las cinco tablas que cerró database/22_relaciones_empresa_completas.sql;
     --       sin ese script esta prueba falla, y eso es justo lo que avisa)
     -- ========================================================================
+    /* Sobre A-Sur, que no tiene ningún cierre: los cierres son únicos por
+       unidad, área y jornada, y A-Norte ya usó el suyo en la prueba 10. Si
+       aquí se repitiera, el error sería «duplicate key» y taparía justo lo
+       que se quiere comprobar. */
     PERFORM pg_temp.esperar_error(
         format($q$INSERT INTO core.cierres_inventario (unidad_id, area_id, estado_cierre_id, fecha_operativa, registrado_por_id)
                VALUES (%s, %s, (SELECT id FROM core.estados_cierre WHERE codigo = 'borrador'), '%s', %s)$q$,
-               v_ua1, v_area, v_hoy, v_admin_b),
+               v_ua2, v_area, v_hoy, v_admin_b),
         'no es de la empresa de la unidad');
     PERFORM pg_temp.esperar_error(
         format($q$INSERT INTO core.menus_dia (unidad_id, tipo_menu_id, fecha, creado_por_id)
