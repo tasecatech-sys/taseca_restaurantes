@@ -10641,6 +10641,15 @@ NASCAR.Store = (function () {
     if (!datos.items || !datos.items.length)
       throw new Error('El pedido no tiene productos.');
 
+    /* El mismo envío dos veces no es un pedido nuevo. En modo base de datos
+       esto lo decide la base; aquí se hace lo mismo para que el modo local
+       se comporte igual. */
+    const clave = datos.clave ? String(datos.clave).slice(0, 64) : '';
+    if (clave) {
+      const repetido = leer(K.pedidos, []).find((p) => p.claveEnvio === clave);
+      if (repetido) return repetido;
+    }
+
     const items = datos.items.map(function (it) {
       const item = {
         refId: it.refId,
@@ -10703,6 +10712,8 @@ NASCAR.Store = (function () {
       fechaOperativa: fechaOperativaDe(ahora),
       creado: ahora,
       actualizado: ahora,
+      // Qué envío lo creó: si ese mismo envío vuelve, se devuelve este pedido
+      claveEnvio: clave || undefined,
       historial: [{ ts: ahora, texto: 'Pedido recibido' }],
     };
 
@@ -14005,6 +14016,8 @@ NASCAR.Remoto = (function () {
         p_indicaciones: cliente.notas || null,
         p_zona_id: zona ? zona.id : null,
         p_paga_con: cliente.pagaCon ? Number(cliente.pagaCon) : null,
+        // Si este mismo envío ya entró, la base devuelve aquel pedido
+        p_clave: datos.clave || null,
       });
       const p = ponerPedido(aPedido(r));
       seguidos[p.codigo] = true;
@@ -15386,6 +15399,67 @@ NASCAR.UI = (function () {
   function $$(sel, ctx) {
     return Array.prototype.slice.call((ctx || document).querySelectorAll(sel));
   }
+  /* -----------------------------------------------------------------
+     UN BOTÓN QUE NO SE TOCA DOS VECES
+
+     Las escrituras viajan por XHR síncrono: mientras la petición va y
+     vuelve, la pantalla se queda congelada. Quien atiende cree que no
+     registró y vuelve a tocar, y los toques se encolan.
+
+     Esto bloquea el botón al primer toque y le pone un texto que explica
+     la espera. Si la acción falla, el botón vuelve: devolviendo `false` o
+     lanzando un error. Si sale bien, se queda bloqueado -ya no hay nada
+     que tocar-.
+
+     Es sólo la mitad visible del candado. La que de verdad impide la
+     factura repetida está en la base: cada envío lleva su clave y la base
+     devuelve el mismo pedido si le llega dos veces. Ver
+     database/23_pedidos_sin_duplicados.sql.
+     ----------------------------------------------------------------- */
+  function unaVez(boton, textoEspera, accion) {
+    if (!boton) return;
+    let ocupado = false;
+
+    boton.addEventListener('click', function () {
+      if (ocupado) return;
+      ocupado = true;
+
+      const antes = boton.innerHTML;
+      boton.disabled = true;
+      boton.innerHTML = textoEspera || 'Enviando…';
+
+      const soltar = function () {
+        ocupado = false;
+        boton.disabled = false;
+        boton.innerHTML = antes;
+      };
+
+      /* Un respiro antes de la petición: si no, el navegador no alcanza a
+         pintar «Enviando…» y la espera se ve como un cuelgue. */
+      setTimeout(function () {
+        let salioBien = false;
+        try {
+          salioBien = accion() !== false;
+        } catch (e) {
+          if (typeof toast === 'function') toast(e.message || 'No se pudo completar.', 'error');
+        }
+        if (!salioBien) soltar();
+      }, 0);
+    });
+  }
+
+  /* La clave de un ENVÍO (no de un pedido): identifica el intento. Si hay
+     que reintentar el mismo pedido se reutiliza la misma, y así la base
+     sabe que es el mismo y no crea otra factura. */
+  function claveEnvio() {
+    try {
+      if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    } catch (e) {
+      /* navegadores viejos: se arma a mano */
+    }
+    return 'e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
   function el(tag, attrs, html) {
     const n = document.createElement(tag);
     if (attrs) Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
@@ -15772,6 +15846,8 @@ NASCAR.UI = (function () {
     esc: esc,
     $: $,
     $$: $$,
+    unaVez: unaVez,
+    claveEnvio: claveEnvio,
     el: el,
     acciones: acciones,
     toast: toast,
@@ -20409,6 +20485,10 @@ NASCAR.Operacion = (function () {
           '<span><b>Total (' + n + ')</b></span><b>' + U.money(total) + '</b></div></div>' +
           '<button class="btn btn--rojo btn--bloque mt-16" id="tpEnviar">🏁 Enviar a cocina</button>'
         : '<p class="mini tenue centro">Agrega productos para armar el pedido.</p>';
+
+      /* El botón acaba de nacer con este repintado, así que el candado se le
+         pone aquí y no al abrir el cuadro. */
+      U.unaVez(U.$('#tpEnviar', m.raiz), '⏳ Enviando…', enviar);
     }
 
     function agregar(producto) {
@@ -20478,17 +20558,21 @@ NASCAR.Operacion = (function () {
         return pintarResumen();
       }
 
-      if (e.target.closest('#tpEnviar')) return enviar();
     });
+
+    /* Una clave por intento: si el envío falla y se vuelve a tocar, va la
+       misma y la base no crea una segunda factura. */
+    const clave = U.claveEnvio();
 
     U.$('#tpBuscar', m.raiz).addEventListener('input', pintarLista);
 
     function enviar() {
-      if (!A.exigir('pedidos_mesa')) return;
+      if (!A.exigir('pedidos_mesa')) return false;
       const firma = A.firma();
       let pedido;
       try {
         pedido = S.crearPedido({
+          clave: clave,
           tipo: 'mesa',
           sucursalId: sucId,
           mesa: mesaSeleccionada,
@@ -20499,7 +20583,8 @@ NASCAR.Operacion = (function () {
           usuarioNombre: firma.usuarioNombre,
         });
       } catch (err) {
-        return U.toast(err.message || 'No se pudo enviar el pedido.', 'error');
+        U.toast(err.message || 'No se pudo enviar el pedido.', 'error');
+        return false; // el botón vuelve: se puede reintentar con la misma clave
       }
       m.cerrar();
       U.toast('Pedido ' + pedido.codigo + ' enviado a cocina.');
@@ -23651,9 +23736,13 @@ NASCAR.Avisos = (function () {
 
     $('#carritoPie').innerHTML =
       '<div class="totales" id="totalesPago"></div>' +
-      '<button class="btn btn--rojo btn--bloque" data-accion="confirmar-pedido">' +
+      '<button class="btn btn--rojo btn--bloque" id="btnConfirmarPedido">' +
       (S.emblema() ? S.emblema() + ' ' : '') + 'Confirmar pedido</button>' +
       '<button class="btn btn--fantasma btn--bloque mt-8" data-accion="volver-datos">← Volver a mis datos</button>';
+
+    /* Sin `data-accion`: el candado va directo sobre este botón, que se
+       vuelve a crear cada vez que se pinta este paso. */
+    U.unaVez($('#btnConfirmarPedido'), '⏳ Enviando tu pedido…', confirmarPedido);
 
     function pintarDetalle() {
       const d = $('#detallePago');
@@ -23849,11 +23938,20 @@ NASCAR.Avisos = (function () {
   }
 
   function confirmarPedido() {
-    if (!carrito.items().length) return U.toast('Tu pedido está vacío.', 'error');
+    if (!carrito.items().length) {
+      U.toast('Tu pedido está vacío.', 'error');
+      return false;
+    }
+
+    /* La clave es de este INTENTO de pedido, y vive con el borrador: si el
+       envío falla y el cliente vuelve a confirmar, va la misma y la base no
+       crea una segunda factura. Se suelta sólo cuando el pedido entra. */
+    if (!borrador.clave) borrador.clave = U.claveEnvio();
 
     let pedido;
     try {
       pedido = S.crearPedido({
+        clave: borrador.clave,
         tipo: 'domicilio',
         sucursalId: borrador.sucursalId,
         cliente: {
@@ -23869,8 +23967,11 @@ NASCAR.Avisos = (function () {
         costoDomicilio: costoDomicilio(),
       });
     } catch (e) {
-      return U.toast(e.message || 'No se pudo crear el pedido.', 'error');
+      U.toast(e.message || 'No se pudo crear el pedido.', 'error');
+      return false; // el botón vuelve: se puede reintentar con la misma clave
     }
+
+    borrador.clave = ''; // el pedido entró: el siguiente es otro intento
 
     if (borrador.metodoPago === 'transferencia') {
       if (borrador.comprobante) {
@@ -24164,7 +24265,6 @@ NASCAR.Avisos = (function () {
         paso = 'datos';
         pintarCarrito();
       },
-      'confirmar-pedido': confirmarPedido,
     });
 
     // Agregar al carrito
@@ -24566,6 +24666,11 @@ NASCAR.Avisos = (function () {
     const items = carrito.items();
     if (!items.length) return U.toast('Agrega algo antes de enviar.', 'error');
 
+    /* Una clave por INTENTO, no por toque: si el envío falla y se reintenta
+       desde este mismo cuadro, va la misma y la base sabe que es el mismo
+       pedido. Cerrar y volver a abrir empieza otro intento. */
+    const clave = U.claveEnvio();
+
     const m = U.modal({
       titulo: 'Confirmar pedido · Mesa ' + mesa,
       ancho: 460,
@@ -24585,10 +24690,11 @@ NASCAR.Avisos = (function () {
     });
 
     U.$('#mNo', m.raiz).onclick = m.cerrar;
-    U.$('#mSi', m.raiz).onclick = function () {
+    U.unaVez(U.$('#mSi', m.raiz), '⏳ Enviando…', function () {
       let pedido;
       try {
         pedido = S.crearPedido({
+          clave: clave,
           tipo: 'mesa',
           sucursalId: sucursalId,
           mesa: mesa,
@@ -24600,14 +24706,15 @@ NASCAR.Avisos = (function () {
           metodoPago: 'efectivo',
         });
       } catch (e) {
-        return U.toast(e.message || 'No se pudo enviar el pedido.', 'error');
+        U.toast(e.message || 'No se pudo enviar el pedido.', 'error');
+        return false; // el botón vuelve: se puede reintentar con la misma clave
       }
 
       carrito.vaciar();
       m.cerrar();
       mostrarConfirmacion(pedido);
       pintarDia(); // por si se agotaron cupos del día
-    };
+    });
   }
 
   function mostrarConfirmacion(p) {

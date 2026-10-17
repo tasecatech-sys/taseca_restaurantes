@@ -3179,6 +3179,15 @@ NASCAR.Store = (function () {
     if (!datos.items || !datos.items.length)
       throw new Error('El pedido no tiene productos.');
 
+    /* El mismo envío dos veces no es un pedido nuevo. En modo base de datos
+       esto lo decide la base; aquí se hace lo mismo para que el modo local
+       se comporte igual. */
+    const clave = datos.clave ? String(datos.clave).slice(0, 64) : '';
+    if (clave) {
+      const repetido = leer(K.pedidos, []).find((p) => p.claveEnvio === clave);
+      if (repetido) return repetido;
+    }
+
     const items = datos.items.map(function (it) {
       const item = {
         refId: it.refId,
@@ -3241,6 +3250,8 @@ NASCAR.Store = (function () {
       fechaOperativa: fechaOperativaDe(ahora),
       creado: ahora,
       actualizado: ahora,
+      // Qué envío lo creó: si ese mismo envío vuelve, se devuelve este pedido
+      claveEnvio: clave || undefined,
       historial: [{ ts: ahora, texto: 'Pedido recibido' }],
     };
 

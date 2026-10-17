@@ -34,6 +34,7 @@ PARTES = [
     ('16_pagos_en_caja.sql',                 'Todos los pagos se confirman en caja'),
     ('17_integridad_multiempresa.sql',       'Chequeo de relaciones y red de seguridad'),
     ('22_relaciones_empresa_completas.sql',  'Red de seguridad completa en el camino de un pedido'),
+    ('23_pedidos_sin_duplicados.sql',        'Un envío, un pedido: candado contra facturas repetidas'),
     ('20_motivo_marca.sql',                  'El motivo de marca de cada empresa'),
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
 ]

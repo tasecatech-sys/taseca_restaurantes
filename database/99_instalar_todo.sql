@@ -65,6 +65,10 @@
 \i 17_integridad_multiempresa.sql
 \echo '== 17 · Pruebas de integridad (se deshacen con ROLLBACK)'
 \i 17_pruebas_integridad.sql
+\echo '== 23 · Un envío, un pedido (candado contra duplicados)'
+\i 23_pedidos_sin_duplicados.sql
+\echo '== 23 · Pruebas de duplicados (se deshacen con ROLLBACK)'
+\i 23_pruebas_sin_duplicados.sql
 \echo '== 22 · Red de seguridad completa en el camino de un pedido'
 \i 22_relaciones_empresa_completas.sql
 \echo '== 21 · Auditoría: un pedido y su inventario (se deshace con ROLLBACK)'

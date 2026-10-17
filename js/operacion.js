@@ -270,6 +270,10 @@ NASCAR.Operacion = (function () {
           '<span><b>Total (' + n + ')</b></span><b>' + U.money(total) + '</b></div></div>' +
           '<button class="btn btn--rojo btn--bloque mt-16" id="tpEnviar">🏁 Enviar a cocina</button>'
         : '<p class="mini tenue centro">Agrega productos para armar el pedido.</p>';
+
+      /* El botón acaba de nacer con este repintado, así que el candado se le
+         pone aquí y no al abrir el cuadro. */
+      U.unaVez(U.$('#tpEnviar', m.raiz), '⏳ Enviando…', enviar);
     }
 
     function agregar(producto) {
@@ -339,17 +343,21 @@ NASCAR.Operacion = (function () {
         return pintarResumen();
       }
 
-      if (e.target.closest('#tpEnviar')) return enviar();
     });
+
+    /* Una clave por intento: si el envío falla y se vuelve a tocar, va la
+       misma y la base no crea una segunda factura. */
+    const clave = U.claveEnvio();
 
     U.$('#tpBuscar', m.raiz).addEventListener('input', pintarLista);
 
     function enviar() {
-      if (!A.exigir('pedidos_mesa')) return;
+      if (!A.exigir('pedidos_mesa')) return false;
       const firma = A.firma();
       let pedido;
       try {
         pedido = S.crearPedido({
+          clave: clave,
           tipo: 'mesa',
           sucursalId: sucId,
           mesa: mesaSeleccionada,
@@ -360,7 +368,8 @@ NASCAR.Operacion = (function () {
           usuarioNombre: firma.usuarioNombre,
         });
       } catch (err) {
-        return U.toast(err.message || 'No se pudo enviar el pedido.', 'error');
+        U.toast(err.message || 'No se pudo enviar el pedido.', 'error');
+        return false; // el botón vuelve: se puede reintentar con la misma clave
       }
       m.cerrar();
       U.toast('Pedido ' + pedido.codigo + ' enviado a cocina.');

@@ -289,6 +289,11 @@
     const items = carrito.items();
     if (!items.length) return U.toast('Agrega algo antes de enviar.', 'error');
 
+    /* Una clave por INTENTO, no por toque: si el envío falla y se reintenta
+       desde este mismo cuadro, va la misma y la base sabe que es el mismo
+       pedido. Cerrar y volver a abrir empieza otro intento. */
+    const clave = U.claveEnvio();
+
     const m = U.modal({
       titulo: 'Confirmar pedido · Mesa ' + mesa,
       ancho: 460,
@@ -308,10 +313,11 @@
     });
 
     U.$('#mNo', m.raiz).onclick = m.cerrar;
-    U.$('#mSi', m.raiz).onclick = function () {
+    U.unaVez(U.$('#mSi', m.raiz), '⏳ Enviando…', function () {
       let pedido;
       try {
         pedido = S.crearPedido({
+          clave: clave,
           tipo: 'mesa',
           sucursalId: sucursalId,
           mesa: mesa,
@@ -323,14 +329,15 @@
           metodoPago: 'efectivo',
         });
       } catch (e) {
-        return U.toast(e.message || 'No se pudo enviar el pedido.', 'error');
+        U.toast(e.message || 'No se pudo enviar el pedido.', 'error');
+        return false; // el botón vuelve: se puede reintentar con la misma clave
       }
 
       carrito.vaciar();
       m.cerrar();
       mostrarConfirmacion(pedido);
       pintarDia(); // por si se agotaron cupos del día
-    };
+    });
   }
 
   function mostrarConfirmacion(p) {

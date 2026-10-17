@@ -762,9 +762,13 @@
 
     $('#carritoPie').innerHTML =
       '<div class="totales" id="totalesPago"></div>' +
-      '<button class="btn btn--rojo btn--bloque" data-accion="confirmar-pedido">' +
+      '<button class="btn btn--rojo btn--bloque" id="btnConfirmarPedido">' +
       (S.emblema() ? S.emblema() + ' ' : '') + 'Confirmar pedido</button>' +
       '<button class="btn btn--fantasma btn--bloque mt-8" data-accion="volver-datos">← Volver a mis datos</button>';
+
+    /* Sin `data-accion`: el candado va directo sobre este botón, que se
+       vuelve a crear cada vez que se pinta este paso. */
+    U.unaVez($('#btnConfirmarPedido'), '⏳ Enviando tu pedido…', confirmarPedido);
 
     function pintarDetalle() {
       const d = $('#detallePago');
@@ -960,11 +964,20 @@
   }
 
   function confirmarPedido() {
-    if (!carrito.items().length) return U.toast('Tu pedido está vacío.', 'error');
+    if (!carrito.items().length) {
+      U.toast('Tu pedido está vacío.', 'error');
+      return false;
+    }
+
+    /* La clave es de este INTENTO de pedido, y vive con el borrador: si el
+       envío falla y el cliente vuelve a confirmar, va la misma y la base no
+       crea una segunda factura. Se suelta sólo cuando el pedido entra. */
+    if (!borrador.clave) borrador.clave = U.claveEnvio();
 
     let pedido;
     try {
       pedido = S.crearPedido({
+        clave: borrador.clave,
         tipo: 'domicilio',
         sucursalId: borrador.sucursalId,
         cliente: {
@@ -980,8 +993,11 @@
         costoDomicilio: costoDomicilio(),
       });
     } catch (e) {
-      return U.toast(e.message || 'No se pudo crear el pedido.', 'error');
+      U.toast(e.message || 'No se pudo crear el pedido.', 'error');
+      return false; // el botón vuelve: se puede reintentar con la misma clave
     }
+
+    borrador.clave = ''; // el pedido entró: el siguiente es otro intento
 
     if (borrador.metodoPago === 'transferencia') {
       if (borrador.comprobante) {
@@ -1275,7 +1291,6 @@
         paso = 'datos';
         pintarCarrito();
       },
-      'confirmar-pedido': confirmarPedido,
     });
 
     // Agregar al carrito

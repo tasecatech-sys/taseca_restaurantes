@@ -791,6 +791,8 @@ NASCAR.Remoto = (function () {
         p_indicaciones: cliente.notas || null,
         p_zona_id: zona ? zona.id : null,
         p_paga_con: cliente.pagaCon ? Number(cliente.pagaCon) : null,
+        // Si este mismo envío ya entró, la base devuelve aquel pedido
+        p_clave: datos.clave || null,
       });
       const p = ponerPedido(aPedido(r));
       seguidos[p.codigo] = true;

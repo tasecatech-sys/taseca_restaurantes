@@ -62,6 +62,67 @@ NASCAR.UI = (function () {
   function $$(sel, ctx) {
     return Array.prototype.slice.call((ctx || document).querySelectorAll(sel));
   }
+  /* -----------------------------------------------------------------
+     UN BOTÓN QUE NO SE TOCA DOS VECES
+
+     Las escrituras viajan por XHR síncrono: mientras la petición va y
+     vuelve, la pantalla se queda congelada. Quien atiende cree que no
+     registró y vuelve a tocar, y los toques se encolan.
+
+     Esto bloquea el botón al primer toque y le pone un texto que explica
+     la espera. Si la acción falla, el botón vuelve: devolviendo `false` o
+     lanzando un error. Si sale bien, se queda bloqueado -ya no hay nada
+     que tocar-.
+
+     Es sólo la mitad visible del candado. La que de verdad impide la
+     factura repetida está en la base: cada envío lleva su clave y la base
+     devuelve el mismo pedido si le llega dos veces. Ver
+     database/23_pedidos_sin_duplicados.sql.
+     ----------------------------------------------------------------- */
+  function unaVez(boton, textoEspera, accion) {
+    if (!boton) return;
+    let ocupado = false;
+
+    boton.addEventListener('click', function () {
+      if (ocupado) return;
+      ocupado = true;
+
+      const antes = boton.innerHTML;
+      boton.disabled = true;
+      boton.innerHTML = textoEspera || 'Enviando…';
+
+      const soltar = function () {
+        ocupado = false;
+        boton.disabled = false;
+        boton.innerHTML = antes;
+      };
+
+      /* Un respiro antes de la petición: si no, el navegador no alcanza a
+         pintar «Enviando…» y la espera se ve como un cuelgue. */
+      setTimeout(function () {
+        let salioBien = false;
+        try {
+          salioBien = accion() !== false;
+        } catch (e) {
+          if (typeof toast === 'function') toast(e.message || 'No se pudo completar.', 'error');
+        }
+        if (!salioBien) soltar();
+      }, 0);
+    });
+  }
+
+  /* La clave de un ENVÍO (no de un pedido): identifica el intento. Si hay
+     que reintentar el mismo pedido se reutiliza la misma, y así la base
+     sabe que es el mismo y no crea otra factura. */
+  function claveEnvio() {
+    try {
+      if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    } catch (e) {
+      /* navegadores viejos: se arma a mano */
+    }
+    return 'e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
   function el(tag, attrs, html) {
     const n = document.createElement(tag);
     if (attrs) Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
@@ -448,6 +509,8 @@ NASCAR.UI = (function () {
     esc: esc,
     $: $,
     $$: $$,
+    unaVez: unaVez,
+    claveEnvio: claveEnvio,
     el: el,
     acciones: acciones,
     toast: toast,
