@@ -503,6 +503,19 @@ NASCAR.Remoto = (function () {
     };
   }
 
+  /* Lo que devolvió rest.arranque, a la espera de que cada cargador tome su
+     parte. Se toma UNA vez: si después hay que recargar usuarios o pedidos
+     -al guardar un usuario, por ejemplo- se vuelve a preguntar a la base,
+     que para eso cambió. */
+  let arranque = null;
+
+  function delArranque(clave) {
+    if (!arranque) return null;
+    const v = arranque[clave];
+    arranque[clave] = undefined;
+    return v === undefined ? null : v;
+  }
+
   function cargarCatalogo() {
     const codigo = codigoEmpresa();
     if (!codigo) {
@@ -511,19 +524,26 @@ NASCAR.Remoto = (function () {
         '/nascar/panel, o nascar.taseca.tech si ya tiene su propio subdominio.'
       );
     }
-    const e = obtener('/empresas?codigo=eq.' + encodeURIComponent(codigo), false);
-    if (!e || !e.length) throw new Error('La empresa "' + codigo + '" no existe en la base de datos o está desactivada.');
-    empresa = e[0];
-    const eid = empresa.empresa_id;
-    cargarImagenesEmpresa(e);
+    /* Todo el arranque en un viaje. Con sesión vienen además los usuarios y
+       los pedidos del día; si el token ya no sirve, se repite sin él y el
+       catálogo entra igual -de la sesión se encarga cargarDatosDeSesion()-. */
+    try {
+      arranque = rpc('arranque', { p_empresa: codigo });
+    } catch (err) {
+      if (!token()) throw err;
+      arranque = rpc('arranque', { p_empresa: codigo }, false);
+    }
 
-    // En el panel de Taseca se ven las unidades de todas las empresas
-    const unidades = obtener(PAGINA_PLATAFORMA ? '/unidades?order=nombre' : '/unidades?empresa_id=eq.' + eid + '&order=nombre', false);
+    empresa = arranque.empresa;
+    if (!empresa) throw new Error('La empresa "' + codigo + '" no existe en la base de datos o está desactivada.');
+    cargarImagenesEmpresa([empresa]);
+
+    const unidades = delArranque('unidades') || [];
     cargarLogos(unidades);
-    const categorias = obtener('/categorias?empresa_id=eq.' + eid, false);
-    const carta = obtener('/carta?empresa_id=eq.' + eid, false);
-    const menus = obtener('/menus_dia?empresa_id=eq.' + eid, false);
-    const textos = obtener('/textos_menu?empresa_id=eq.' + eid, false);
+    const categorias = delArranque('categorias') || [];
+    const carta = delArranque('carta') || [];
+    const menus = delArranque('menus_dia') || [];
+    const textos = delArranque('textos_menu') || [];
 
     const config = {};
     config[empresa.codigo] = aConfig(empresa);
@@ -606,12 +626,16 @@ NASCAR.Remoto = (function () {
       S.cargarRemoto({ pedidos: [] });
       return;
     }
-    const filas = obtener('/pedidos?select=pedido&fecha_operativa=gte.' + ayer() + '&order=pedido_id.desc');
+    const traidos = delArranque('pedidos');
+    const filas = traidos || obtener('/pedidos?select=pedido&fecha_operativa=gte.' + ayer() + '&order=pedido_id.desc');
     S.cargarRemoto({ pedidos: filas.map((f) => aPedido(f.pedido)) });
     anotarMarca(filas);
     if (!marca) {
-      // Nada reciente: la marca es el último cambio de los 31 días, sin bajar sus pedidos
-      anotarMarca(obtener('/pedidos?select=actualizado_en&order=actualizado_en.desc&limit=1'));
+      /* Nada reciente: la marca es el último cambio de los 31 días, sin bajar
+         sus pedidos. El arranque ya la trae calculada. */
+      const deArranque = delArranque('marca_pedidos');
+      if (traidos) marca = deArranque || null;
+      else anotarMarca(obtener('/pedidos?select=actualizado_en&order=actualizado_en.desc&limit=1'));
     }
   }
 
@@ -623,7 +647,8 @@ NASCAR.Remoto = (function () {
       S.cargarRemoto({ usuarios: [] });
       return;
     }
-    S.cargarRemoto({ usuarios: obtener('/usuarios?order=nombre').map(aUsuario) });
+    const traidos = delArranque('usuarios');
+    S.cargarRemoto({ usuarios: (traidos || obtener('/usuarios?order=nombre')).map(aUsuario) });
   }
 
   /* El historial de 31 días, una sola vez y sin bloquear la pantalla. */
@@ -1827,6 +1852,7 @@ NASCAR.Remoto = (function () {
     cargarUsuarios();
     cargarInventario();
     cargarCaja();
+    arranque = null; // de aquí en adelante, cada cosa se pide cuando toca
   }
 
   function colorLargo(c) {
