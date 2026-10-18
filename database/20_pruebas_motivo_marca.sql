@@ -43,6 +43,21 @@ BEGIN
 END;
 $guardia$;
 
+/* ¿Está puesta la columna que se va a probar? */
+DO $falta$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_attribute
+         WHERE attrelid = 'core.empresas'::regclass AND attname = 'patron' AND NOT attisdropped
+    ) THEN
+        RAISE EXCEPTION E'Falta correr database/20_motivo_marca.sql antes de esta prueba.\n'
+            'core.empresas todavía no tiene la columna patron.'
+            USING ERRCODE = 'undefined_column';
+    END IF;
+END;
+$falta$;
+
+
 CREATE FUNCTION pg_temp.esperar_error(p_sql TEXT, p_contiene TEXT)
 RETURNS VOID
 LANGUAGE plpgsql

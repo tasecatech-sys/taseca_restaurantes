@@ -43,6 +43,22 @@ BEGIN
 END;
 $guardia$;
 
+/* ¿Está puesto el candado que se va a probar? */
+DO $falta$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'api' AND p.proname = 'sp_crear_pedido'
+           AND 'p_clave' = ANY (p.proargnames)
+    ) THEN
+        RAISE EXCEPTION E'Falta correr database/23_pedidos_sin_duplicados.sql antes de esta prueba.\n'
+            'api.sp_crear_pedido todavía no sabe de claves de envío, así que no hay candado que probar.'
+            USING ERRCODE = 'undefined_function';
+    END IF;
+END;
+$falta$;
+
+
 DO $$
 DECLARE
     v_admin  INTEGER;
