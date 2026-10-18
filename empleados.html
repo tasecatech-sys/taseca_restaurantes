@@ -112,52 +112,24 @@
         <i>←</i><span>Contraer menú</span>
       </button>
 
-      <nav class="app-side__menu" id="tabs" aria-label="Secciones del panel">
-        <!-- Opciones agrupadas por contexto de trabajo. Los grupos SÓLO
-             ordenan: qué opción ve cada perfil lo sigue decidiendo
-             aplicarPermisos() sobre cada .tab, y un grupo que se queda sin
-             opciones visibles se esconde entero (Sidebar.actualizarGrupos).
-             «Registrar cierre» y «Cierres de inventario» son de inventario:
-             el conteo físico no lleva dinero. -->
-        <div class="app-side__grupo" data-grupo="operacion">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoOperacion"><i aria-hidden="true">▾</i><span>Operación</span></button>
-          <div class="app-side__grupo-items" id="grupoOperacion" role="group" aria-label="Operación">
-            <button class="tab" data-tab="mesero"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
-            <button class="tab" data-tab="pedidos"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
-            <button class="tab" data-tab="cocina"><i>👨‍🍳</i><span>Cocina</span></button>
-            <button class="tab" data-tab="entregas"><i>🛵</i><span>Entregas</span></button>
-          </div>
-        </div>
-        <div class="app-side__grupo" data-grupo="ventas">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoVentas"><i aria-hidden="true">▾</i><span>Ventas y caja</span></button>
-          <div class="app-side__grupo-items" id="grupoVentas" role="group" aria-label="Ventas y caja">
-            <button class="tab" data-tab="caja"><i>🧾</i><span>Caja</span></button>
-            <button class="tab" data-tab="ventas"><i>📈</i><span>Ventas</span></button>
-            <button class="tab" data-tab="pagos"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
-            <button class="tab" data-tab="informe"><i>📊</i><span>Cruce de caja</span></button>
-            <button class="tab" data-tab="gastos"><i>💰</i><span>Gastos</span><span class="pill oculto" id="pillGastos">0</span></button>
-          </div>
-        </div>
-        <div class="app-side__grupo" data-grupo="productos">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoProductos"><i aria-hidden="true">▾</i><span>Productos e inventario</span></button>
-          <div class="app-side__grupo-items" id="grupoProductos" role="group" aria-label="Productos e inventario">
-            <button class="tab" data-tab="dia"><i>📅</i><span>Menú del día</span></button>
-            <button class="tab" data-tab="carta"><i>🍔</i><span>Carta</span></button>
-            <button class="tab" data-tab="stock"><i>📦</i><span>Stock</span></button>
-            <button class="tab" data-tab="entradas"><i>📥</i><span>Entradas</span></button>
-            <button class="tab" data-tab="cierre"><i>📝</i><span>Registrar cierre</span></button>
-            <button class="tab" data-tab="inventario"><i>🔄</i><span>Cierres de inventario</span><span class="pill oculto" id="pillCierres">0</span></button>
-          </div>
-        </div>
-        <div class="app-side__grupo" data-grupo="administracion">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoAdministracion"><i aria-hidden="true">▾</i><span>Administración</span></button>
-          <div class="app-side__grupo-items" id="grupoAdministracion" role="group" aria-label="Administración">
-            <button class="tab" data-tab="unidades"><i>🏪</i><span>Unidades / Locales</span></button>
-            <button class="tab" data-tab="usuarios"><i>👥</i><span>Usuarios</span></button>
-            <button class="tab" data-tab="config"><i>⚙️</i><span>Configuración</span></button>
-            <button class="tab" data-tab="ajustes"><i>🔧</i><span>Ajustes</span></button>
-          </div>
-        </div>
+      <nav class="app-side__menu" id="puertas" aria-label="Áreas del panel">
+        <!-- Seis puertas. Cada una abre su barra de secciones (#subTabs),
+             que es donde siguen estando los botones .tab de siempre.
+
+             Esta lista SÓLO ordena: qué sección ve cada perfil lo sigue
+             decidiendo aplicarPermisos() sobre cada .tab, y una puerta que
+             se queda sin secciones visibles se esconde entera. Al perfil
+             que sólo tiene una sección —cocina, entregas— no se le muestra
+             ni la puerta ni la barra: entra directo a lo suyo.
+
+             El contador de la puerta es la suma de los de sus secciones,
+             para que un pago por confirmar se vea sin tener que abrirla. -->
+        <button class="app-side__item" type="button" data-puerta="caja"><i>🧾</i><span>Caja</span><span class="pill oculto" data-puerta-pill="caja">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="operacion"><i>🍽️</i><span>Operación</span><span class="pill oculto" data-puerta-pill="operacion">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="dinero"><i>💰</i><span>Dinero</span><span class="pill oculto" data-puerta-pill="dinero">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="inventario"><i>📦</i><span>Inventario</span><span class="pill oculto" data-puerta-pill="inventario">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="carta"><i>🍔</i><span>Carta</span><span class="pill oculto" data-puerta-pill="carta">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="negocio"><i>⚙️</i><span>Negocio</span><span class="pill oculto" data-puerta-pill="negocio">0</span></button>
       </nav>
 
       <div class="app-side__pie">
@@ -190,6 +162,33 @@
           <div class="num" style="font-size:19px" id="reloj">—</div>
         </div>
       </header>
+
+      <!-- Barra de secciones de la puerta abierta. Son los botones .tab
+           de siempre: misma clase, mismo data-tab y mismos ids de
+           contador, sólo que ahora viven aquí en lugar de en el
+           lateral. Se esconde entera cuando la puerta tiene una sola
+           sección visible, que es el caso de cocina y entregas. -->
+      <nav class="puerta-tabs oculto" id="subTabs" aria-label="Secciones del área">
+          <button class="tab" data-tab="caja" data-puerta="caja"><i>🧾</i><span>Caja</span></button>
+          <button class="tab" data-tab="pagos" data-puerta="caja"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
+          <button class="tab" data-tab="pedidos" data-puerta="operacion"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
+          <button class="tab" data-tab="mesero" data-puerta="operacion"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
+          <button class="tab" data-tab="cocina" data-puerta="operacion"><i>👨‍🍳</i><span>Cocina</span></button>
+          <button class="tab" data-tab="entregas" data-puerta="operacion"><i>🛵</i><span>Entregas</span></button>
+          <button class="tab" data-tab="ventas" data-puerta="dinero"><i>📈</i><span>Ventas</span></button>
+          <button class="tab" data-tab="informe" data-puerta="dinero"><i>📊</i><span>Cruce de caja</span></button>
+          <button class="tab" data-tab="gastos" data-puerta="dinero"><i>💰</i><span>Gastos</span><span class="pill oculto" id="pillGastos">0</span></button>
+          <button class="tab" data-tab="stock" data-puerta="inventario"><i>📦</i><span>Stock</span></button>
+          <button class="tab" data-tab="entradas" data-puerta="inventario"><i>📥</i><span>Entradas</span></button>
+          <button class="tab" data-tab="cierre" data-puerta="inventario"><i>📝</i><span>Registrar cierre</span></button>
+          <button class="tab" data-tab="inventario" data-puerta="inventario"><i>🔄</i><span>Cierres de inventario</span><span class="pill oculto" id="pillCierres">0</span></button>
+          <button class="tab" data-tab="carta" data-puerta="carta"><i>🍔</i><span>Carta</span></button>
+          <button class="tab" data-tab="dia" data-puerta="carta"><i>📅</i><span>Menú del día</span></button>
+          <button class="tab" data-tab="unidades" data-puerta="negocio"><i>🏪</i><span>Unidades / Locales</span></button>
+          <button class="tab" data-tab="usuarios" data-puerta="negocio"><i>👥</i><span>Usuarios</span></button>
+          <button class="tab" data-tab="config" data-puerta="negocio"><i>⚙️</i><span>Configuración</span></button>
+          <button class="tab" data-tab="ajustes" data-puerta="negocio"><i>🔧</i><span>Ajustes</span></button>
+      </nav>
 
       <main class="contenedor">
 

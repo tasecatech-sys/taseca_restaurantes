@@ -3139,6 +3139,70 @@ tr.fila--sin td {
   color: var(--blanco);
 }
 
+/* ---- Barra de secciones de la puerta abierta ----
+   Segundo nivel de navegación: el lateral elige el área, esta barra la
+   sección. Reaprovecha los estilos de `.tab`, que ya eran los de una
+   pestaña horizontal; aquí sólo se arma el contenedor.
+
+   No se confunda con `.sub-tabs`, que es la navegación de DENTRO de una
+   pantalla («Tomar pedido» / «Listos para llevar»). Esta es de nivel
+   superior y va fuera del panel. */
+.puerta-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 22px;
+  /* Los mismos tokens que la cabecera de arriba: la barra se lee como
+     parte de ella, y cambia con el tema de cada empresa. */
+  border-bottom: 1px solid var(--side-borde, var(--borde));
+  background: var(--side-fondo, transparent);
+  overflow-x: auto;
+  /* Una barra de navegación no necesita barra de scroll a la vista: se
+     arrastra o se usa la rueda. */
+  scrollbar-width: none;
+}
+.puerta-tabs::-webkit-scrollbar {
+  display: none;
+}
+.puerta-tabs .tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+.puerta-tabs .tab i {
+  font-style: normal;
+  font-size: 16px;
+  line-height: 1;
+}
+.puerta-tabs .tab .pill {
+  margin-left: 2px;
+}
+
+/* De otra puerta: no se ve, pero sigue en su sitio con su contador, que
+   es lo que suma el contador de la puerta en el lateral. Se distingue de
+   `.oculto`, que es la decisión de permisos y no se pisa nunca. */
+.puerta-tabs .tab.is-fuera {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .puerta-tabs {
+    padding: 0 16px;
+  }
+  .puerta-tabs .tab {
+    padding: 11px 12px;
+    font-size: 13px;
+  }
+  /* Con el ancho de un teléfono el texto de todas las secciones no cabe:
+     se deja sólo el icono, y el nombre de la sección ya lo dice el título
+     de la pantalla que se abre debajo. */
+  .puerta-tabs .tab:not(.is-activo) span:not(.pill) {
+    display: none;
+  }
+}
+
 /* ============ 17b. VISTAS DE PISO (mesero, cocina, entregas) ============
    Botones grandes, poco texto y estado a primera vista: se usan de pie,
    con una mano y con prisa.
@@ -3683,6 +3747,7 @@ tr.fila--sin td {
   .btn,
   .tabs,
   .sub-tabs,
+  .puerta-tabs,
   .barra-herramientas,
   .toast-wrap,
   .inv-top,

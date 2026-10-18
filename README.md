@@ -280,53 +280,67 @@ en cualquier resolución, y las tablas, tarjetas y tableros lo aprovechan porque
 dentro del panel el contenido ya no tiene el límite de 1200 px de la página
 pública.
 
-### Grupos por contexto de trabajo
+### Dos niveles: puerta y sección
 
-Con 17 opciones el menú del Admin era una lista larga. Ahora van en cuatro
-grupos que se abren y se cierran:
+Diecinueve opciones sueltas en una sola lista obligan a leerlas todas para
+encontrar una. La navegación del panel de empresa tiene **dos niveles**: el
+lateral elige el **área** —seis puertas— y una barra sobre el contenido elige
+la **sección** dentro de ella. A cualquier pantalla se llega en dos clicks.
 
-| Grupo | Opciones |
+| Puerta | Secciones |
 |---|---|
-| **Operación** | Mesas · Pedidos · Cocina · Entregas |
-| **Ventas y caja** | Ventas · Pagos · Cruce de caja · Gastos |
-| **Productos e inventario** | Menú del día · Carta · Stock · Entradas · Registrar cierre · Cierres de inventario |
-| **Administración** | Unidades / Locales · Usuarios · Configuración · Ajustes |
+| 🧾 **Caja** | Caja · Pagos |
+| 🍽️ **Operación** | Pedidos · Mesas · Cocina · Entregas |
+| 💰 **Dinero** | Ventas · Cruce de caja · Gastos |
+| 📦 **Inventario** | Stock · Entradas · Registrar cierre · Cierres de inventario |
+| 🍔 **Carta** | Carta · Menú del día |
+| ⚙️ **Negocio** | Unidades / Locales · Usuarios · Configuración · Ajustes |
 
-Hay **dos niveles** que se combinan:
+El orden es el de uso: lo del día a día arriba, lo que se toca una vez al mes
+abajo. Está en `NASCAR.PUERTAS` (`js/data.js`), en un solo sitio.
 
-1. **Barra completa / encogida** — el botón ← →.
-2. **Grupos abiertos / cerrados** — clic en el título del grupo (▾ abierto, ▸ cerrado).
+- Al abrir una puerta se cae en la **última sección en la que se estuvo**
+  dentro de ella, o en la primera si es la primera vez. Es memoria de la
+  sesión: no se guarda, no es una preferencia que haya que administrar.
+- La barra de secciones **desaparece** cuando la puerta tiene una sola sección
+  visible. Cocina y domicilio entran directo a lo suyo y no ven navegación
+  ninguna: una barra de un solo botón es ruido.
+- El **contador de una puerta es la suma** de los de sus secciones. Tres pagos
+  por confirmar se ven en 🧾 **Caja** sin tener que abrirla: lo que no está a
+  la vista también se tiene que notar.
+- La dirección sigue siendo la de la **sección** (`#cocina`, `#entregas`…).
+  Los enlaces guardados y las tablets que abren siempre en lo suyo funcionan
+  exactamente igual que antes.
+- El dueño sigue entrando por **Operación · Pedidos**.
 
-- Con la barra **encogida** no hay títulos: se ven todos los iconos a los que
-  el perfil tiene acceso, con una línea fina entre grupos y su tooltip. Aunque
-  un grupo esté cerrado sus iconos siguen ahí, para que la navegación no se
-  pierda. Al expandir, cada grupo vuelve a como estaba.
-- Si se **llega** a una sección cuyo grupo estaba cerrado (al entrar o desde un
-  enlace), el grupo se abre. Si el usuario cierra el grupo de la sección en la
-  que está, el título lo marca con la barra de color.
-- El estado de cada grupo se recuerda por panel (`nascar.sidebar.grupos.empresa`).
+Las **pantallas no cambiaron**: los botones son los mismos `.tab` con el mismo
+`data-tab` de siempre, sólo que ahora viven en la barra de arriba en lugar del
+lateral. Lo que cambió es cómo se llega a ellas.
 
 **«Cierre» y «Cierres» no eran lo mismo.** *Cierre* es el formulario donde se
 cuentan las existencias físicas de una jornada por área (permiso
 `cierres_registrar`, el de la mesera); *Cierres* es la consulta de esos
 cierres, su revisión y el cruce de inventario (permiso `cierres`). Los dos son
-de **inventario** —el conteo no lleva dinero—, así que van en *Productos e
-inventario* y con nombres que no se confunden: **Registrar cierre** y
-**Cierres de inventario**. *Cruce* pasa a **Cruce de caja**, para no
-confundirlo con el cruce de inventario.
+de **inventario** —el conteo no lleva dinero—, así que van en 📦 *Inventario* y
+con nombres que no se confunden: **Registrar cierre** y **Cierres de
+inventario**. *Cruce* pasa a **Cruce de caja**, para no confundirlo con el
+cruce de inventario.
 
-**Los grupos no tocan permisos.** Cada `.tab` se sigue ocultando con
+**Las puertas no tocan permisos.** Cada `.tab` se sigue ocultando con
 `aplicarPermisos()` exactamente igual, cada sección sigue comprobando el acceso
-al abrirse, y un grupo que se queda sin opciones visibles desaparece entero:
+al abrirse, y una puerta que se queda sin secciones visibles desaparece entera:
 
 | Rol | Lo que ve |
 |---|---|
-| Admin | Los 4 grupos completos (18 opciones) |
-| Administrador | Operación (Pedidos) · Ventas y caja (4) · Productos e inventario (6) · Administración (Ajustes) |
-| Caja | Ventas y caja (Pagos, Cruce de caja, Gastos) · Productos e inventario (Entradas) |
-| Mesero | Operación (Mesas) · Productos e inventario (Registrar cierre) |
-| Cocinero | Operación (Cocina) |
-| Domiciliario | Operación (Entregas) |
+| Dueño | 6 puertas · las 19 secciones |
+| Administrador | 6 puertas · 13 secciones |
+| Caja | 3 puertas: Caja (2) · Dinero (2) · Inventario (1) |
+| Mesero | 2 puertas con una sección cada una: Operación (Mesas) · Inventario (Registrar cierre) |
+| Cocinero | 1 puerta, 1 sección: entra directo a Cocina |
+| Domiciliario | 1 puerta, 1 sección: entra directo a Entregas |
+
+El panel de Taseca sigue con **grupos plegables** (`js/sidebar.js`): tiene
+pocas opciones y no le hacen falta dos niveles.
 
 ### Tooltips
 
@@ -469,7 +483,7 @@ que cambia no es el programa: es **lo que cada unidad tiene cargado**.
   inventario, así que el portal y la pantalla de mesa **ocultan la sección de
   carta** en vez de mostrarla vacía. Traen cinco menús del chef de ejemplo
   (tres y dos) para que se vea cómo se publica; se cambian cada mañana desde
-  *Productos e inventario → Menú del día*.
+  *Carta → Menú del día*.
 - **El bar y la arepera llevan inventario**, que es justo lo que se cuenta en
   las planillas de papel que ya usan. El código de cada producto **conserva el
   número (CD) de la planilla**: `BAR-01`…`BAR-31` (el 18 y el 21 no existen en
@@ -578,7 +592,7 @@ prueba, pero no aparecen en el portal ni en el selector.
 ## 🍽️ Menú del día: armado o del chef
 
 Cada **sucursal**, en cada **fecha**, publica **una** de dos modalidades. Se
-configura en *Productos e inventario → Menú del día*: se elige sucursal y fecha,
+configura en *Carta → Menú del día*: se elige sucursal y fecha,
 se marca el tipo y se arma el menú.
 
 | | Menú armado | Menú del chef |
@@ -1681,7 +1695,7 @@ vendido de cada uno. Un producto que no se venda directamente lleva
 ## Cómo funcionan los pagos
 
 **Entregar no es cobrar.** Todo pedido —de mesa o a domicilio, con cualquier
-método— queda con el pago **pendiente** y aparece en **Ventas y caja → Pagos**.
+método— queda con el pago **pendiente** y aparece en **Caja → Pagos**.
 Marcarlo *Entregado* (el mesero o el domiciliario) sólo cambia lo que ve el
 cliente. La cajera confirma cuando tiene el dinero y elige **con qué pagó** el
 cliente; un pago confirmado ya no se cambia.

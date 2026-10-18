@@ -255,7 +255,10 @@
   text-overflow: ellipsis;
 }
 
-/* Contadores: pegados al icono cuando el menú está encogido. */
+/* Contadores: pegados al icono cuando el menú está encogido. En el panel
+   de empresa el contador de una puerta es la suma de los de sus secciones,
+   así que se coloca igual que el de una sección. */
+.app-side__item .pill,
 .app-side .tab .pill {
   margin-left: auto;
 }
@@ -263,6 +266,7 @@
 .app-shell.is-colapsado .app-side .tab span:not(.pill) {
   display: none;
 }
+.app-shell.is-colapsado .app-side__item .pill,
 .app-shell.is-colapsado .app-side .tab .pill {
   position: absolute;
   top: 2px;
@@ -506,7 +510,8 @@
     justify-content: flex-start;
     padding: 10px 11px;
   }
-  .app-shell.is-colapsado .app-side .tab .pill {
+  .app-shell.is-colapsado .app-side__item .pill,
+.app-shell.is-colapsado .app-side .tab .pill {
     position: static;
     margin-left: auto;
     font-size: 12px;

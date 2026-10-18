@@ -3165,6 +3165,70 @@ tr.fila--sin td {
   color: var(--blanco);
 }
 
+/* ---- Barra de secciones de la puerta abierta ----
+   Segundo nivel de navegación: el lateral elige el área, esta barra la
+   sección. Reaprovecha los estilos de `.tab`, que ya eran los de una
+   pestaña horizontal; aquí sólo se arma el contenedor.
+
+   No se confunda con `.sub-tabs`, que es la navegación de DENTRO de una
+   pantalla («Tomar pedido» / «Listos para llevar»). Esta es de nivel
+   superior y va fuera del panel. */
+.puerta-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 22px;
+  /* Los mismos tokens que la cabecera de arriba: la barra se lee como
+     parte de ella, y cambia con el tema de cada empresa. */
+  border-bottom: 1px solid var(--side-borde, var(--borde));
+  background: var(--side-fondo, transparent);
+  overflow-x: auto;
+  /* Una barra de navegación no necesita barra de scroll a la vista: se
+     arrastra o se usa la rueda. */
+  scrollbar-width: none;
+}
+.puerta-tabs::-webkit-scrollbar {
+  display: none;
+}
+.puerta-tabs .tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+.puerta-tabs .tab i {
+  font-style: normal;
+  font-size: 16px;
+  line-height: 1;
+}
+.puerta-tabs .tab .pill {
+  margin-left: 2px;
+}
+
+/* De otra puerta: no se ve, pero sigue en su sitio con su contador, que
+   es lo que suma el contador de la puerta en el lateral. Se distingue de
+   `.oculto`, que es la decisión de permisos y no se pisa nunca. */
+.puerta-tabs .tab.is-fuera {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .puerta-tabs {
+    padding: 0 16px;
+  }
+  .puerta-tabs .tab {
+    padding: 11px 12px;
+    font-size: 13px;
+  }
+  /* Con el ancho de un teléfono el texto de todas las secciones no cabe:
+     se deja sólo el icono, y el nombre de la sección ya lo dice el título
+     de la pantalla que se abre debajo. */
+  .puerta-tabs .tab:not(.is-activo) span:not(.pill) {
+    display: none;
+  }
+}
+
 /* ============ 17b. VISTAS DE PISO (mesero, cocina, entregas) ============
    Botones grandes, poco texto y estado a primera vista: se usan de pie,
    con una mano y con prisa.
@@ -3709,6 +3773,7 @@ tr.fila--sin td {
   .btn,
   .tabs,
   .sub-tabs,
+  .puerta-tabs,
   .barra-herramientas,
   .toast-wrap,
   .inv-top,
@@ -4798,7 +4863,10 @@ tr.fila--sin td {
   text-overflow: ellipsis;
 }
 
-/* Contadores: pegados al icono cuando el menú está encogido. */
+/* Contadores: pegados al icono cuando el menú está encogido. En el panel
+   de empresa el contador de una puerta es la suma de los de sus secciones,
+   así que se coloca igual que el de una sección. */
+.app-side__item .pill,
 .app-side .tab .pill {
   margin-left: auto;
 }
@@ -4806,6 +4874,7 @@ tr.fila--sin td {
 .app-shell.is-colapsado .app-side .tab span:not(.pill) {
   display: none;
 }
+.app-shell.is-colapsado .app-side__item .pill,
 .app-shell.is-colapsado .app-side .tab .pill {
   position: absolute;
   top: 2px;
@@ -5049,7 +5118,8 @@ tr.fila--sin td {
     justify-content: flex-start;
     padding: 10px 11px;
   }
-  .app-shell.is-colapsado .app-side .tab .pill {
+  .app-shell.is-colapsado .app-side__item .pill,
+.app-shell.is-colapsado .app-side .tab .pill {
     position: static;
     margin-left: auto;
     font-size: 12px;
@@ -5612,52 +5682,24 @@ tr.fila--sin td {
         <i>←</i><span>Contraer menú</span>
       </button>
 
-      <nav class="app-side__menu" id="tabs" aria-label="Secciones del panel">
-        <!-- Opciones agrupadas por contexto de trabajo. Los grupos SÓLO
-             ordenan: qué opción ve cada perfil lo sigue decidiendo
-             aplicarPermisos() sobre cada .tab, y un grupo que se queda sin
-             opciones visibles se esconde entero (Sidebar.actualizarGrupos).
-             «Registrar cierre» y «Cierres de inventario» son de inventario:
-             el conteo físico no lleva dinero. -->
-        <div class="app-side__grupo" data-grupo="operacion">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoOperacion"><i aria-hidden="true">▾</i><span>Operación</span></button>
-          <div class="app-side__grupo-items" id="grupoOperacion" role="group" aria-label="Operación">
-            <button class="tab" data-tab="mesero"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
-            <button class="tab" data-tab="pedidos"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
-            <button class="tab" data-tab="cocina"><i>👨‍🍳</i><span>Cocina</span></button>
-            <button class="tab" data-tab="entregas"><i>🛵</i><span>Entregas</span></button>
-          </div>
-        </div>
-        <div class="app-side__grupo" data-grupo="ventas">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoVentas"><i aria-hidden="true">▾</i><span>Ventas y caja</span></button>
-          <div class="app-side__grupo-items" id="grupoVentas" role="group" aria-label="Ventas y caja">
-            <button class="tab" data-tab="caja"><i>🧾</i><span>Caja</span></button>
-            <button class="tab" data-tab="ventas"><i>📈</i><span>Ventas</span></button>
-            <button class="tab" data-tab="pagos"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
-            <button class="tab" data-tab="informe"><i>📊</i><span>Cruce de caja</span></button>
-            <button class="tab" data-tab="gastos"><i>💰</i><span>Gastos</span><span class="pill oculto" id="pillGastos">0</span></button>
-          </div>
-        </div>
-        <div class="app-side__grupo" data-grupo="productos">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoProductos"><i aria-hidden="true">▾</i><span>Productos e inventario</span></button>
-          <div class="app-side__grupo-items" id="grupoProductos" role="group" aria-label="Productos e inventario">
-            <button class="tab" data-tab="dia"><i>📅</i><span>Menú del día</span></button>
-            <button class="tab" data-tab="carta"><i>🍔</i><span>Carta</span></button>
-            <button class="tab" data-tab="stock"><i>📦</i><span>Stock</span></button>
-            <button class="tab" data-tab="entradas"><i>📥</i><span>Entradas</span></button>
-            <button class="tab" data-tab="cierre"><i>📝</i><span>Registrar cierre</span></button>
-            <button class="tab" data-tab="inventario"><i>🔄</i><span>Cierres de inventario</span><span class="pill oculto" id="pillCierres">0</span></button>
-          </div>
-        </div>
-        <div class="app-side__grupo" data-grupo="administracion">
-          <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoAdministracion"><i aria-hidden="true">▾</i><span>Administración</span></button>
-          <div class="app-side__grupo-items" id="grupoAdministracion" role="group" aria-label="Administración">
-            <button class="tab" data-tab="unidades"><i>🏪</i><span>Unidades / Locales</span></button>
-            <button class="tab" data-tab="usuarios"><i>👥</i><span>Usuarios</span></button>
-            <button class="tab" data-tab="config"><i>⚙️</i><span>Configuración</span></button>
-            <button class="tab" data-tab="ajustes"><i>🔧</i><span>Ajustes</span></button>
-          </div>
-        </div>
+      <nav class="app-side__menu" id="puertas" aria-label="Áreas del panel">
+        <!-- Seis puertas. Cada una abre su barra de secciones (#subTabs),
+             que es donde siguen estando los botones .tab de siempre.
+
+             Esta lista SÓLO ordena: qué sección ve cada perfil lo sigue
+             decidiendo aplicarPermisos() sobre cada .tab, y una puerta que
+             se queda sin secciones visibles se esconde entera. Al perfil
+             que sólo tiene una sección —cocina, entregas— no se le muestra
+             ni la puerta ni la barra: entra directo a lo suyo.
+
+             El contador de la puerta es la suma de los de sus secciones,
+             para que un pago por confirmar se vea sin tener que abrirla. -->
+        <button class="app-side__item" type="button" data-puerta="caja"><i>🧾</i><span>Caja</span><span class="pill oculto" data-puerta-pill="caja">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="operacion"><i>🍽️</i><span>Operación</span><span class="pill oculto" data-puerta-pill="operacion">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="dinero"><i>💰</i><span>Dinero</span><span class="pill oculto" data-puerta-pill="dinero">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="inventario"><i>📦</i><span>Inventario</span><span class="pill oculto" data-puerta-pill="inventario">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="carta"><i>🍔</i><span>Carta</span><span class="pill oculto" data-puerta-pill="carta">0</span></button>
+        <button class="app-side__item" type="button" data-puerta="negocio"><i>⚙️</i><span>Negocio</span><span class="pill oculto" data-puerta-pill="negocio">0</span></button>
       </nav>
 
       <div class="app-side__pie">
@@ -5690,6 +5732,33 @@ tr.fila--sin td {
           <div class="num" style="font-size:19px" id="reloj">—</div>
         </div>
       </header>
+
+      <!-- Barra de secciones de la puerta abierta. Son los botones .tab
+           de siempre: misma clase, mismo data-tab y mismos ids de
+           contador, sólo que ahora viven aquí en lugar de en el
+           lateral. Se esconde entera cuando la puerta tiene una sola
+           sección visible, que es el caso de cocina y entregas. -->
+      <nav class="puerta-tabs oculto" id="subTabs" aria-label="Secciones del área">
+          <button class="tab" data-tab="caja" data-puerta="caja"><i>🧾</i><span>Caja</span></button>
+          <button class="tab" data-tab="pagos" data-puerta="caja"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
+          <button class="tab" data-tab="pedidos" data-puerta="operacion"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
+          <button class="tab" data-tab="mesero" data-puerta="operacion"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
+          <button class="tab" data-tab="cocina" data-puerta="operacion"><i>👨‍🍳</i><span>Cocina</span></button>
+          <button class="tab" data-tab="entregas" data-puerta="operacion"><i>🛵</i><span>Entregas</span></button>
+          <button class="tab" data-tab="ventas" data-puerta="dinero"><i>📈</i><span>Ventas</span></button>
+          <button class="tab" data-tab="informe" data-puerta="dinero"><i>📊</i><span>Cruce de caja</span></button>
+          <button class="tab" data-tab="gastos" data-puerta="dinero"><i>💰</i><span>Gastos</span><span class="pill oculto" id="pillGastos">0</span></button>
+          <button class="tab" data-tab="stock" data-puerta="inventario"><i>📦</i><span>Stock</span></button>
+          <button class="tab" data-tab="entradas" data-puerta="inventario"><i>📥</i><span>Entradas</span></button>
+          <button class="tab" data-tab="cierre" data-puerta="inventario"><i>📝</i><span>Registrar cierre</span></button>
+          <button class="tab" data-tab="inventario" data-puerta="inventario"><i>🔄</i><span>Cierres de inventario</span><span class="pill oculto" id="pillCierres">0</span></button>
+          <button class="tab" data-tab="carta" data-puerta="carta"><i>🍔</i><span>Carta</span></button>
+          <button class="tab" data-tab="dia" data-puerta="carta"><i>📅</i><span>Menú del día</span></button>
+          <button class="tab" data-tab="unidades" data-puerta="negocio"><i>🏪</i><span>Unidades / Locales</span></button>
+          <button class="tab" data-tab="usuarios" data-puerta="negocio"><i>👥</i><span>Usuarios</span></button>
+          <button class="tab" data-tab="config" data-puerta="negocio"><i>⚙️</i><span>Configuración</span></button>
+          <button class="tab" data-tab="ajustes" data-puerta="negocio"><i>🔧</i><span>Ajustes</span></button>
+      </nav>
 
       <main class="contenedor">
 
@@ -7047,6 +7116,46 @@ NASCAR.MODULO_DE_TAB = {
   cierre: 'cierre',
   inventario: 'cierre',
 };
+
+/* -------------------------------------------------------------------------
+   PUERTAS DEL PANEL · cómo se llega a cada sección
+
+   Diecinueve opciones sueltas en el menú obligan a leerlas todas para
+   encontrar una. Agrupadas en seis puertas, se llega a cualquier
+   pantalla en dos clicks: la puerta y la sección.
+
+   OJO con lo que esto NO es:
+     · no da ni quita acceso a nada. Qué secciones ve cada perfil lo
+       sigue decidiendo NASCAR.Auth.seccionesVisibles(); una puerta sin
+       secciones visibles simplemente no se muestra.
+     · no cambia ninguna pantalla. Los `data-tab` son los mismos de
+       siempre, así que las direcciones guardadas (#cocina, #entregas…)
+       siguen funcionando igual.
+
+   El ORDEN importa: es el orden en que se ven, de lo que más se usa en
+   el día a día a lo que se toca una vez al mes.
+   ------------------------------------------------------------------------- */
+NASCAR.PUERTAS = [
+  { id: 'caja', icono: '🧾', nombre: 'Caja', tabs: ['caja', 'pagos'] },
+  { id: 'operacion', icono: '🍽️', nombre: 'Operación', tabs: ['pedidos', 'mesero', 'cocina', 'entregas'] },
+  { id: 'dinero', icono: '💰', nombre: 'Dinero', tabs: ['ventas', 'informe', 'gastos'] },
+  { id: 'inventario', icono: '📦', nombre: 'Inventario', tabs: ['stock', 'entradas', 'cierre', 'inventario'] },
+  { id: 'carta', icono: '🍔', nombre: 'Carta', tabs: ['carta', 'dia'] },
+  { id: 'negocio', icono: '⚙️', nombre: 'Negocio', tabs: ['unidades', 'usuarios', 'config', 'ajustes'] },
+];
+
+/* La puerta a la que pertenece una sección. Se calcula una vez: si una
+   sección nueva se olvida de entrar en una puerta, cae en la primera y
+   se ve, en lugar de quedar inalcanzable. */
+NASCAR.PUERTA_DE_TAB = (function () {
+  const m = {};
+  NASCAR.PUERTAS.forEach(function (p) {
+    p.tabs.forEach(function (t) {
+      m[t] = p.id;
+    });
+  });
+  return m;
+})();
 
 /* -------------------------------------------------------------------------
    GASTOS · categorías
@@ -25812,6 +25921,65 @@ NASCAR.Avisos = (function () {
   }
 
   /* ---------------------------------------------------------------
+     PUERTAS · las seis áreas del menú lateral
+
+     Diecinueve opciones sueltas obligan a leerlas todas para encontrar
+     una. Con dos niveles —área en el lateral, sección en la barra de
+     arriba— se llega a cualquier pantalla en dos clicks.
+
+     Esto es SOLO navegación. Una puerta no da ni quita acceso a nada:
+     se muestra si tiene al menos una sección visible, y lo de
+     «visible» ya lo decidió aplicarPermisos() sobre cada .tab leyendo
+     NASCAR.Auth.seccionesVisibles(). Cada acción del panel vuelve a
+     comprobar su permiso igual que siempre.
+     --------------------------------------------------------------- */
+
+  /* La sección en la que se dejó cada puerta: al volver a ella se cae
+     donde se estaba, no siempre en la primera. Es memoria de la sesión,
+     no una preferencia que haya que guardar. */
+  const ultimaDePuerta = {};
+
+  function tabsDePuerta(id) {
+    return $$('#subTabs .tab').filter((t) => t.dataset.puerta === id);
+  }
+
+  function visiblesDePuerta(id) {
+    return tabsDePuerta(id).filter((t) => !t.classList.contains('oculto'));
+  }
+
+  function puertaDe(tab) {
+    const b = $('#subTabs .tab[data-tab="' + tab + '"]');
+    // Si una sección nueva se olvidó de entrar en una puerta, cae en la
+    // primera y se ve, en lugar de quedar inalcanzable.
+    return (b && b.dataset.puerta) ||
+      (NASCAR.PUERTA_DE_TAB || {})[tab] ||
+      ((NASCAR.PUERTAS || [])[0] || {}).id ||
+      '';
+  }
+
+  /* Una puerta sin secciones visibles no se muestra: sería un botón que
+     no lleva a ninguna parte. Sólo LEE la decisión de permisos. */
+  function pintarPuertas() {
+    $$('#puertas [data-puerta]').forEach(function (b) {
+      b.classList.toggle('oculto', visiblesDePuerta(b.dataset.puerta).length === 0);
+    });
+  }
+
+  /* El contador de una puerta es la suma de los de sus secciones: un
+     pago por confirmar tiene que verse sin haber abierto la puerta. */
+  function pintarContadoresDePuerta() {
+    $$('#puertas [data-puerta-pill]').forEach(function (pill) {
+      const suma = visiblesDePuerta(pill.dataset.puertaPill).reduce(function (n, t) {
+        const p = t.querySelector('.pill');
+        if (!p || p.classList.contains('oculto')) return n;
+        return n + (parseInt(p.textContent, 10) || 0);
+      }, 0);
+      pill.textContent = suma;
+      pill.classList.toggle('oculto', suma === 0);
+    });
+  }
+
+  /* ---------------------------------------------------------------
      Permisos: qué pestañas ve quien está conectado.
 
      Ocultar la pestaña es sólo la mitad; cada acción del panel vuelve
@@ -25823,9 +25991,13 @@ NASCAR.Avisos = (function () {
     const visibles = A.seccionesVisibles();
     const usuario = A.getUsuarioActual();
 
-    $$('.tab').forEach(function (t) {
+    $$('.tab[data-tab]').forEach(function (t) {
       t.classList.toggle('oculto', visibles.indexOf(t.dataset.tab) < 0);
     });
+
+    /* Y con ello, qué puertas tienen algo dentro. Va DESPUÉS de decidir
+       las secciones y sólo lee esa decisión. */
+    pintarPuertas();
 
     /* La unidad del contexto. Quien está asignado a una unidad trabaja en
        la suya: el selector se ve —para saber dónde se está— pero no se
@@ -25870,12 +26042,6 @@ NASCAR.Avisos = (function () {
       ? pedida
       : A.seccionInicial();
     if (inicial) irATab(inicial);
-
-    /* Un grupo del menú en el que este perfil no tiene ninguna opción no
-       se muestra. Va DESPUÉS de decidir qué .tab se ven y sólo lee esa
-       decisión: agrupar no da ni quita acceso a nada. */
-    if (NASCAR.Sidebar && NASCAR.Sidebar.actualizarGrupos)
-      NASCAR.Sidebar.actualizarGrupos($('[data-sidebar-shell]'));
   }
 
   function irATab(tab) {
@@ -25889,22 +26055,57 @@ NASCAR.Avisos = (function () {
     if (NASCAR.Remoto && (tab === 'gastos' || tab === 'informe')) NASCAR.Remoto.refrescarCaja();
     // La preferencia de avisos se puede haber cambiado desde el botón 🔔 de la barra
     if (tab === 'ajustes' && pintarAvisos) pintarAvisos();
-    $$('.tab').forEach((t) => t.classList.toggle('is-activo', t.dataset.tab === tab));
+    $$('.tab[data-tab]').forEach((t) => t.classList.toggle('is-activo', t.dataset.tab === tab));
     $$('.panel').forEach((p) => p.classList.toggle('is-activo', p.dataset.panel === tab));
 
-    /* Grupos del menú lateral: se marca el que contiene la sección y, si
-       se acaba de llegar a ella con su grupo cerrado, se abre. Sólo pinta:
-       a qué sección se puede ir ya lo decidió quien llama. */
-    if (NASCAR.Sidebar && NASCAR.Sidebar.revelarActivo)
-      NASCAR.Sidebar.revelarActivo($('[data-sidebar-shell]'), { abrir: anterior !== tab });
+    /* Los dos niveles del menú siguen a la sección: se marca su puerta en
+       el lateral y la barra de arriba deja a la vista sólo las secciones
+       de esa puerta. Sólo pinta: a qué sección se puede ir ya lo decidió
+       quien llama. */
+    const puerta = puertaDe(tab);
+    if (puerta) ultimaDePuerta[puerta] = tab;
+    $$('#puertas [data-puerta]').forEach((b) =>
+      b.classList.toggle('is-activo', b.dataset.puerta === puerta)
+    );
+
+    const barra = $('#subTabs');
+    if (barra) {
+      $$('#subTabs .tab[data-tab]').forEach((t) =>
+        t.classList.toggle('is-fuera', t.dataset.puerta !== puerta)
+      );
+      /* Con una sola sección visible no hay elección que hacer: cocina y
+         domicilio entran directo a lo suyo y no ven barra ninguna. */
+      barra.classList.toggle('oculto', visiblesDePuerta(puerta).length < 2);
+
+      // Al cambiar de sección la barra vuelve al principio: en un
+      // teléfono puede haberse quedado desplazada.
+      if (anterior !== tab && barra.scrollTo) barra.scrollTo({ left: 0 });
+    }
 
     // La dirección acompaña a la sección: al recargar se vuelve a la misma
     if (history.replaceState) history.replaceState(null, '', '#' + tab);
   }
 
   function conectarTabs() {
-    $('#tabs').addEventListener('click', function (e) {
-      const b = e.target.closest('.tab');
+    /* Primer nivel: la puerta. No navega a ninguna sección por sí misma,
+       lleva a la que corresponda dentro de ella, que es la última en la
+       que se estuvo o, si no hay, la primera visible. */
+    $('#puertas').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-puerta]');
+      if (!b) return;
+      const vis = visiblesDePuerta(b.dataset.puerta);
+      if (!vis.length) return U.toast('Tu perfil no tiene acceso a esa área.', 'error');
+      const recordada = ultimaDePuerta[b.dataset.puerta];
+      const destino = vis.some((t) => t.dataset.tab === recordada)
+        ? recordada
+        : vis[0].dataset.tab;
+      irATab(destino);
+      refrescarTodo();
+    });
+
+    // Segundo nivel: la sección. La comprobación es la de siempre.
+    $('#subTabs').addEventListener('click', function (e) {
+      const b = e.target.closest('.tab[data-tab]');
       if (!b) return;
       if (A.seccionesVisibles().indexOf(b.dataset.tab) < 0) {
         /* Se distingue el motivo: que el módulo no esté contratado no
@@ -26045,6 +26246,9 @@ NASCAR.Avisos = (function () {
     const pillGa = $('#pillGastos');
     pillGa.textContent = gastosPend;
     pillGa.classList.toggle('oculto', gastosPend === 0 || !A.puede('gastos_confirmar'));
+
+    // Lo que no está a la vista también se tiene que notar: la puerta suma
+    pintarContadoresDePuerta();
 
     // La marca es la de la empresa que se está atendiendo, no una fija
     document.title =

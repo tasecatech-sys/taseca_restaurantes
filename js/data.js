@@ -505,6 +505,46 @@ NASCAR.MODULO_DE_TAB = {
 };
 
 /* -------------------------------------------------------------------------
+   PUERTAS DEL PANEL · cómo se llega a cada sección
+
+   Diecinueve opciones sueltas en el menú obligan a leerlas todas para
+   encontrar una. Agrupadas en seis puertas, se llega a cualquier
+   pantalla en dos clicks: la puerta y la sección.
+
+   OJO con lo que esto NO es:
+     · no da ni quita acceso a nada. Qué secciones ve cada perfil lo
+       sigue decidiendo NASCAR.Auth.seccionesVisibles(); una puerta sin
+       secciones visibles simplemente no se muestra.
+     · no cambia ninguna pantalla. Los `data-tab` son los mismos de
+       siempre, así que las direcciones guardadas (#cocina, #entregas…)
+       siguen funcionando igual.
+
+   El ORDEN importa: es el orden en que se ven, de lo que más se usa en
+   el día a día a lo que se toca una vez al mes.
+   ------------------------------------------------------------------------- */
+NASCAR.PUERTAS = [
+  { id: 'caja', icono: '🧾', nombre: 'Caja', tabs: ['caja', 'pagos'] },
+  { id: 'operacion', icono: '🍽️', nombre: 'Operación', tabs: ['pedidos', 'mesero', 'cocina', 'entregas'] },
+  { id: 'dinero', icono: '💰', nombre: 'Dinero', tabs: ['ventas', 'informe', 'gastos'] },
+  { id: 'inventario', icono: '📦', nombre: 'Inventario', tabs: ['stock', 'entradas', 'cierre', 'inventario'] },
+  { id: 'carta', icono: '🍔', nombre: 'Carta', tabs: ['carta', 'dia'] },
+  { id: 'negocio', icono: '⚙️', nombre: 'Negocio', tabs: ['unidades', 'usuarios', 'config', 'ajustes'] },
+];
+
+/* La puerta a la que pertenece una sección. Se calcula una vez: si una
+   sección nueva se olvida de entrar en una puerta, cae en la primera y
+   se ve, en lugar de quedar inalcanzable. */
+NASCAR.PUERTA_DE_TAB = (function () {
+  const m = {};
+  NASCAR.PUERTAS.forEach(function (p) {
+    p.tabs.forEach(function (t) {
+      m[t] = p.id;
+    });
+  });
+  return m;
+})();
+
+/* -------------------------------------------------------------------------
    GASTOS · categorías
 
    Ojo: "Compra a proveedor" también aparece en NASCAR.TIPOS_ENTRADA, pero

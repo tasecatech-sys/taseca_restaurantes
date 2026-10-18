@@ -321,6 +321,65 @@
   }
 
   /* ---------------------------------------------------------------
+     PUERTAS · las seis áreas del menú lateral
+
+     Diecinueve opciones sueltas obligan a leerlas todas para encontrar
+     una. Con dos niveles —área en el lateral, sección en la barra de
+     arriba— se llega a cualquier pantalla en dos clicks.
+
+     Esto es SOLO navegación. Una puerta no da ni quita acceso a nada:
+     se muestra si tiene al menos una sección visible, y lo de
+     «visible» ya lo decidió aplicarPermisos() sobre cada .tab leyendo
+     NASCAR.Auth.seccionesVisibles(). Cada acción del panel vuelve a
+     comprobar su permiso igual que siempre.
+     --------------------------------------------------------------- */
+
+  /* La sección en la que se dejó cada puerta: al volver a ella se cae
+     donde se estaba, no siempre en la primera. Es memoria de la sesión,
+     no una preferencia que haya que guardar. */
+  const ultimaDePuerta = {};
+
+  function tabsDePuerta(id) {
+    return $$('#subTabs .tab').filter((t) => t.dataset.puerta === id);
+  }
+
+  function visiblesDePuerta(id) {
+    return tabsDePuerta(id).filter((t) => !t.classList.contains('oculto'));
+  }
+
+  function puertaDe(tab) {
+    const b = $('#subTabs .tab[data-tab="' + tab + '"]');
+    // Si una sección nueva se olvidó de entrar en una puerta, cae en la
+    // primera y se ve, en lugar de quedar inalcanzable.
+    return (b && b.dataset.puerta) ||
+      (NASCAR.PUERTA_DE_TAB || {})[tab] ||
+      ((NASCAR.PUERTAS || [])[0] || {}).id ||
+      '';
+  }
+
+  /* Una puerta sin secciones visibles no se muestra: sería un botón que
+     no lleva a ninguna parte. Sólo LEE la decisión de permisos. */
+  function pintarPuertas() {
+    $$('#puertas [data-puerta]').forEach(function (b) {
+      b.classList.toggle('oculto', visiblesDePuerta(b.dataset.puerta).length === 0);
+    });
+  }
+
+  /* El contador de una puerta es la suma de los de sus secciones: un
+     pago por confirmar tiene que verse sin haber abierto la puerta. */
+  function pintarContadoresDePuerta() {
+    $$('#puertas [data-puerta-pill]').forEach(function (pill) {
+      const suma = visiblesDePuerta(pill.dataset.puertaPill).reduce(function (n, t) {
+        const p = t.querySelector('.pill');
+        if (!p || p.classList.contains('oculto')) return n;
+        return n + (parseInt(p.textContent, 10) || 0);
+      }, 0);
+      pill.textContent = suma;
+      pill.classList.toggle('oculto', suma === 0);
+    });
+  }
+
+  /* ---------------------------------------------------------------
      Permisos: qué pestañas ve quien está conectado.
 
      Ocultar la pestaña es sólo la mitad; cada acción del panel vuelve
@@ -332,9 +391,13 @@
     const visibles = A.seccionesVisibles();
     const usuario = A.getUsuarioActual();
 
-    $$('.tab').forEach(function (t) {
+    $$('.tab[data-tab]').forEach(function (t) {
       t.classList.toggle('oculto', visibles.indexOf(t.dataset.tab) < 0);
     });
+
+    /* Y con ello, qué puertas tienen algo dentro. Va DESPUÉS de decidir
+       las secciones y sólo lee esa decisión. */
+    pintarPuertas();
 
     /* La unidad del contexto. Quien está asignado a una unidad trabaja en
        la suya: el selector se ve —para saber dónde se está— pero no se
@@ -379,12 +442,6 @@
       ? pedida
       : A.seccionInicial();
     if (inicial) irATab(inicial);
-
-    /* Un grupo del menú en el que este perfil no tiene ninguna opción no
-       se muestra. Va DESPUÉS de decidir qué .tab se ven y sólo lee esa
-       decisión: agrupar no da ni quita acceso a nada. */
-    if (NASCAR.Sidebar && NASCAR.Sidebar.actualizarGrupos)
-      NASCAR.Sidebar.actualizarGrupos($('[data-sidebar-shell]'));
   }
 
   function irATab(tab) {
@@ -398,22 +455,57 @@
     if (NASCAR.Remoto && (tab === 'gastos' || tab === 'informe')) NASCAR.Remoto.refrescarCaja();
     // La preferencia de avisos se puede haber cambiado desde el botón 🔔 de la barra
     if (tab === 'ajustes' && pintarAvisos) pintarAvisos();
-    $$('.tab').forEach((t) => t.classList.toggle('is-activo', t.dataset.tab === tab));
+    $$('.tab[data-tab]').forEach((t) => t.classList.toggle('is-activo', t.dataset.tab === tab));
     $$('.panel').forEach((p) => p.classList.toggle('is-activo', p.dataset.panel === tab));
 
-    /* Grupos del menú lateral: se marca el que contiene la sección y, si
-       se acaba de llegar a ella con su grupo cerrado, se abre. Sólo pinta:
-       a qué sección se puede ir ya lo decidió quien llama. */
-    if (NASCAR.Sidebar && NASCAR.Sidebar.revelarActivo)
-      NASCAR.Sidebar.revelarActivo($('[data-sidebar-shell]'), { abrir: anterior !== tab });
+    /* Los dos niveles del menú siguen a la sección: se marca su puerta en
+       el lateral y la barra de arriba deja a la vista sólo las secciones
+       de esa puerta. Sólo pinta: a qué sección se puede ir ya lo decidió
+       quien llama. */
+    const puerta = puertaDe(tab);
+    if (puerta) ultimaDePuerta[puerta] = tab;
+    $$('#puertas [data-puerta]').forEach((b) =>
+      b.classList.toggle('is-activo', b.dataset.puerta === puerta)
+    );
+
+    const barra = $('#subTabs');
+    if (barra) {
+      $$('#subTabs .tab[data-tab]').forEach((t) =>
+        t.classList.toggle('is-fuera', t.dataset.puerta !== puerta)
+      );
+      /* Con una sola sección visible no hay elección que hacer: cocina y
+         domicilio entran directo a lo suyo y no ven barra ninguna. */
+      barra.classList.toggle('oculto', visiblesDePuerta(puerta).length < 2);
+
+      // Al cambiar de sección la barra vuelve al principio: en un
+      // teléfono puede haberse quedado desplazada.
+      if (anterior !== tab && barra.scrollTo) barra.scrollTo({ left: 0 });
+    }
 
     // La dirección acompaña a la sección: al recargar se vuelve a la misma
     if (history.replaceState) history.replaceState(null, '', '#' + tab);
   }
 
   function conectarTabs() {
-    $('#tabs').addEventListener('click', function (e) {
-      const b = e.target.closest('.tab');
+    /* Primer nivel: la puerta. No navega a ninguna sección por sí misma,
+       lleva a la que corresponda dentro de ella, que es la última en la
+       que se estuvo o, si no hay, la primera visible. */
+    $('#puertas').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-puerta]');
+      if (!b) return;
+      const vis = visiblesDePuerta(b.dataset.puerta);
+      if (!vis.length) return U.toast('Tu perfil no tiene acceso a esa área.', 'error');
+      const recordada = ultimaDePuerta[b.dataset.puerta];
+      const destino = vis.some((t) => t.dataset.tab === recordada)
+        ? recordada
+        : vis[0].dataset.tab;
+      irATab(destino);
+      refrescarTodo();
+    });
+
+    // Segundo nivel: la sección. La comprobación es la de siempre.
+    $('#subTabs').addEventListener('click', function (e) {
+      const b = e.target.closest('.tab[data-tab]');
       if (!b) return;
       if (A.seccionesVisibles().indexOf(b.dataset.tab) < 0) {
         /* Se distingue el motivo: que el módulo no esté contratado no
@@ -554,6 +646,9 @@
     const pillGa = $('#pillGastos');
     pillGa.textContent = gastosPend;
     pillGa.classList.toggle('oculto', gastosPend === 0 || !A.puede('gastos_confirmar'));
+
+    // Lo que no está a la vista también se tiene que notar: la puerta suma
+    pintarContadoresDePuerta();
 
     // La marca es la de la empresa que se está atendiendo, no una fija
     document.title =
