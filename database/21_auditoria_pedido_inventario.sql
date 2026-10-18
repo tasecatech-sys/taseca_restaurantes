@@ -31,6 +31,31 @@
 
 BEGIN;
 
+/* ---------------------------------------------------------------------------
+   ANTES DE NADA: ¿con qué usuario estás conectado?
+
+   Esta prueba lee y escribe las tablas de `core` directamente, así que hay que
+   correrla con el usuario DUEÑO de la base. Con cualquier otro, PostgreSQL
+   corta a mitad con «permission denied for table …» y no explica por qué.
+
+     · En Supabase  → el SQL Editor del panel ya entra como el dueño.
+     · En DBeaver   → usa la conexión del usuario `postgres`, no la de
+                      `taseca_rest` ni la de `taseca_app`, que son las que usa
+                      la aplicación y a propósito no pueden tocar `core`.
+   --------------------------------------------------------------------------- */
+
+DO $guardia$
+BEGIN
+    IF NOT has_table_privilege(current_user, 'core.usuarios', 'SELECT') THEN
+        RAISE EXCEPTION E'Esta prueba hay que correrla con el usuario dueño de la base.\n'
+            'Estás conectado como «%», que no puede leer core.usuarios.\n'
+            'En Supabase usa el SQL Editor; en DBeaver, la conexión de postgres.',
+            current_user
+            USING ERRCODE = 'insufficient_privilege';
+    END IF;
+END;
+$guardia$;
+
 CREATE FUNCTION pg_temp.esperar_error(p_sql TEXT, p_contiene TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
