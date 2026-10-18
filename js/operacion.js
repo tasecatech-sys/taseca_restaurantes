@@ -74,10 +74,12 @@ NASCAR.Operacion = (function () {
       if (!A.puedeTransicion(p, 'entregado'))
         return U.toast('Tu perfil no puede cerrar este pedido.', 'error');
       U.confirmar('¿Ya entregaste el pedido ' + p.codigo + ' en la mesa ' + p.mesa + '?', function () {
-        S.cambiarEstado(p.id, 'entregado');
-        U.toast('Pedido ' + p.codigo + ' entregado.' +
-          (p.estadoPago !== 'confirmado' ? ' El pago lo cobra y confirma caja.' : ''));
-        refrescar();
+        U.ocupado(b, '⏳ Cerrando…', function () {
+          S.cambiarEstado(p.id, 'entregado');
+          U.toast('Pedido ' + p.codigo + ' entregado.' +
+            (p.estadoPago !== 'confirmado' ? ' El pago lo cobra y confirma caja.' : ''));
+          refrescar();
+        });
       }, 'Sí, entregado');
     });
   }
@@ -404,9 +406,11 @@ NASCAR.Operacion = (function () {
       if (!A.puedeTransicion(p, destino))
         return U.toast('Tu perfil no puede hacer ese cambio.', 'error');
 
-      S.cambiarEstado(p.id, destino);
-      U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino]);
-      refrescar();
+      U.ocupado(b, '⏳ …', function () {
+        S.cambiarEstado(p.id, destino);
+        U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino]);
+        refrescar();
+      });
     });
 
   }
@@ -570,19 +574,23 @@ NASCAR.Operacion = (function () {
             'El pago de ' + p.codigo + ' (' + p.metodoPago + ') todavía no está confirmado por caja. ' +
               '¿Ya recibiste el dinero?',
             function () {
-              S.cambiarEstado(p.id, 'entregado');
-              U.toast(p.codigo + ' entregado.');
-              refrescar();
+              U.ocupado(b, '⏳ Cerrando…', function () {
+                S.cambiarEstado(p.id, 'entregado');
+                U.toast(p.codigo + ' entregado.');
+                refrescar();
+              });
             },
             'Sí, entregar'
           );
         }
 
-        S.cambiarEstado(p.id, destino);
-        U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino] +
-          (destino === 'entregado' && p.estadoPago !== 'confirmado'
-            ? '. Entrega el dinero en caja: allí se confirma el pago.' : ''));
-        return refrescar();
+        return U.ocupado(b, '⏳ …', function () {
+          S.cambiarEstado(p.id, destino);
+          U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino] +
+            (destino === 'entregado' && p.estadoPago !== 'confirmado'
+              ? '. Entrega el dinero en caja: allí se confirma el pago.' : ''));
+          refrescar();
+        });
       }
 
       const v = e.target.closest('[data-ver-entrega]');

@@ -15442,35 +15442,42 @@ NASCAR.UI = (function () {
      devuelve el mismo pedido si le llega dos veces. Ver
      database/23_pedidos_sin_duplicados.sql.
      ----------------------------------------------------------------- */
+  function ocupado(boton, textoEspera, accion) {
+    if (!boton) return;
+    if (boton.disabled) return;   // ya hay una en camino
+
+    const antes = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = textoEspera || 'Enviando…';
+
+    const soltar = function () {
+      boton.disabled = false;
+      boton.innerHTML = antes;
+    };
+
+    /* Un respiro antes de la petición: si no, el navegador no alcanza a
+       pintar «Enviando…» y la espera se ve como un cuelgue. */
+    setTimeout(function () {
+      let salioBien = false;
+      try {
+        salioBien = accion() !== false;
+      } catch (e) {
+        if (typeof toast === 'function') toast(e.message || 'No se pudo completar.', 'error');
+      }
+      /* Sólo se suelta si la acción avisó de que falló -devolviendo false o
+         lanzando-, para poder reintentar. Si salió bien se queda bloqueado:
+         el modal se cierra o la lista se repinta, y el botón desaparece con
+         ellos. Soltarlo abriría una ventana de doble toque de 200 ms, que es
+         justo lo que se quiere evitar. */
+      if (!salioBien) soltar();
+    }, 0);
+  }
+
+  /* El mismo candado, enganchado a un botón fijo. */
   function unaVez(boton, textoEspera, accion) {
     if (!boton) return;
-    let ocupado = false;
-
     boton.addEventListener('click', function () {
-      if (ocupado) return;
-      ocupado = true;
-
-      const antes = boton.innerHTML;
-      boton.disabled = true;
-      boton.innerHTML = textoEspera || 'Enviando…';
-
-      const soltar = function () {
-        ocupado = false;
-        boton.disabled = false;
-        boton.innerHTML = antes;
-      };
-
-      /* Un respiro antes de la petición: si no, el navegador no alcanza a
-         pintar «Enviando…» y la espera se ve como un cuelgue. */
-      setTimeout(function () {
-        let salioBien = false;
-        try {
-          salioBien = accion() !== false;
-        } catch (e) {
-          if (typeof toast === 'function') toast(e.message || 'No se pudo completar.', 'error');
-        }
-        if (!salioBien) soltar();
-      }, 0);
+      ocupado(boton, textoEspera, accion);
     });
   }
 
@@ -15873,6 +15880,7 @@ NASCAR.UI = (function () {
     $: $,
     $$: $$,
     unaVez: unaVez,
+    ocupado: ocupado,
     claveEnvio: claveEnvio,
     el: el,
     acciones: acciones,
@@ -20315,10 +20323,12 @@ NASCAR.Operacion = (function () {
       if (!A.puedeTransicion(p, 'entregado'))
         return U.toast('Tu perfil no puede cerrar este pedido.', 'error');
       U.confirmar('¿Ya entregaste el pedido ' + p.codigo + ' en la mesa ' + p.mesa + '?', function () {
-        S.cambiarEstado(p.id, 'entregado');
-        U.toast('Pedido ' + p.codigo + ' entregado.' +
-          (p.estadoPago !== 'confirmado' ? ' El pago lo cobra y confirma caja.' : ''));
-        refrescar();
+        U.ocupado(b, '⏳ Cerrando…', function () {
+          S.cambiarEstado(p.id, 'entregado');
+          U.toast('Pedido ' + p.codigo + ' entregado.' +
+            (p.estadoPago !== 'confirmado' ? ' El pago lo cobra y confirma caja.' : ''));
+          refrescar();
+        });
       }, 'Sí, entregado');
     });
   }
@@ -20645,9 +20655,11 @@ NASCAR.Operacion = (function () {
       if (!A.puedeTransicion(p, destino))
         return U.toast('Tu perfil no puede hacer ese cambio.', 'error');
 
-      S.cambiarEstado(p.id, destino);
-      U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino]);
-      refrescar();
+      U.ocupado(b, '⏳ …', function () {
+        S.cambiarEstado(p.id, destino);
+        U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino]);
+        refrescar();
+      });
     });
 
   }
@@ -20811,19 +20823,23 @@ NASCAR.Operacion = (function () {
             'El pago de ' + p.codigo + ' (' + p.metodoPago + ') todavía no está confirmado por caja. ' +
               '¿Ya recibiste el dinero?',
             function () {
-              S.cambiarEstado(p.id, 'entregado');
-              U.toast(p.codigo + ' entregado.');
-              refrescar();
+              U.ocupado(b, '⏳ Cerrando…', function () {
+                S.cambiarEstado(p.id, 'entregado');
+                U.toast(p.codigo + ' entregado.');
+                refrescar();
+              });
             },
             'Sí, entregar'
           );
         }
 
-        S.cambiarEstado(p.id, destino);
-        U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino] +
-          (destino === 'entregado' && p.estadoPago !== 'confirmado'
-            ? '. Entrega el dinero en caja: allí se confirma el pago.' : ''));
-        return refrescar();
+        return U.ocupado(b, '⏳ …', function () {
+          S.cambiarEstado(p.id, destino);
+          U.toast(p.codigo + ' → ' + S.ETIQUETA_ESTADO[destino] +
+            (destino === 'entregado' && p.estadoPago !== 'confirmado'
+              ? '. Entrega el dinero en caja: allí se confirma el pago.' : ''));
+          refrescar();
+        });
       }
 
       const v = e.target.closest('[data-ver-entrega]');
@@ -25426,8 +25442,10 @@ NASCAR.Avisos = (function () {
       if (avanzar) {
         e.stopPropagation();
         if (!A.exigir('pedidos_gestionar')) return;
-        S.avanzarEstado(avanzar.dataset.avanzar);
-        return U.toast('Pedido actualizado.');
+        return U.ocupado(avanzar, '⏳', function () {
+          S.avanzarEstado(avanzar.dataset.avanzar);
+          U.toast('Pedido actualizado.');
+        });
       }
       const ver = e.target.closest('[data-ver]');
       if (ver) return verDetallePedido(ver.dataset.ver);
@@ -26015,20 +26033,21 @@ NASCAR.Avisos = (function () {
     });
 
     U.$('#cpNo', m.raiz).onclick = m.cerrar;
-    U.$('#cpSi', m.raiz).onclick = function () {
-      if (!A.exigir('pagos')) return;
+    U.unaVez(U.$('#cpSi', m.raiz), '⏳ Confirmando…', function () {
+      if (!A.exigir('pagos')) return false;
       const metodo = U.$('#cpMetodo', m.raiz).value;
       // Queda registrado quién confirmó el pago, cuándo y con qué método
       try {
         S.confirmarPago(pedidoId, U.$('#cpRef', m.raiz).value.trim(), A.firma(), metodo);
       } catch (err) {
-        return U.toast(err.message, 'error');
+        U.toast(err.message, 'error');
+        return false; // el botón vuelve: se puede reintentar
       }
       m.cerrar();
       U.toast('Pago de ' + p.codigo + ' confirmado · ' + nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) + '.');
       if (alTerminar) alTerminar();
       refrescarTodo();
-    };
+    });
   }
 
   function pintarPagos() {

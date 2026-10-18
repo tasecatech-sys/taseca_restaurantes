@@ -570,8 +570,10 @@
       if (avanzar) {
         e.stopPropagation();
         if (!A.exigir('pedidos_gestionar')) return;
-        S.avanzarEstado(avanzar.dataset.avanzar);
-        return U.toast('Pedido actualizado.');
+        return U.ocupado(avanzar, '⏳', function () {
+          S.avanzarEstado(avanzar.dataset.avanzar);
+          U.toast('Pedido actualizado.');
+        });
       }
       const ver = e.target.closest('[data-ver]');
       if (ver) return verDetallePedido(ver.dataset.ver);
@@ -1159,20 +1161,21 @@
     });
 
     U.$('#cpNo', m.raiz).onclick = m.cerrar;
-    U.$('#cpSi', m.raiz).onclick = function () {
-      if (!A.exigir('pagos')) return;
+    U.unaVez(U.$('#cpSi', m.raiz), '⏳ Confirmando…', function () {
+      if (!A.exigir('pagos')) return false;
       const metodo = U.$('#cpMetodo', m.raiz).value;
       // Queda registrado quién confirmó el pago, cuándo y con qué método
       try {
         S.confirmarPago(pedidoId, U.$('#cpRef', m.raiz).value.trim(), A.firma(), metodo);
       } catch (err) {
-        return U.toast(err.message, 'error');
+        U.toast(err.message, 'error');
+        return false; // el botón vuelve: se puede reintentar
       }
       m.cerrar();
       U.toast('Pago de ' + p.codigo + ' confirmado · ' + nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) + '.');
       if (alTerminar) alTerminar();
       refrescarTodo();
-    };
+    });
   }
 
   function pintarPagos() {

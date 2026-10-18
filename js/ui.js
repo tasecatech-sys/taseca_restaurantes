@@ -79,35 +79,42 @@ NASCAR.UI = (function () {
      devuelve el mismo pedido si le llega dos veces. Ver
      database/23_pedidos_sin_duplicados.sql.
      ----------------------------------------------------------------- */
+  function ocupado(boton, textoEspera, accion) {
+    if (!boton) return;
+    if (boton.disabled) return;   // ya hay una en camino
+
+    const antes = boton.innerHTML;
+    boton.disabled = true;
+    boton.innerHTML = textoEspera || 'Enviando…';
+
+    const soltar = function () {
+      boton.disabled = false;
+      boton.innerHTML = antes;
+    };
+
+    /* Un respiro antes de la petición: si no, el navegador no alcanza a
+       pintar «Enviando…» y la espera se ve como un cuelgue. */
+    setTimeout(function () {
+      let salioBien = false;
+      try {
+        salioBien = accion() !== false;
+      } catch (e) {
+        if (typeof toast === 'function') toast(e.message || 'No se pudo completar.', 'error');
+      }
+      /* Sólo se suelta si la acción avisó de que falló -devolviendo false o
+         lanzando-, para poder reintentar. Si salió bien se queda bloqueado:
+         el modal se cierra o la lista se repinta, y el botón desaparece con
+         ellos. Soltarlo abriría una ventana de doble toque de 200 ms, que es
+         justo lo que se quiere evitar. */
+      if (!salioBien) soltar();
+    }, 0);
+  }
+
+  /* El mismo candado, enganchado a un botón fijo. */
   function unaVez(boton, textoEspera, accion) {
     if (!boton) return;
-    let ocupado = false;
-
     boton.addEventListener('click', function () {
-      if (ocupado) return;
-      ocupado = true;
-
-      const antes = boton.innerHTML;
-      boton.disabled = true;
-      boton.innerHTML = textoEspera || 'Enviando…';
-
-      const soltar = function () {
-        ocupado = false;
-        boton.disabled = false;
-        boton.innerHTML = antes;
-      };
-
-      /* Un respiro antes de la petición: si no, el navegador no alcanza a
-         pintar «Enviando…» y la espera se ve como un cuelgue. */
-      setTimeout(function () {
-        let salioBien = false;
-        try {
-          salioBien = accion() !== false;
-        } catch (e) {
-          if (typeof toast === 'function') toast(e.message || 'No se pudo completar.', 'error');
-        }
-        if (!salioBien) soltar();
-      }, 0);
+      ocupado(boton, textoEspera, accion);
     });
   }
 
@@ -510,6 +517,7 @@ NASCAR.UI = (function () {
     $: $,
     $$: $$,
     unaVez: unaVez,
+    ocupado: ocupado,
     claveEnvio: claveEnvio,
     el: el,
     acciones: acciones,
