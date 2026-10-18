@@ -486,7 +486,6 @@ NASCAR.PLANTILLAS_EMPRESA = [
 NASCAR.MODULO_DE_TAB = {
   pedidos: 'basico',
   caja: 'basico',
-  pagos: 'basico',
   dia: 'basico',
   carta: 'basico',
   ventas: 'basico',
@@ -523,7 +522,10 @@ NASCAR.MODULO_DE_TAB = {
    el día a día a lo que se toca una vez al mes.
    ------------------------------------------------------------------------- */
 NASCAR.PUERTAS = [
-  { id: 'caja', icono: '🧾', nombre: 'Caja', tabs: ['caja', 'pagos'] },
+  /* Una sola sección: la barra de secciones no se muestra y Caja entra
+     directo a lo suyo. «Pagos» estaba aquí al lado y hacía casi lo mismo
+     —listar lo que falta cobrar—, así que se fundió con ella. */
+  { id: 'caja', icono: '🧾', nombre: 'Caja', tabs: ['caja'] },
   { id: 'operacion', icono: '🍽️', nombre: 'Operación', tabs: ['pedidos', 'mesero', 'cocina', 'entregas'] },
   { id: 'dinero', icono: '💰', nombre: 'Dinero', tabs: ['ventas', 'informe', 'gastos'] },
   { id: 'inventario', icono: '📦', nombre: 'Inventario', tabs: ['stock', 'entradas', 'cierre', 'inventario'] },

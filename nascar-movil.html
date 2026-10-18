@@ -5739,8 +5739,7 @@ tr.fila--sin td {
            lateral. Se esconde entera cuando la puerta tiene una sola
            sección visible, que es el caso de cocina y entregas. -->
       <nav class="puerta-tabs oculto" id="subTabs" aria-label="Secciones del área">
-          <button class="tab" data-tab="caja" data-puerta="caja"><i>🧾</i><span>Caja</span></button>
-          <button class="tab" data-tab="pagos" data-puerta="caja"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
+          <button class="tab" data-tab="caja" data-puerta="caja"><i>🧾</i><span>Caja</span><span class="pill oculto" id="pillPagos">0</span></button>
           <button class="tab" data-tab="pedidos" data-puerta="operacion"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
           <button class="tab" data-tab="mesero" data-puerta="operacion"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
           <button class="tab" data-tab="cocina" data-puerta="operacion"><i>👨‍🍳</i><span>Cocina</span></button>
@@ -5844,8 +5843,42 @@ tr.fila--sin td {
         <aside class="caja-pos__ticket" id="cajaTicket"></aside>
       </div>
 
-      <!-- Por cobrar -->
+      <!-- Por cobrar · antes era la sección «Pagos», un sitio aparte que
+           hacía casi lo mismo. Aquí está todo lo del dinero de un pedido:
+           la cola de lo que falta cobrar, el comprobante que adjuntó el
+           cliente, el rechazo y el histórico de lo ya resuelto. -->
       <div id="cajaCobrarVista" class="oculto">
+        <p class="mini tenue" style="margin:14px 0 0">
+          Entregar no es cobrar: todo pedido, de mesa o a domicilio, espera aquí
+          el dinero. Confirma sólo con el efectivo en la mano, el voucher del
+          datáfono o la transferencia vista en el banco.
+        </p>
+
+        <div class="kpis" id="kpisPagos"></div>
+
+        <div class="barra-herramientas">
+          <label class="campo"><span>Tipo</span>
+            <select class="select" id="fTipoPago">
+              <option value="">Todos</option>
+              <option value="mesa">Mesa</option>
+              <option value="domicilio">Domicilio</option>
+              <option value="mostrador">Mostrador</option>
+            </select>
+          </label>
+          <label class="campo"><span>Estado del pago</span>
+            <select class="select" id="fEstadoPago">
+              <option value="por-confirmar">Por cobrar</option>
+              <option value="todos">Todos</option>
+              <option value="confirmado">Confirmados</option>
+              <option value="rechazado">Rechazados</option>
+            </select>
+          </label>
+          <label class="campo"><span>Desde</span><input class="input" type="date" id="fPagoDesde"></label>
+          <label class="campo"><span>Hasta</span><input class="input" type="date" id="fPagoHasta"></label>
+        </div>
+
+        <p class="mini tenue" id="cajaNotaRango" style="margin:-6px 0 14px"></p>
+
         <div class="op-lista" id="cajaPorCobrar"></div>
       </div>
     </section>
@@ -5874,50 +5907,6 @@ tr.fila--sin td {
       </div>
 
       <div class="tablero" id="tablero"></div>
-    </section>
-
-    <!-- ---------- PAGOS ---------- -->
-    <section class="panel" data-panel="pagos">
-      <div class="titulo-seccion" style="margin-bottom:22px">
-        <span class="titulo-seccion__kicker">Caja</span>
-        <h2 style="font-size:32px">Confirmación de pagos</h2>
-        <p>Todos los pedidos, de mesa y a domicilio, llegan aquí para cobrarse: entregar no es cobrar.
-          Confirma sólo cuando el dinero esté efectivamente recibido y registra con qué pagó el cliente.</p>
-      </div>
-
-      <div class="kpis" id="kpisPagos"></div>
-
-      <div class="barra-herramientas">
-        <label class="campo"><span>Tipo</span>
-          <select class="select" id="fTipoPago">
-            <option value="">Mesa y domicilio</option>
-            <option value="mesa">Mesa</option>
-            <option value="domicilio">Domicilio</option>
-          </select>
-        </label>
-        <label class="campo"><span>Estado del pago</span>
-          <select class="select" id="fEstadoPago">
-            <option value="por-confirmar">Por confirmar</option>
-            <option value="todos">Todos</option>
-            <option value="confirmado">Confirmados</option>
-            <option value="rechazado">Rechazados</option>
-          </select>
-        </label>
-        <label class="campo"><span>Desde</span><input class="input" type="date" id="fPagoDesde"></label>
-        <label class="campo"><span>Hasta</span><input class="input" type="date" id="fPagoHasta"></label>
-      </div>
-
-      <div class="tabla-wrap">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Pedido</th><th>Cliente</th><th>Método</th>
-              <th>Referencia</th><th class="derecha">Total</th><th>Pago</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="tablaPagos"></tbody>
-        </table>
-      </div>
     </section>
 
     <!-- ---------- MENÚ DEL DÍA ---------- -->
@@ -7099,7 +7088,6 @@ NASCAR.PLANTILLAS_EMPRESA = [
 NASCAR.MODULO_DE_TAB = {
   pedidos: 'basico',
   caja: 'basico',
-  pagos: 'basico',
   dia: 'basico',
   carta: 'basico',
   ventas: 'basico',
@@ -7136,7 +7124,10 @@ NASCAR.MODULO_DE_TAB = {
    el día a día a lo que se toca una vez al mes.
    ------------------------------------------------------------------------- */
 NASCAR.PUERTAS = [
-  { id: 'caja', icono: '🧾', nombre: 'Caja', tabs: ['caja', 'pagos'] },
+  /* Una sola sección: la barra de secciones no se muestra y Caja entra
+     directo a lo suyo. «Pagos» estaba aquí al lado y hacía casi lo mismo
+     —listar lo que falta cobrar—, así que se fundió con ella. */
+  { id: 'caja', icono: '🧾', nombre: 'Caja', tabs: ['caja'] },
   { id: 'operacion', icono: '🍽️', nombre: 'Operación', tabs: ['pedidos', 'mesero', 'cocina', 'entregas'] },
   { id: 'dinero', icono: '💰', nombre: 'Dinero', tabs: ['ventas', 'informe', 'gastos'] },
   { id: 'inventario', icono: '📦', nombre: 'Inventario', tabs: ['stock', 'entradas', 'cierre', 'inventario'] },
@@ -13501,9 +13492,13 @@ window.NASCAR = window.NASCAR || {};
      secciones de trabajo; «carta» y «dia» quedan fuera a propósito, porque
      el portal ya usa esos anclajes para su propio contenido. */
   const SECCIONES_PANEL = [
-    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'caja', 'pagos', 'informe',
+    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'caja', 'informe',
     'gastos', 'stock', 'entradas', 'cierre', 'inventario', 'unidades',
     'usuarios', 'config', 'ajustes',
+    /* «pagos» ya no es una sección —se fundió con «caja»—, pero sigue en la
+       lista a propósito: un enlace viejo tiene que llegar al panel para que
+       éste lo redirija, no quedarse en el portal del cliente. */
+    'pagos',
   ];
 
   function alPanelSiPidenUnaSeccion(empresa) {
@@ -17113,7 +17108,6 @@ NASCAR.Auth = (function () {
     { tab: 'entregas', permiso: 'pedidos_domicilio', exclusiva: true },
     { tab: 'pedidos', permiso: 'pedidos_ver' },
     { tab: 'caja', permiso: 'pagos' },
-    { tab: 'pagos', permiso: 'pagos' },
     { tab: 'dia', permiso: 'menu' },
     { tab: 'carta', permiso: 'carta' },
     { tab: 'stock', permiso: 'stock' },
@@ -21363,12 +21357,19 @@ NASCAR.Operacion = (function () {
      🧾  Vender       toca productos, ve el total y cobra. Lo que no hay que
                       preparar se entrega en el acto; lo que sí, se va a
                       cocina ya pagado.
-     💳  Por cobrar   las mesas y domicilios que esperan el dinero, con su
-                      botón de cobrar al lado.
+     💳  Por cobrar   todo el dinero de un pedido: lo que espera cobro, el
+                      comprobante que adjuntó el cliente, el rechazo y el
+                      histórico de lo ya resuelto.
 
    Antes eran dos sitios distintos -la venta no existía y lo pendiente vivía
    en «Pagos»-, y eso es justo lo que el cliente pidió arreglar: encontrar
-   las cosas con un par de toques.
+   las cosas con un par de toques. «Pagos» ya no existe como sección: era
+   otro sitio para lo mismo, y tener dos listas de lo que falta cobrar
+   invita a cobrar dos veces.
+
+   Quien cobra NO decide nada aquí por su cuenta: confirmar y rechazar
+   siguen pidiendo el permiso `pagos` y pasando por el mismo cuadro de
+   diálogo de siempre, que vive en js/admin.js y se recibe por ctx.
 
    Lo que decide si algo pasa por cocina es el PRODUCTO, no quien vende:
    cada plato de la carta lleva su marca (Carta → «Se entrega en el acto»).
@@ -21407,10 +21408,16 @@ NASCAR.Caja = (function () {
   }
 
   function iniciar(opciones) {
+    /* Las cuatro acciones de dinero las presta el panel: son los mismos
+       cuadros de diálogo que se usaban en «Pagos», con su permiso y su
+       confirmación. Aquí no se duplican, se reciben. */
     ctx = {
       raiz: opciones.raiz,
       sucursalGlobal: opciones.sucursalGlobal || (() => ''),
       cobrar: opciones.cobrar || function () {},
+      rechazar: opciones.rechazar || function () {},
+      verComprobante: opciones.verComprobante || function () {},
+      ver: opciones.ver || function () {},
     };
     if (!$('[data-panel="caja"]')) return;
 
@@ -21453,9 +21460,25 @@ NASCAR.Caja = (function () {
       }
     });
 
+    /* Los filtros sólo repintan la lista de abajo: no tocan la venta ni
+       el contador de la pestaña, que cuenta lo pendiente de verdad. */
+    ['#fTipoPago', '#fEstadoPago', '#fPagoDesde', '#fPagoHasta'].forEach(function (sel) {
+      const campo = $(sel);
+      if (campo) campo.addEventListener('change', pintarPorCobrar);
+    });
+
     $('#cajaPorCobrar').addEventListener('click', function (e) {
       const b = e.target.closest('[data-caja-cobrar]');
-      if (b) ctx.cobrar(b.dataset.cajaCobrar, refrescar);
+      if (b) return ctx.cobrar(b.dataset.cajaCobrar, refrescar);
+
+      const r = e.target.closest('[data-caja-rechazar]');
+      if (r) return ctx.rechazar(r.dataset.cajaRechazar, refrescar);
+
+      const c = e.target.closest('[data-caja-comprobante]');
+      if (c) return ctx.verComprobante(c.dataset.cajaComprobante);
+
+      const v = e.target.closest('[data-caja-ver]');
+      if (v) return ctx.ver(v.dataset.cajaVer);
     });
   }
 
@@ -21653,44 +21676,194 @@ NASCAR.Caja = (function () {
 
   /* =================================================================
      LO QUE ESPERA EL DINERO
+
+     Esta vista reemplaza a la sección «Pagos». Dos cosas que conviene no
+     confundir:
+
+       pendientes()  la COLA de trabajo: lo que falta cobrar, pase lo que
+                     pase con los filtros. De aquí sale el contador de la
+                     pestaña, así que tiene que contar lo real.
+       listaPagos()  lo que se está MIRANDO: la cola o el histórico, según
+                     los filtros de arriba.
+
+     Un pago rechazado no está en la cola —ya se resolvió, no se cobró—,
+     pero tampoco queda intocable: sigue en el histórico con su botón de
+     cobrar, porque un rechazo por error no puede dejar una factura
+     imposible de cobrar para siempre.
      ================================================================= */
   function pendientes() {
     const suc = sucursal();
     return S.getPedidos({ sucursalId: suc })
-      .filter((p) => p.estadoPago !== 'confirmado'
+      .filter((p) => p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado'
                   && p.estado !== 'cancelado' && p.estado !== 'anulado')
       .sort((a, b) => (a.creado < b.creado ? -1 : 1));
   }
 
+  function modoPago() {
+    const sel = $('#fEstadoPago');
+    return (sel && sel.value) || 'por-confirmar';
+  }
+
+  function listaPagos() {
+    const modo = modoPago();
+    const f = { sucursalId: sucursal() };
+
+    const tipo = ($('#fTipoPago') || {}).value;
+    if (tipo) f.tipo = tipo;
+
+    /* El rango de fechas es para CONSULTAR, no para trabajar: a la cola de
+       lo que falta cobrar no se le aplica. Una mesa que lleva dos semanas
+       sin pagar tiene que verse igual, y un rango de «los últimos 7 días»
+       la escondía. */
+    if (modo !== 'por-confirmar') {
+      const desde = ($('#fPagoDesde') || {}).value;
+      const hasta = ($('#fPagoHasta') || {}).value;
+      if (desde) f.desde = desde;
+      if (hasta) f.hasta = hasta;
+    }
+
+    /* Las anuladas salen de aquí igual que las canceladas: ya no hay nada
+       que cobrar. El movimiento de pago NO se borra —queda en la factura,
+       con su estado de pago tal como estaba al anular. */
+    let lista = S.getPedidos(f).filter(
+      (p) => p.estado !== 'cancelado' && p.estado !== 'anulado'
+    );
+
+    if (modo === 'por-confirmar')
+      lista = lista.filter((p) => p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado');
+    else if (modo === 'confirmado') lista = lista.filter((p) => p.estadoPago === 'confirmado');
+    else if (modo === 'rechazado') lista = lista.filter((p) => p.estadoPago === 'rechazado');
+
+    /* Lo que lleva más esperando, primero: es el orden en que hay que
+       atenderlo. El histórico se lee al contrario, lo último arriba. */
+    return lista.sort(function (a, b) {
+      if (modo === 'por-confirmar') return a.creado < b.creado ? -1 : 1;
+      return a.creado < b.creado ? 1 : -1;
+    });
+  }
+
+  function kpi(label, valor, extra, color) {
+    return (
+      '<div class="kpi' + (color ? ' kpi--' + color : '') + '">' +
+      '<div class="kpi__label">' + U.esc(label) + '</div>' +
+      '<div class="kpi__valor">' + valor + '</div>' +
+      (extra ? '<div class="kpi__extra">' + U.esc(extra) + '</div>' : '') +
+      '</div>'
+    );
+  }
+
+  /* Lo que dice el estado del pago, en las palabras de quien cobra: lo que
+     importa no es el nombre del campo, es si entró el dinero. */
+  const BADGE_PAGO = {
+    confirmado: '<span class="badge badge--verde">Pago confirmado</span>',
+    reportado: '<span class="badge badge--ambar">Dice que ya pagó</span>',
+    rechazado: '<span class="badge badge--rojo">Pago rechazado</span>',
+    pendiente: '<span class="badge badge--linea">Sin cobrar</span>',
+  };
+
+  function quienEs(p) {
+    if (p.tipo === 'mesa') return 'Mesa ' + U.esc(p.mesa);
+    if (p.tipo === 'domicilio') return U.esc(p.cliente.nombre || 'Domicilio');
+    return 'Mostrador';
+  }
+
+  function tarjetaPago(p) {
+    const cobrable = p.estadoPago !== 'confirmado';
+    const enCola = p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado';
+    const comp = S.getComprobante(p.id);
+    const ref = p.comprobante || p.referenciaPago || '';
+
+    return (
+      '<div class="op-card op-card--' + p.estado + '">' +
+      '<div class="op-card__top">' +
+      '<span class="op-card__codigo">' + U.esc(p.codigo) + '</span>' +
+      (BADGE_PAGO[p.estadoPago] || BADGE_PAGO.pendiente) +
+      '</div>' +
+
+      '<div class="op-datos">' +
+      '<div><span>Quién</span><b>' + quienEs(p) + '</b></div>' +
+      '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
+      '<div><span>' + (p.estadoPago === 'confirmado' ? 'Pagó con' : 'Dice pagar con') +
+      '</span><b>' + U.esc(p.metodoPago) + '</b></div>' +
+      '<div><span>' + (enCola ? 'Esperando' : 'Cuándo') + '</span><b>' +
+      (enCola ? U.haceCuanto(p.creado) : U.esc(p.fecha) + ' · ' + U.hora(p.creado)) +
+      '</b></div>' +
+      '<div><span>Pedido</span><b>' + U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + '</b></div>' +
+      '<div><span>Referencia</span><b>' +
+      (ref ? U.esc(ref) : '<span class="tenue">—</span>') + '</b></div>' +
+      '</div>' +
+
+      /* El comprobante que subió el cliente se mira ANTES de confirmar: una
+         imagen se puede editar y el valor hay que cuadrarlo con el banco.
+         Por eso el chip va encima del botón de cobrar, no escondido. */
+      (comp
+        ? '<button class="comprobante-chip mt-8" data-caja-comprobante="' + U.esc(p.id) + '">' +
+          '📎 Ver comprobante adjunto</button>'
+        : '') +
+
+      (cobrable
+        ? '<button class="btn btn--bloque mt-8 caja-ticket__cobrar" data-caja-cobrar="' +
+          U.esc(p.id) + '">💵 Cobrar ' + U.money(p.total) + '</button>'
+        : '') +
+
+      '<div class="fila mt-8" style="gap:8px">' +
+      (enCola
+        ? '<button class="btn btn--fantasma btn--sm crece" data-caja-rechazar="' + U.esc(p.id) + '" ' +
+          'style="border-color:var(--rojo);color:var(--rojo-claro)">✕ Rechazar pago</button>'
+        : '') +
+      '<button class="btn btn--fantasma btn--sm' + (enCola ? '' : ' crece') +
+      '" data-caja-ver="' + U.esc(p.id) + '">Ver pedido</button>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
   function pintarPorCobrar() {
-    const lista = pendientes();
+    const modo = modoPago();
+    const lista = listaPagos();
+
+    /* Los tres primeros números son siempre de la COLA, no de lo que se
+       está mirando: son el estado del turno. Mirar el histórico de marzo
+       no puede hacer creer que no queda nada por cobrar. */
+    const cola = pendientes();
+    const monto = cola.reduce((s, p) => s + p.total, 0);
+    const entregados = cola.filter((p) => p.estado === 'entregado');
+
+    /* El cuarto acompaña a lo que se mira: trabajando, lo cobrado hoy;
+       consultando, lo confirmado en el rango que se pidió. */
+    const confirmados = modo === 'por-confirmar'
+      ? S.getPedidos({ sucursalId: sucursal(), fecha: S.hoy() })
+          .filter((p) => p.estadoPago === 'confirmado').length
+      : lista.filter((p) => p.estadoPago === 'confirmado').length;
+
+    $('#kpisPagos').innerHTML =
+      kpi('Por cobrar', cola.length, 'Pedidos que esperan el dinero',
+        cola.length ? 'ambar' : 'verde') +
+      kpi('Monto pendiente', U.money(monto), 'Dinero aún no recibido en caja',
+        monto ? 'rojo' : 'verde') +
+      kpi('Entregados sin cobrar', entregados.length,
+        U.money(entregados.reduce((s, p) => s + p.total, 0)),
+        entregados.length ? 'rojo' : 'verde') +
+      kpi(modo === 'por-confirmar' ? 'Cobrados hoy' : 'Confirmados en el rango',
+        confirmados, '', 'verde');
+
+    const nota = $('#cajaNotaRango');
+    if (nota)
+      nota.textContent = modo === 'por-confirmar'
+        ? 'La cola muestra todo lo que falta cobrar, sin importar las fechas: '
+          + 'el rango de arriba sólo filtra el histórico.'
+        : '';
 
     $('#cajaPorCobrar').innerHTML = lista.length
-      ? lista
-          .map(function (p) {
-            const quien = p.tipo === 'mesa' ? 'Mesa ' + U.esc(p.mesa)
-              : p.tipo === 'domicilio' ? U.esc(p.cliente.nombre || 'Domicilio')
-              : 'Mostrador';
-            return (
-              '<div class="op-card op-card--' + p.estado + '">' +
-              '<div class="op-card__top">' +
-              '<span class="op-card__codigo">' + U.esc(p.codigo) + '</span>' +
-              '<span class="badge">' + U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + '</span>' +
-              '</div>' +
-              '<div class="op-datos">' +
-              '<div><span>Quién</span><b>' + quien + '</b></div>' +
-              '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
-              '<div><span>Dice pagar con</span><b>' + U.esc(p.metodoPago) + '</b></div>' +
-              '<div><span>Hace</span><b>' + U.haceCuanto(p.creado) + '</b></div>' +
-              '</div>' +
-              '<button class="btn btn--bloque mt-8 caja-ticket__cobrar" data-caja-cobrar="' +
-              U.esc(p.id) + '">💵 Cobrar ' + U.money(p.total) + '</button>' +
-              '</div>'
-            );
-          })
-          .join('')
-      : '<div class="vacio"><div class="vacio__ico">✅</div><h3>Nada por cobrar</h3>' +
-        '<p class="mini">Todo lo de esta sede ya está pagado.</p></div>';
+      ? lista.map(tarjetaPago).join('')
+      : '<div class="vacio"><div class="vacio__ico">' +
+        (modo === 'por-confirmar' ? '✅' : '🔎') + '</div>' +
+        '<h3>' + (modo === 'por-confirmar' ? 'Nada por cobrar' : 'Nada en este rango') + '</h3>' +
+        '<p class="mini">' +
+        (modo === 'por-confirmar'
+          ? 'Todo lo de esta sede ya está pagado.'
+          : 'Ningún pedido coincide con los filtros.') +
+        '</p></div>';
   }
 
   /* =================================================================
@@ -25782,7 +25955,6 @@ NASCAR.Avisos = (function () {
 
     conectarTabs();
     conectarPedidos();
-    conectarPagos();
     conectarDia();
     conectarVentas();
     conectarAjustes();
@@ -25799,11 +25971,17 @@ NASCAR.Avisos = (function () {
       sucursalGlobal: () => sucursalGlobal,
     });
 
+    /* La pantalla de Caja es ahora el único sitio del dinero de un pedido:
+       lo que falta cobrar, el comprobante, el rechazo y el histórico. Los
+       cuadros de diálogo siguen viviendo aquí —son los mismos de cuando
+       había una sección «Pagos» aparte— y se le prestan. */
     NASCAR.Caja.iniciar({
       raiz: RAIZ === document ? document.body : RAIZ,
       sucursalGlobal: () => sucursalGlobal,
-      // La caja cobra lo pendiente con el mismo cuadro de siempre
       cobrar: abrirConfirmarPago,
+      rechazar: rechazarPago,
+      verComprobante: verComprobante,
+      ver: verDetallePedido,
     });
 
     montajeListo = true;
@@ -25939,6 +26117,11 @@ NASCAR.Avisos = (function () {
      no una preferencia que haya que guardar. */
   const ultimaDePuerta = {};
 
+  /* Secciones que desaparecieron y a dónde se fue lo que hacían. «Pagos»
+     se fundió con Caja: lo pendiente de cobro, el comprobante, el rechazo
+     y el histórico viven en su vista «Por cobrar». */
+  const ALIAS_DE_SECCION = { pagos: 'caja' };
+
   function tabsDePuerta(id) {
     return $$('#subTabs .tab').filter((t) => t.dataset.puerta === id);
   }
@@ -26038,8 +26221,12 @@ NASCAR.Avisos = (function () {
        puede entrar ahí; si no, en la primera sección a la que sí tiene
        acceso. Así cada tablet abre en lo suyo con un enlace fijo. */
     const pedida = (location.hash || '').replace('#', '').toLowerCase();
-    const inicial = (pedida && A.seccionesVisibles().indexOf(pedida) >= 0)
-      ? pedida
+    /* Direcciones de secciones que ya no existen. Un enlace guardado o una
+       tablet con #pagos en el acceso directo tiene que abrir donde se fue
+       esa pantalla, no en blanco. */
+    const destino = ALIAS_DE_SECCION[pedida] || pedida;
+    const inicial = (destino && A.seccionesVisibles().indexOf(destino) >= 0)
+      ? destino
       : A.seccionInicial();
     if (inicial) irATab(inicial);
   }
@@ -26204,7 +26391,6 @@ NASCAR.Avisos = (function () {
   function refrescarTodo() {
     pintarSelectorUnidad();
     pintarPedidos();
-    pintarPagos();
     pintarDiaAdmin();
     pintarVentas();
     pintarQR();
@@ -26733,7 +26919,12 @@ NASCAR.Avisos = (function () {
   }
 
   /* =================================================================
-     TAB · PAGOS
+     EL DINERO DE UN PEDIDO
+
+     Ya no hay sección «Pagos»: su pantalla se fundió con 🧾 Caja, en la
+     vista «Por cobrar» (js/caja.js). Lo que queda aquí son los cuadros de
+     diálogo —confirmar, rechazar, ver el comprobante— y el conteo de la
+     pestaña. Caja los recibe por ctx y los abre; ninguno se duplicó.
      ================================================================= */
   function pedidosPorConfirmar() {
     // Mesa y domicilio: todo pago pasa por caja, también el efectivo ya entregado
@@ -26745,40 +26936,28 @@ NASCAR.Avisos = (function () {
     );
   }
 
-  function conectarPagos() {
-    ['#fTipoPago', '#fEstadoPago', '#fPagoDesde', '#fPagoHasta'].forEach((s) =>
-      $(s).addEventListener('change', pintarPagos)
+  /* Rechazar un pago: el cliente dice que pagó y el dinero no está. La
+     factura queda sin cobrar —no se cancela: lo que se comió se comió— y
+     sale de la cola de caja. Exige el permiso igual que confirmar, porque
+     decidir que un pago no entró también es mover dinero. */
+  function rechazarPago(pedidoId, alTerminar) {
+    const p = S.getPedido(pedidoId);
+    if (!p) return;
+    U.confirmar(
+      'Marcar el pago de ' + p.codigo + ' como RECHAZADO. El pedido queda sin cobrar.',
+      function () {
+        if (!A.exigir('pagos')) return;
+        try {
+          S.rechazarPago(p.id, 'No se encontró el pago', A.firma());
+        } catch (err) {
+          return U.toast(err.message, 'error');
+        }
+        U.toast('Pago marcado como rechazado.', 'info');
+        if (alTerminar) alTerminar();
+        refrescarTodo();
+      },
+      'Sí, rechazar'
     );
-
-    $('#tablaPagos').addEventListener('click', function (e) {
-      const c = e.target.closest('[data-confirmar]');
-      if (c) return abrirConfirmarPago(c.dataset.confirmar, pintarPagos);
-
-      const r = e.target.closest('[data-rechazar]');
-      if (r) {
-        const p = S.getPedido(r.dataset.rechazar);
-        return U.confirmar(
-          'Marcar el pago de ' + p.codigo + ' como RECHAZADO. El pedido queda sin cobrar.',
-          function () {
-            if (!A.exigir('pagos')) return;
-            try {
-              S.rechazarPago(p.id, 'No se encontró el pago', A.firma());
-            } catch (err) {
-              return U.toast(err.message, 'error');
-            }
-            U.toast('Pago marcado como rechazado.', 'info');
-            refrescarTodo();
-          },
-          'Sí, rechazar'
-        );
-      }
-
-      const v = e.target.closest('[data-ver]');
-      if (v) return verDetallePedido(v.dataset.ver);
-
-      const comp = e.target.closest('[data-ver-comprobante]');
-      if (comp) return verComprobante(comp.dataset.verComprobante);
-    });
   }
 
   /* Visor del comprobante que adjuntó el cliente, con los botones de
@@ -26920,96 +27099,6 @@ NASCAR.Avisos = (function () {
       if (alTerminar) alTerminar();
       refrescarTodo();
     });
-  }
-
-  function pintarPagos() {
-    const filtro = {
-      desde: $('#fPagoDesde').value,
-      hasta: $('#fPagoHasta').value,
-    };
-    const tipo = ($('#fTipoPago') || {}).value;
-    if (tipo) filtro.tipo = tipo;
-    if (sucursalGlobal) filtro.sucursalId = sucursalGlobal;
-
-    /* Las anuladas salen de aquí igual que las canceladas: ya no hay
-       nada que cobrar. El movimiento de pago NO se borra — queda en la
-       factura, con su estado de pago tal como estaba al anular. */
-    let lista = S.getPedidos(filtro).filter(
-      (p) => p.estado !== 'cancelado' && p.estado !== 'anulado'
-    );
-    const modo = $('#fEstadoPago').value;
-
-    if (modo === 'por-confirmar')
-      lista = lista.filter((p) => p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado');
-    else if (modo === 'confirmado') lista = lista.filter((p) => p.estadoPago === 'confirmado');
-    else if (modo === 'rechazado') lista = lista.filter((p) => p.estadoPago === 'rechazado');
-
-    const porConfirmar = lista.filter((p) => p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado');
-    const monto = porConfirmar.reduce((s, p) => s + p.total, 0);
-    const entregados = porConfirmar.filter((p) => p.estado === 'entregado');
-
-    $('#kpisPagos').innerHTML =
-      kpi('Por confirmar', porConfirmar.length, 'Mesa y domicilio sin cobrar', 'ambar') +
-      kpi('Monto pendiente', U.money(monto), 'Dinero aún no recibido en caja', 'rojo') +
-      kpi('Entregados sin cobrar', entregados.length, U.money(entregados.reduce((s, p) => s + p.total, 0)),
-        entregados.length ? 'rojo' : 'verde') +
-      kpi('Confirmados en el rango', lista.filter((p) => p.estadoPago === 'confirmado').length, '', 'verde');
-
-    if (!lista.length) {
-      $('#tablaPagos').innerHTML =
-        '<tr><td colspan="7"><div class="vacio" style="border:0">✅ No hay pagos pendientes en este rango.</div></td></tr>';
-      return;
-    }
-
-    $('#tablaPagos').innerHTML = lista
-      .map(function (p) {
-        const pendiente = p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado';
-        return (
-          '<tr>' +
-          '<td><b class="mono">' + U.esc(p.codigo) + '</b><br><span class="mini tenue">' +
-          U.esc(U.sucursal(p.sucursalId).corto) + ' · ' + U.hora(p.creado) + '</span></td>' +
-
-          '<td><span class="badge ' + (p.tipo === 'mesa' ? 'badge--azul' : 'badge--rojo') + '">' +
-          (p.tipo === 'mesa' ? 'Mesa ' + U.esc(p.mesa) : 'Domicilio') + '</span> ' +
-          '<span class="mini tenue">' + U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + '</span><br>' +
-          U.esc(p.cliente.nombre || '') +
-          (p.cliente.telefono ? ' <span class="mini tenue">' + U.esc(p.cliente.telefono) + '</span>' : '') + '</td>' +
-
-          '<td><span class="badge badge--linea">' + U.esc(p.metodoPago) + '</span>' +
-          (pendiente ? '<br><span class="mini tenue">por confirmar</span>' : '') + '</td>' +
-
-          '<td class="mini">' +
-          (p.comprobante || p.referenciaPago
-            ? U.esc(p.comprobante || p.referenciaPago)
-            : '<span class="tenue">—</span>') +
-          (S.getComprobante(p.id)
-            ? '<br><button class="comprobante-chip mt-8" data-ver-comprobante="' + p.id + '">' +
-              '📎 Comprobante adjunto</button>'
-            : '') +
-          '</td>' +
-
-          '<td class="derecha num" style="font-size:16px">' + U.money(p.total) + '</td>' +
-
-          '<td>' +
-          {
-            confirmado: '<span class="badge badge--verde">Confirmado</span>',
-            reportado: '<span class="badge badge--ambar">Reportado</span>',
-            rechazado: '<span class="badge badge--rojo">Rechazado</span>',
-            pendiente: '<span class="badge badge--linea">Pendiente</span>',
-          }[p.estadoPago] +
-          '</td>' +
-
-          '<td class="nowrap">' +
-          (pendiente
-            ? '<button class="btn btn--xs" data-confirmar="' + p.id + '" style="background:var(--verde);border-color:var(--verde);color:#04220f">✓ Confirmar</button> ' +
-              '<button class="btn btn--fantasma btn--xs" data-rechazar="' + p.id + '">✕</button> '
-            : '') +
-          '<button class="btn btn--fantasma btn--xs" data-ver="' + p.id + '">Ver</button>' +
-          '</td>' +
-          '</tr>'
-        );
-      })
-      .join('');
   }
 
   /* =================================================================

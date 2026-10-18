@@ -174,9 +174,13 @@ window.NASCAR = window.NASCAR || {};
      secciones de trabajo; «carta» y «dia» quedan fuera a propósito, porque
      el portal ya usa esos anclajes para su propio contenido. */
   const SECCIONES_PANEL = [
-    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'caja', 'pagos', 'informe',
+    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'caja', 'informe',
     'gastos', 'stock', 'entradas', 'cierre', 'inventario', 'unidades',
     'usuarios', 'config', 'ajustes',
+    /* «pagos» ya no es una sección —se fundió con «caja»—, pero sigue en la
+       lista a propósito: un enlace viejo tiene que llegar al panel para que
+       éste lo redirija, no quedarse en el portal del cliente. */
+    'pagos',
   ];
 
   function alPanelSiPidenUnaSeccion(empresa) {

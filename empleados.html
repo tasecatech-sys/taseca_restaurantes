@@ -169,8 +169,7 @@
            lateral. Se esconde entera cuando la puerta tiene una sola
            sección visible, que es el caso de cocina y entregas. -->
       <nav class="puerta-tabs oculto" id="subTabs" aria-label="Secciones del área">
-          <button class="tab" data-tab="caja" data-puerta="caja"><i>🧾</i><span>Caja</span></button>
-          <button class="tab" data-tab="pagos" data-puerta="caja"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
+          <button class="tab" data-tab="caja" data-puerta="caja"><i>🧾</i><span>Caja</span><span class="pill oculto" id="pillPagos">0</span></button>
           <button class="tab" data-tab="pedidos" data-puerta="operacion"><i>🛒</i><span>Pedidos</span><span class="pill oculto" id="pillPedidos">0</span></button>
           <button class="tab" data-tab="mesero" data-puerta="operacion"><i>🍽️</i><span>Mesas</span><span class="pill oculto" id="mBadgeListos">0</span></button>
           <button class="tab" data-tab="cocina" data-puerta="operacion"><i>👨‍🍳</i><span>Cocina</span></button>
@@ -274,8 +273,42 @@
         <aside class="caja-pos__ticket" id="cajaTicket"></aside>
       </div>
 
-      <!-- Por cobrar -->
+      <!-- Por cobrar · antes era la sección «Pagos», un sitio aparte que
+           hacía casi lo mismo. Aquí está todo lo del dinero de un pedido:
+           la cola de lo que falta cobrar, el comprobante que adjuntó el
+           cliente, el rechazo y el histórico de lo ya resuelto. -->
       <div id="cajaCobrarVista" class="oculto">
+        <p class="mini tenue" style="margin:14px 0 0">
+          Entregar no es cobrar: todo pedido, de mesa o a domicilio, espera aquí
+          el dinero. Confirma sólo con el efectivo en la mano, el voucher del
+          datáfono o la transferencia vista en el banco.
+        </p>
+
+        <div class="kpis" id="kpisPagos"></div>
+
+        <div class="barra-herramientas">
+          <label class="campo"><span>Tipo</span>
+            <select class="select" id="fTipoPago">
+              <option value="">Todos</option>
+              <option value="mesa">Mesa</option>
+              <option value="domicilio">Domicilio</option>
+              <option value="mostrador">Mostrador</option>
+            </select>
+          </label>
+          <label class="campo"><span>Estado del pago</span>
+            <select class="select" id="fEstadoPago">
+              <option value="por-confirmar">Por cobrar</option>
+              <option value="todos">Todos</option>
+              <option value="confirmado">Confirmados</option>
+              <option value="rechazado">Rechazados</option>
+            </select>
+          </label>
+          <label class="campo"><span>Desde</span><input class="input" type="date" id="fPagoDesde"></label>
+          <label class="campo"><span>Hasta</span><input class="input" type="date" id="fPagoHasta"></label>
+        </div>
+
+        <p class="mini tenue" id="cajaNotaRango" style="margin:-6px 0 14px"></p>
+
         <div class="op-lista" id="cajaPorCobrar"></div>
       </div>
     </section>
@@ -304,50 +337,6 @@
       </div>
 
       <div class="tablero" id="tablero"></div>
-    </section>
-
-    <!-- ---------- PAGOS ---------- -->
-    <section class="panel" data-panel="pagos">
-      <div class="titulo-seccion" style="margin-bottom:22px">
-        <span class="titulo-seccion__kicker">Caja</span>
-        <h2 style="font-size:32px">Confirmación de pagos</h2>
-        <p>Todos los pedidos, de mesa y a domicilio, llegan aquí para cobrarse: entregar no es cobrar.
-          Confirma sólo cuando el dinero esté efectivamente recibido y registra con qué pagó el cliente.</p>
-      </div>
-
-      <div class="kpis" id="kpisPagos"></div>
-
-      <div class="barra-herramientas">
-        <label class="campo"><span>Tipo</span>
-          <select class="select" id="fTipoPago">
-            <option value="">Mesa y domicilio</option>
-            <option value="mesa">Mesa</option>
-            <option value="domicilio">Domicilio</option>
-          </select>
-        </label>
-        <label class="campo"><span>Estado del pago</span>
-          <select class="select" id="fEstadoPago">
-            <option value="por-confirmar">Por confirmar</option>
-            <option value="todos">Todos</option>
-            <option value="confirmado">Confirmados</option>
-            <option value="rechazado">Rechazados</option>
-          </select>
-        </label>
-        <label class="campo"><span>Desde</span><input class="input" type="date" id="fPagoDesde"></label>
-        <label class="campo"><span>Hasta</span><input class="input" type="date" id="fPagoHasta"></label>
-      </div>
-
-      <div class="tabla-wrap">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>Pedido</th><th>Cliente</th><th>Método</th>
-              <th>Referencia</th><th class="derecha">Total</th><th>Pago</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="tablaPagos"></tbody>
-        </table>
-      </div>
     </section>
 
     <!-- ---------- MENÚ DEL DÍA ---------- -->

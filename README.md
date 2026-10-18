@@ -289,7 +289,7 @@ la **sección** dentro de ella. A cualquier pantalla se llega en dos clicks.
 
 | Puerta | Secciones |
 |---|---|
-| 🧾 **Caja** | Caja · Pagos |
+| 🧾 **Caja** | Caja |
 | 🍽️ **Operación** | Pedidos · Mesas · Cocina · Entregas |
 | 💰 **Dinero** | Ventas · Cruce de caja · Gastos |
 | 📦 **Inventario** | Stock · Entradas · Registrar cierre · Cierres de inventario |
@@ -303,8 +303,15 @@ abajo. Está en `NASCAR.PUERTAS` (`js/data.js`), en un solo sitio.
   dentro de ella, o en la primera si es la primera vez. Es memoria de la
   sesión: no se guarda, no es una preferencia que haya que administrar.
 - La barra de secciones **desaparece** cuando la puerta tiene una sola sección
-  visible. Cocina y domicilio entran directo a lo suyo y no ven navegación
-  ninguna: una barra de un solo botón es ruido.
+  visible. Cocina, domicilio y caja entran directo a lo suyo y no ven
+  navegación ninguna: una barra de un solo botón es ruido.
+- 🧾 **Caja** tiene una sola sección porque **«Pagos» se fundió con ella**.
+  Eran dos sitios que hacían casi lo mismo —los dos listaban lo que falta
+  cobrar—, y dos listas de lo mismo invitan a cobrar dos veces. Todo el
+  dinero de un pedido vive ahora en la vista **💳 Por cobrar** de Caja: lo
+  pendiente, el comprobante adjunto, el rechazo y el histórico. La dirección
+  vieja `#pagos` **redirige a `#caja`**, así que un enlace guardado o una
+  tablet con ese acceso directo no se queda en blanco.
 - El **contador de una puerta es la suma** de los de sus secciones. Tres pagos
   por confirmar se ven en 🧾 **Caja** sin tener que abrirla: lo que no está a
   la vista también se tiene que notar.
@@ -1061,7 +1068,7 @@ En la pantalla de entrada hay botones de acceso rápido para probar cada perfil.
 | `mesero` | 1111 | 🍽️ Mesero | Las mesas y el registro del cierre |
 | `cocina` | 2222 | 👨‍🍳 Cocinero | Sólo la cola de cocina |
 | `domicilios` | 3333 | 🛵 Domiciliario | Sólo las entregas |
-| `caja` | 4444 | 💵 Caja | Pagos, entradas de mercancía y gastos |
+| `caja` | 4444 | 💵 Caja | Vender y cobrar, entradas de mercancía, gastos y el cruce del día |
 
 **El administrador NO puede**: crear usuarios, cambiar los métodos de pago,
 ni tocar los datos del local o de las sucursales. Eso es sólo del Admin.
@@ -1072,13 +1079,15 @@ antes de ejecutarse, así que no se puede saltar por la consola del navegador.
 
 ### 💵 La vista de Caja
 
-Caja es el rol que **mueve el dinero del punto**. Ve exactamente tres pestañas:
+Caja es el rol que **mueve el dinero del punto**. Ve exactamente cuatro
+secciones, repartidas en tres puertas:
 
-| Pestaña | Qué hace |
+| Sección | Qué hace |
 |---|---|
-| **💳 Pagos** | Ver los domicilios pendientes, abrir el comprobante adjunto, confirmar o rechazar el pago |
+| **🧾 Caja** | Vender en el mostrador y cobrar. En su vista **💳 Por cobrar**: lo que espera el dinero, el comprobante adjunto, confirmar, rechazar y el histórico |
 | **📥 Entradas** | Registrar la mercancía que llega, consultarla y corregirla |
 | **💰 Gastos** | Registrar, consultar y confirmar gastos |
+| **📊 Cruce de caja** | Cómo va el dinero de la jornada: abre el cajón con la base y ve lo que debería quedar |
 
 No puede tocar la carta, los precios, el stock maestro, los usuarios, la
 configuración, los métodos de pago ni los cierres. Tampoco ve el cruce de
@@ -1148,9 +1157,11 @@ pago (JPG, PNG o WEBP). La imagen se reduce en el navegador antes de guardarla
 que es pequeño. Si aun comprimida no cabe, se avisa con un mensaje claro en
 lugar de fallar en silencio.
 
-En **Pagos**, los pedidos con comprobante muestran un chip *📎 Comprobante
-adjunto*. Al abrirlo se ve la imagen y ahí mismo están los botones de
-**confirmar** y **rechazar**.
+En **Caja → 💳 Por cobrar**, los pedidos con comprobante muestran un chip
+*📎 Ver comprobante adjunto*. Al abrirlo se ve la imagen y ahí mismo están los
+botones de **confirmar** y **rechazar**. El chip va encima del botón de
+cobrar a propósito: una imagen se puede editar, así que el valor y la fecha
+se cuadran con el banco **antes** de dar el pago por bueno.
 
 ---
 
@@ -1391,7 +1402,7 @@ registro manual.
 | Módulo | Efecto |
 |---|---|
 | **Ventas** | La anulada deja de sumar. Sigue en la tabla, marcada **Anulada** en rojo. |
-| **Pagos** | Sale de la lista por cobrar. El movimiento de pago **no se borra**: la factura conserva su método y su estado de pago tal como estaban al anular. |
+| **Caja** | Sale de la lista **Por cobrar**. El movimiento de pago **no se borra**: la factura conserva su método y su estado de pago tal como estaban al anular. |
 | **Cruce** | No cuenta como venta efectiva: no mueve el efectivo esperado ni el RC. Aparece en su propia fila, *«Facturas anuladas (no cuentan)»*, y en el CSV. |
 | **Cierre** | Antes del cierre, la `Z` se corrige sola. Después, el cierre firmado queda intacto y el retorno se ve como movimiento de la jornada siguiente. |
 | **Stock** | El `stockActual` no se toca, porque las ventas tampoco lo tocan. Lo que se registra es el movimiento. |
@@ -1695,10 +1706,29 @@ vendido de cada uno. Un producto que no se venda directamente lleva
 ## Cómo funcionan los pagos
 
 **Entregar no es cobrar.** Todo pedido —de mesa o a domicilio, con cualquier
-método— queda con el pago **pendiente** y aparece en **Caja → Pagos**.
+método— queda con el pago **pendiente** y aparece en **Caja → 💳 Por cobrar**.
 Marcarlo *Entregado* (el mesero o el domiciliario) sólo cambia lo que ve el
 cliente. La cajera confirma cuando tiene el dinero y elige **con qué pagó** el
 cliente; un pago confirmado ya no se cambia.
+
+Esa vista es **la cola de trabajo y el histórico a la vez**, y los filtros de
+arriba eligen cuál se está mirando:
+
+- **Por cobrar** (lo normal) muestra **todo lo que falta cobrar, sin importar
+  las fechas**. El rango de arriba no se le aplica: una mesa que lleva dos
+  semanas sin pagar tiene que verse igual, y un rango de «los últimos 7 días»
+  la escondía.
+- **Todos**, **Confirmados** y **Rechazados** son consulta, y ahí el rango de
+  fechas sí manda.
+
+Los cuatro números de arriba son siempre los de la **cola**, no los de lo que
+se está mirando: consultar el histórico de marzo no puede hacer creer que no
+queda nada por cobrar.
+
+**Rechazar** un pago —el cliente dijo que pagó y el dinero no está— saca la
+factura de la cola, pero no la cierra: sigue en el histórico con su botón de
+cobrar, porque un rechazo por error no puede dejar una factura imposible de
+cobrar para siempre. La factura **no se cancela**: lo que se comió se comió.
 
 | Método | Qué pasa |
 |---|---|
