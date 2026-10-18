@@ -347,6 +347,8 @@ NASCAR.Remoto = (function () {
         pagaCon: p.paga_con === null || p.paga_con === undefined ? '' : n(p.paga_con),
       },
       items: (p.items || []).map((i) => ({
+        // El id del renglón: con él se dice cuál se dio de baja al anular
+        itemId: i.pedido_item_id,
         refId: refDeItem(i),
         nombre: i.nombre,
         precio: n(i.precio_unitario),
@@ -882,8 +884,13 @@ NASCAR.Remoto = (function () {
       })));
     },
 
-    anularPedido: function (pedidoId, motivo) {
-      const r = rpc('anular_pedido', { p_pedido_id: idBase(pedidoId), p_motivo: motivo });
+    anularPedido: function (pedidoId, motivo, quien, itemsBaja) {
+      const r = rpc('anular_pedido', {
+        p_pedido_id: idBase(pedidoId),
+        p_motivo: motivo,
+        // Lo que NO vuelve al inventario; vacío = vuelve todo, como siempre
+        p_items_baja: (itemsBaja || []).map(Number).filter(Boolean),
+      });
       const p = ponerPedido(aPedido(r.pedido));
       despuesDeInventario(); // el retorno de mercancía es una entrada nueva
       return {

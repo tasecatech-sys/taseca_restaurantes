@@ -887,8 +887,25 @@
         '<div class="linea"><span class="tenue">Método de pago</span><b>' + U.esc(metodo) + '</b></div>' +
         '</div>' +
 
+        '<div class="campo"><span>¿Qué se perdió?</span>' +
+        '<div class="lista-check" id="anItems">' +
+        (p.items || [])
+          .map(
+            (it, i) =>
+              '<label class="lista-check__fila">' +
+              '<input type="checkbox" value="' + U.esc(it.itemId || '') + '" data-i="' + i + '">' +
+              '<b>' + it.cantidad + '× ' + U.esc(it.nombre) + '</b>' +
+              '<i>vuelve al stock</i>' +
+              '</label>'
+          )
+          .join('') +
+        '</div>' +
+        '<span class="mini tenue">Marca lo que <b>no</b> vuelve al inventario: se cayó, se dañó o ' +
+        'el cliente se lo quedó. Lo que dejes sin marcar regresa al stock.</span></div>' +
+
         (productos.length
-          ? '<div class="caja-datos mb-16"><b class="mini">Retorno de inventario</b>' +
+          ? '<div class="caja-datos mb-16"><b class="mini">Volvería al inventario</b>' +
+            '<div id="anRetorno">' +
             productos
               .map(
                 (x) =>
@@ -897,7 +914,7 @@
                   x.cantidad + '</b></div>'
               )
               .join('') +
-            '</div>'
+            '</div></div>'
           : '<p class="mini tenue mb-16">Esta venta no tiene productos de inventario asociados: ' +
             'no hay nada que devolver.</p>') +
 
@@ -913,15 +930,41 @@
     });
 
     U.$('[data-no]', m.raiz).onclick = m.cerrar;
-    U.$('[data-si]', m.raiz).onclick = function () {
+
+    /* Al marcar un plato, su renglón lo dice y el retorno de inventario se
+       recalcula: así se ve ANTES de anular qué va a volver de verdad. */
+    const marcados = () => U.$$('#anItems input:checked', m.raiz).map((x) => x.value).filter(Boolean);
+
+    const lista = U.$('#anItems', m.raiz);
+    if (lista)
+      lista.addEventListener('change', function () {
+        U.$$('#anItems .lista-check__fila', m.raiz).forEach(function (f) {
+          f.querySelector('i').textContent = f.querySelector('input').checked ? 'se pierde' : 'vuelve al stock';
+        });
+        const caja = U.$('#anRetorno', m.raiz);
+        if (!caja) return;
+        const quedan = S.consumoDePedido ? S.consumoDePedido(p, marcados()) : productos;
+        caja.innerHTML = quedan.length
+          ? quedan
+              .map((x) => '<div class="linea"><span class="tenue">' + U.esc(x.nombre) +
+                ' <span class="mini">(' + U.esc(x.codigo) + ')</span></span><b>+' + x.cantidad + '</b></div>')
+              .join('')
+          : '<p class="mini tenue" style="margin:0">Nada: todo se dio de baja.</p>';
+      });
+
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Anulando…', function () {
       const motivo = U.$('#anMotivo', m.raiz).value.trim();
-      if (motivo.length < 3) return U.toast('El motivo de la anulación es obligatorio.', 'error');
+      if (motivo.length < 3) {
+        U.toast('El motivo de la anulación es obligatorio.', 'error');
+        return false;
+      }
 
       let r;
       try {
-        r = S.anularPedido(pedidoId, motivo);
+        r = S.anularPedido(pedidoId, motivo, A.firma(), marcados());
       } catch (err) {
-        return U.toast(err.message, 'error');
+        U.toast(err.message, 'error');
+        return false; // el botón vuelve: se puede reintentar
       }
 
       m.cerrar();
@@ -937,7 +980,7 @@
       );
       if (alTerminar) alTerminar();
       refrescarTodo();
-    };
+    });
   }
 
   /* --- Comanda para cocina --------------------------------------- */

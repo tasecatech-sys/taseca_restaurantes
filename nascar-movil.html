@@ -11021,7 +11021,8 @@ NASCAR.Store = (function () {
      relación que el cruce del cierre: `ventaRefIds`. No hay recetas ni
      un segundo mapeo — si un plato no está asociado a un producto de
      inventario, no consume nada y aquí tampoco devuelve nada. */
-  function consumoDePedido(pedido) {
+  function consumoDePedido(pedido, itemsBaja) {
+    const baja = (itemsBaja || []).map(String);
     const porRef = {};
     (NASCAR.INVENTARIO || []).forEach(function (prod) {
       (prod.ventaRefIds || []).forEach(function (ref) {
@@ -11032,6 +11033,8 @@ NASCAR.Store = (function () {
     const mapa = {};
     (pedido.items || []).forEach(function (it) {
       if (it.origen === 'dia') return; // el menú del día no lleva saldo
+      // Dado de baja: no vuelve, así que no entra en el retorno
+      if (baja.length && baja.indexOf(String(it.itemId)) >= 0) return;
       const cod = porRef[it.refId];
       if (!cod) return;
       mapa[cod] = (mapa[cod] || 0) + Number(it.cantidad || 0);
@@ -11111,7 +11114,7 @@ NASCAR.Store = (function () {
    * Nunca las dos cosas a la vez: sería devolver el inventario dos
    * veces.
    */
-  function anularPedido(pedidoId, motivo, quien) {
+  function anularPedido(pedidoId, motivo, quien, itemsBaja) {
     const pedido = getPedido(pedidoId);
     if (!pedido) throw new Error('Esa factura no existe.');
 
@@ -11136,7 +11139,10 @@ NASCAR.Store = (function () {
 
     const eid = pedido.empresaId || EMPRESA_DEFECTO;
     const jornadaOriginal = fechaOperativaPedido(pedido);
-    const productos = consumoDePedido(pedido);
+    /* Lo que se dio de baja no vuelve al inventario: se quedó por el
+       camino. Se descuenta del consumo antes de calcular el retorno. */
+    const baja = (itemsBaja || []).map(String);
+    const productos = consumoDePedido(pedido, baja);
 
     /* Se decide área por área: puede estar cerrado el inventario de
        comidas y no el de bar, y cada mitad va a donde le toca. */
@@ -13778,6 +13784,8 @@ NASCAR.Remoto = (function () {
         pagaCon: p.paga_con === null || p.paga_con === undefined ? '' : n(p.paga_con),
       },
       items: (p.items || []).map((i) => ({
+        // El id del renglón: con él se dice cuál se dio de baja al anular
+        itemId: i.pedido_item_id,
         refId: refDeItem(i),
         nombre: i.nombre,
         precio: n(i.precio_unitario),
@@ -14313,8 +14321,13 @@ NASCAR.Remoto = (function () {
       })));
     },
 
-    anularPedido: function (pedidoId, motivo) {
-      const r = rpc('anular_pedido', { p_pedido_id: idBase(pedidoId), p_motivo: motivo });
+    anularPedido: function (pedidoId, motivo, quien, itemsBaja) {
+      const r = rpc('anular_pedido', {
+        p_pedido_id: idBase(pedidoId),
+        p_motivo: motivo,
+        // Lo que NO vuelve al inventario; vacío = vuelve todo, como siempre
+        p_items_baja: (itemsBaja || []).map(Number).filter(Boolean),
+      });
       const p = ponerPedido(aPedido(r.pedido));
       despuesDeInventario(); // el retorno de mercancía es una entrada nueva
       return {
@@ -26365,8 +26378,25 @@ NASCAR.Avisos = (function () {
         '<div class="linea"><span class="tenue">Método de pago</span><b>' + U.esc(metodo) + '</b></div>' +
         '</div>' +
 
+        '<div class="campo"><span>¿Qué se perdió?</span>' +
+        '<div class="lista-check" id="anItems">' +
+        (p.items || [])
+          .map(
+            (it, i) =>
+              '<label class="lista-check__fila">' +
+              '<input type="checkbox" value="' + U.esc(it.itemId || '') + '" data-i="' + i + '">' +
+              '<b>' + it.cantidad + '× ' + U.esc(it.nombre) + '</b>' +
+              '<i>vuelve al stock</i>' +
+              '</label>'
+          )
+          .join('') +
+        '</div>' +
+        '<span class="mini tenue">Marca lo que <b>no</b> vuelve al inventario: se cayó, se dañó o ' +
+        'el cliente se lo quedó. Lo que dejes sin marcar regresa al stock.</span></div>' +
+
         (productos.length
-          ? '<div class="caja-datos mb-16"><b class="mini">Retorno de inventario</b>' +
+          ? '<div class="caja-datos mb-16"><b class="mini">Volvería al inventario</b>' +
+            '<div id="anRetorno">' +
             productos
               .map(
                 (x) =>
@@ -26375,7 +26405,7 @@ NASCAR.Avisos = (function () {
                   x.cantidad + '</b></div>'
               )
               .join('') +
-            '</div>'
+            '</div></div>'
           : '<p class="mini tenue mb-16">Esta venta no tiene productos de inventario asociados: ' +
             'no hay nada que devolver.</p>') +
 
@@ -26391,15 +26421,41 @@ NASCAR.Avisos = (function () {
     });
 
     U.$('[data-no]', m.raiz).onclick = m.cerrar;
-    U.$('[data-si]', m.raiz).onclick = function () {
+
+    /* Al marcar un plato, su renglón lo dice y el retorno de inventario se
+       recalcula: así se ve ANTES de anular qué va a volver de verdad. */
+    const marcados = () => U.$$('#anItems input:checked', m.raiz).map((x) => x.value).filter(Boolean);
+
+    const lista = U.$('#anItems', m.raiz);
+    if (lista)
+      lista.addEventListener('change', function () {
+        U.$$('#anItems .lista-check__fila', m.raiz).forEach(function (f) {
+          f.querySelector('i').textContent = f.querySelector('input').checked ? 'se pierde' : 'vuelve al stock';
+        });
+        const caja = U.$('#anRetorno', m.raiz);
+        if (!caja) return;
+        const quedan = S.consumoDePedido ? S.consumoDePedido(p, marcados()) : productos;
+        caja.innerHTML = quedan.length
+          ? quedan
+              .map((x) => '<div class="linea"><span class="tenue">' + U.esc(x.nombre) +
+                ' <span class="mini">(' + U.esc(x.codigo) + ')</span></span><b>+' + x.cantidad + '</b></div>')
+              .join('')
+          : '<p class="mini tenue" style="margin:0">Nada: todo se dio de baja.</p>';
+      });
+
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Anulando…', function () {
       const motivo = U.$('#anMotivo', m.raiz).value.trim();
-      if (motivo.length < 3) return U.toast('El motivo de la anulación es obligatorio.', 'error');
+      if (motivo.length < 3) {
+        U.toast('El motivo de la anulación es obligatorio.', 'error');
+        return false;
+      }
 
       let r;
       try {
-        r = S.anularPedido(pedidoId, motivo);
+        r = S.anularPedido(pedidoId, motivo, A.firma(), marcados());
       } catch (err) {
-        return U.toast(err.message, 'error');
+        U.toast(err.message, 'error');
+        return false; // el botón vuelve: se puede reintentar
       }
 
       m.cerrar();
@@ -26415,7 +26471,7 @@ NASCAR.Avisos = (function () {
       );
       if (alTerminar) alTerminar();
       refrescarTodo();
-    };
+    });
   }
 
   /* --- Comanda para cocina --------------------------------------- */

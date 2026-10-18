@@ -3384,7 +3384,8 @@ NASCAR.Store = (function () {
      relación que el cruce del cierre: `ventaRefIds`. No hay recetas ni
      un segundo mapeo — si un plato no está asociado a un producto de
      inventario, no consume nada y aquí tampoco devuelve nada. */
-  function consumoDePedido(pedido) {
+  function consumoDePedido(pedido, itemsBaja) {
+    const baja = (itemsBaja || []).map(String);
     const porRef = {};
     (NASCAR.INVENTARIO || []).forEach(function (prod) {
       (prod.ventaRefIds || []).forEach(function (ref) {
@@ -3395,6 +3396,8 @@ NASCAR.Store = (function () {
     const mapa = {};
     (pedido.items || []).forEach(function (it) {
       if (it.origen === 'dia') return; // el menú del día no lleva saldo
+      // Dado de baja: no vuelve, así que no entra en el retorno
+      if (baja.length && baja.indexOf(String(it.itemId)) >= 0) return;
       const cod = porRef[it.refId];
       if (!cod) return;
       mapa[cod] = (mapa[cod] || 0) + Number(it.cantidad || 0);
@@ -3474,7 +3477,7 @@ NASCAR.Store = (function () {
    * Nunca las dos cosas a la vez: sería devolver el inventario dos
    * veces.
    */
-  function anularPedido(pedidoId, motivo, quien) {
+  function anularPedido(pedidoId, motivo, quien, itemsBaja) {
     const pedido = getPedido(pedidoId);
     if (!pedido) throw new Error('Esa factura no existe.');
 
@@ -3499,7 +3502,10 @@ NASCAR.Store = (function () {
 
     const eid = pedido.empresaId || EMPRESA_DEFECTO;
     const jornadaOriginal = fechaOperativaPedido(pedido);
-    const productos = consumoDePedido(pedido);
+    /* Lo que se dio de baja no vuelve al inventario: se quedó por el
+       camino. Se descuenta del consumo antes de calcular el retorno. */
+    const baja = (itemsBaja || []).map(String);
+    const productos = consumoDePedido(pedido, baja);
 
     /* Se decide área por área: puede estar cerrado el inventario de
        comidas y no el de bar, y cada mitad va a donde le toca. */

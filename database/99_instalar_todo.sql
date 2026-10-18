@@ -75,6 +75,10 @@
 \i 25_venta_directa.sql
 \echo '== 25 · Pruebas de venta directa (se deshacen con ROLLBACK)'
 \i 25_pruebas_venta_directa.sql
+\echo '== 26 · Al anular, qué vuelve y qué se pierde'
+\i 26_anulacion_por_item.sql
+\echo '== 26 · Pruebas de anulación por ítem (se deshacen con ROLLBACK)'
+\i 26_pruebas_anulacion_por_item.sql
 \echo '== 22 · Red de seguridad completa en el camino de un pedido'
 \i 22_relaciones_empresa_completas.sql
 \echo '== 21 · Auditoría: un pedido y su inventario (se deshace con ROLLBACK)'

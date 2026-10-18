@@ -36,6 +36,7 @@ PARTES = [
     ('22_relaciones_empresa_completas.sql',  'Red de seguridad completa en el camino de un pedido'),
     ('24_arranque_en_un_viaje.sql',          'Abrir el panel en una sola petición'),
     ('25_venta_directa.sql',                 'Venta directa en el mostrador'),
+    ('26_anulacion_por_item.sql',            'Al anular, qué vuelve al stock y qué se da de baja'),
     ('23_pedidos_sin_duplicados.sql',        'Un envío, un pedido: candado contra facturas repetidas'),
     ('20_motivo_marca.sql',                  'El motivo de marca de cada empresa'),
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
