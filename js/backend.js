@@ -174,7 +174,7 @@ window.NASCAR = window.NASCAR || {};
      secciones de trabajo; «carta» y «dia» quedan fuera a propósito, porque
      el portal ya usa esos anclajes para su propio contenido. */
   const SECCIONES_PANEL = [
-    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'pagos', 'informe',
+    'mesero', 'pedidos', 'cocina', 'entregas', 'ventas', 'caja', 'pagos', 'informe',
     'gastos', 'stock', 'entradas', 'cierre', 'inventario', 'unidades',
     'usuarios', 'config', 'ajustes',
   ];

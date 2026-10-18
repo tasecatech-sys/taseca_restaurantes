@@ -131,6 +131,7 @@
         <div class="app-side__grupo" data-grupo="ventas">
           <button type="button" class="app-side__grupo-cab" data-grupo-toggle aria-expanded="true" aria-controls="grupoVentas"><i aria-hidden="true">▾</i><span>Ventas y caja</span></button>
           <div class="app-side__grupo-items" id="grupoVentas" role="group" aria-label="Ventas y caja">
+            <button class="tab" data-tab="caja"><i>🧾</i><span>Caja</span></button>
             <button class="tab" data-tab="ventas"><i>📈</i><span>Ventas</span></button>
             <button class="tab" data-tab="pagos"><i>💳</i><span>Pagos</span><span class="pill oculto" id="pillPagos">0</span></button>
             <button class="tab" data-tab="informe"><i>📊</i><span>Cruce de caja</span></button>
@@ -252,6 +253,32 @@
       <div class="filtros" id="entregasSedes"></div>
 
       <div class="op-lista" id="listaEntregas"></div>
+    </section>
+
+    <!-- ---------- CAJA (vender y cobrar) ---------- -->
+    <section class="panel" data-panel="caja">
+      <div class="titulo-seccion" style="margin-bottom:14px">
+        <span class="titulo-seccion__kicker">Mostrador</span>
+        <h2 style="font-size:30px">Caja</h2>
+        <p>Vender y cobrar en el mismo sitio.</p>
+      </div>
+
+      <nav class="sub-tabs" id="cajaSub"></nav>
+
+      <!-- Vender -->
+      <div id="cajaVender" class="caja-pos">
+        <div class="caja-pos__carta">
+          <input class="input mb-8" id="cajaBuscar" placeholder="Buscar producto…" autocomplete="off">
+          <div class="filtros" id="cajaCategorias"></div>
+          <div class="caja-grid" id="cajaProductos"></div>
+        </div>
+        <aside class="caja-pos__ticket" id="cajaTicket"></aside>
+      </div>
+
+      <!-- Por cobrar -->
+      <div id="cajaCobrarVista" class="oculto">
+        <div class="op-lista" id="cajaPorCobrar"></div>
+      </div>
     </section>
 
     <!-- ---------- PEDIDOS ---------- -->
@@ -1023,6 +1050,7 @@
 <script src="/js/tema.js"></script>
 <script src="/js/inventario.js"></script>
 <script src="/js/gestion.js"></script>
+<script src="/js/caja.js"></script>
 <script src="/js/operacion.js"></script>
 <script src="/js/gastos.js"></script>
 <script src="/js/informe.js"></script>

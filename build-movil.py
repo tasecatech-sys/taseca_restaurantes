@@ -28,7 +28,7 @@ SALIDA = RAIZ / "nascar-movil.html"
 # así que todos esos van antes que él. menu-dia.js lo usan app, mesa y
 # operacion: va justo después de ui.js.
 SCRIPTS = ["js/data.js", "js/store.js", "js/backend.js", "js/remoto.js", "js/ui.js", "js/menu-dia.js", "js/auth.js",
-           "js/inventario.js", "js/gestion.js", "js/operacion.js",
+           "js/inventario.js", "js/gestion.js", "js/operacion.js", "js/caja.js",
            "js/gastos.js", "js/informe.js",
            "js/sidebar.js",
            "js/tema.js",

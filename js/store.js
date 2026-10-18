@@ -3259,6 +3259,31 @@ NASCAR.Store = (function () {
       historial: [{ ts: ahora, texto: 'Pedido recibido' }],
     };
 
+    /* ---- VENTA DIRECTA (mostrador) --------------------------------
+       Lo mismo que hace la base en database/25_venta_directa.sql, para que
+       el modo local de este navegador no se comporte distinto:
+
+         · si NADA hay que prepararlo, nace entregada;
+         · en los dos casos nace cobrada, porque quien vende es la caja.    */
+    if (datos.tipo === 'mostrador') {
+      const cartaDeLaEmpresa = soloDeEmpresa(cartaGuardada(), eid);
+      const algoSePrepara = items.some(function (it) {
+        if (it.origen !== 'carta') return true;  // día y armado siempre se preparan
+        const prod = cartaDeLaEmpresa.find((p) => p.id === it.refId);
+        return !prod || prod.requierePreparacion !== false;
+      });
+      if (!algoSePrepara) {
+        pedido.estado = 'entregado';
+        pedido.historial.push({ ts: ahora, texto: 'Entregado en el mostrador' });
+      }
+      pedido.estadoPago = 'confirmado';
+      pedido.historial.push({
+        ts: ahora,
+        texto: 'Pago confirmado en caja (' + pedido.metodoPago + ')' +
+               (datos.usuarioNombre ? ' por ' + datos.usuarioNombre : ''),
+      });
+    }
+
     const lista = leer(K.pedidos, []);
     lista.push(pedido);
     escribir(K.pedidos, lista);
@@ -3686,7 +3711,8 @@ NASCAR.Store = (function () {
       subtotal: 0,
       domicilios: 0,
       ticketPromedio: 0,
-      porTipo: { mesa: { n: 0, total: 0 }, domicilio: { n: 0, total: 0 } },
+      // Los tres que hay hoy; los que falten se crean solos más abajo
+      porTipo: { mesa: { n: 0, total: 0 }, domicilio: { n: 0, total: 0 }, mostrador: { n: 0, total: 0 } },
       porPago: {},
       porSucursal: {},
       porDia: {},
@@ -3702,6 +3728,7 @@ NASCAR.Store = (function () {
       r.subtotal += p.subtotal;
       r.domicilios += p.domicilio;
 
+      r.porTipo[p.tipo] = r.porTipo[p.tipo] || { n: 0, total: 0 };
       r.porTipo[p.tipo].n += 1;
       r.porTipo[p.tipo].total += p.total;
 

@@ -199,6 +199,13 @@
       sucursalGlobal: () => sucursalGlobal,
     });
 
+    NASCAR.Caja.iniciar({
+      raiz: RAIZ === document ? document.body : RAIZ,
+      sucursalGlobal: () => sucursalGlobal,
+      // La caja cobra lo pendiente con el mismo cuadro de siempre
+      cobrar: abrirConfirmarPago,
+    });
+
     montajeListo = true;
     montarModulos();
 
@@ -513,6 +520,7 @@
     if (A.puede('entradas')) NASCAR.Inventario.refrescarEntradas();
     NASCAR.Gestion.refrescar();
     NASCAR.Operacion.refrescar();
+    NASCAR.Caja.refrescar();
     if (A.puede('gastos')) NASCAR.Gastos.refrescar();
     if (A.puede('informe')) NASCAR.Informe.refrescar();
     pintarContadores();
@@ -645,8 +653,7 @@
       '<article class="tarjeta-pedido' + (urgente ? ' urgente' : '') + '" data-ver="' + p.id + '">' +
       '<div class="tp__top">' +
       '<span class="tp__codigo">' + U.esc(p.codigo) + '</span>' +
-      '<span class="badge ' + (p.tipo === 'mesa' ? 'badge--azul' : 'badge--rojo') + '">' +
-      (p.tipo === 'mesa' ? 'Mesa ' + U.esc(p.mesa) : 'Domicilio') + '</span>' +
+      '<span class="badge ' + U.colorTipo(p) + '">' + U.etiquetaTipo(p) + '</span>' +
       '</div>' +
 
       '<div class="tp__meta">' +
@@ -705,8 +712,7 @@
 
       cont.innerHTML =
         '<div class="fila fila--entre mb-16">' +
-        '<span class="badge ' + (p.tipo === 'mesa' ? 'badge--azul' : 'badge--rojo') + '">' +
-        (p.tipo === 'mesa' ? 'Mesa ' + U.esc(p.mesa) : 'Domicilio') + '</span>' +
+        '<span class="badge ' + U.colorTipo(p) + '">' + U.etiquetaTipo(p) + '</span>' +
         '<span class="badge ' + (p.estado === 'anulado' ? 'badge--rojo' : 'badge--gris') + '">' +
         S.ETIQUETA_ESTADO[p.estado] + '</span>' +
         insigniaPago(p) +
@@ -957,7 +963,7 @@
       '<div class="c">' + suc.nombre + '<br>' + suc.direccion + '<br>NIT ' + NASCAR.CONFIG.pago.nit + '</div>' +
       '<hr>' +
       '<div class="f"><b>' + p.codigo + '</b><span>' + new Date(p.creado).toLocaleString('es-CO') + '</span></div>' +
-      '<div class="f"><span>' + (p.tipo === 'mesa' ? 'MESA ' + p.mesa : 'DOMICILIO') + '</span>' +
+      '<div class="f"><span>' + U.etiquetaTipo(p).toUpperCase() + '</span>' +
       '<span>' + (p.cliente.nombre || '') + '</span></div>' +
       (p.cliente.direccion ? '<div>' + p.cliente.direccion + (p.cliente.zona ? ' (' + p.cliente.zona + ')' : '') + '</div>' : '') +
       (p.cliente.telefono ? '<div>Tel: ' + p.cliente.telefono + '</div>' : '') +
@@ -1125,7 +1131,7 @@
       ancho: 450,
       contenido:
         '<div class="caja-datos">' +
-        '<div class="linea"><span class="tenue">' + (p.tipo === 'mesa' ? 'Mesa' : 'Cliente') + '</span><b>' +
+        '<div class="linea"><span class="tenue">' + (p.tipo === 'mesa' ? 'Mesa' : p.tipo === 'mostrador' ? 'Venta' : 'Cliente') + '</span><b>' +
         U.esc(p.tipo === 'mesa' ? p.mesa + (p.cliente.nombre ? ' · ' + p.cliente.nombre : '') : p.cliente.nombre || '—') + '</b></div>' +
         '<div class="linea"><span class="tenue">Pedido</span><b>' + U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + '</b></div>' +
         (p.comprobante
@@ -2108,6 +2114,11 @@
         (v.porTipo.mesa.total / Math.max(1, v.total)) * 100) +
       barra('Domicilio', U.money(v.porTipo.domicilio.total) + ' · ' + v.porTipo.domicilio.n + ' ped.',
         (v.porTipo.domicilio.total / Math.max(1, v.total)) * 100) +
+      // El mostrador sólo aparece si de verdad se vendió por ahí
+      (v.porTipo.mostrador && v.porTipo.mostrador.n
+        ? barra('Mostrador', U.money(v.porTipo.mostrador.total) + ' · ' + v.porTipo.mostrador.n + ' ventas',
+            (v.porTipo.mostrador.total / Math.max(1, v.total)) * 100)
+        : '') +
       '</div>';
 
     // Detalle
@@ -2122,7 +2133,7 @@
               '<tr data-ver="' + p.id + '" style="cursor:pointer">' +
               '<td><b class="mono">' + U.esc(p.codigo) + '</b></td>' +
               '<td class="mini tenue">' + p.fecha + '<br>' + U.hora(p.creado) + '</td>' +
-              '<td>' + (p.tipo === 'mesa' ? 'Mesa ' + U.esc(p.mesa) : 'Domicilio') + '</td>' +
+              '<td>' + U.etiquetaTipo(p) + '</td>' +
               '<td class="mini">' + U.esc(U.sucursal(p.sucursalId).corto) + '</td>' +
               '<td class="mini">' + U.esc(p.cliente.nombre || '—') + '</td>' +
               '<td>' + insigniaPago(p) + '</td>' +

@@ -442,6 +442,7 @@ NASCAR.Auth = (function () {
     { tab: 'cocina', permiso: 'pedidos_cocina', exclusiva: true },
     { tab: 'entregas', permiso: 'pedidos_domicilio', exclusiva: true },
     { tab: 'pedidos', permiso: 'pedidos_ver' },
+    { tab: 'caja', permiso: 'pagos' },
     { tab: 'pagos', permiso: 'pagos' },
     { tab: 'dia', permiso: 'menu' },
     { tab: 'carta', permiso: 'carta' },
@@ -479,7 +480,7 @@ NASCAR.Auth = (function () {
     mesero: 'mesero',
     cocinero: 'cocina',
     domiciliario: 'entregas',
-    caja: 'pagos',
+    caja: 'caja',
   };
 
   function seccionInicial(usuario) {

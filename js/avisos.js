@@ -44,7 +44,7 @@ NASCAR.Avisos = (function () {
       titulo: 'Pedido nuevo',
       tonos: [880, 1175],
       ms: 130,
-      texto: (p) => (p.tipo === 'mesa' ? 'Mesa ' + p.mesa : 'Domicilio') + ' · ' + U.money(p.total),
+      texto: (p) => U.etiquetaTipo(p) + ' · ' + U.money(p.total),
     },
     listoMesa: {
       permisos: ['pedidos_listos', 'pedidos_mesa', 'pedidos_gestionar'],

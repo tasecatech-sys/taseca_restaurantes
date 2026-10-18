@@ -485,6 +485,7 @@ NASCAR.PLANTILLAS_EMPRESA = [
    dos módulos para que tenga sentido registrarlas. */
 NASCAR.MODULO_DE_TAB = {
   pedidos: 'basico',
+  caja: 'basico',
   pagos: 'basico',
   dia: 'basico',
   carta: 'basico',

@@ -130,6 +130,25 @@ NASCAR.UI = (function () {
     return 'e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   }
 
+  /* Cómo se llama un pedido en pantalla. Tres tipos hoy; el día que haya
+     otro se añade aquí y no en seis sitios. */
+  function etiquetaTipo(p, opciones) {
+    const o = opciones || {};
+    const conMesa = o.conMesa !== false;
+    if (!p) return '';
+    if (p.tipo === 'mesa') return (o.icono ? '🍽️ ' : '') + (conMesa ? 'Mesa ' + esc(p.mesa) : 'Mesa');
+    if (p.tipo === 'mostrador') return (o.icono ? '🧾 ' : '') + 'Mostrador';
+    return (o.icono ? '🛵 ' : '') + 'Domicilio';
+  }
+
+  /* El color del distintivo según el tipo. */
+  function colorTipo(p) {
+    if (!p) return 'badge--rojo';
+    if (p.tipo === 'mesa') return 'badge--azul';
+    if (p.tipo === 'mostrador') return 'badge--verde';
+    return 'badge--rojo';
+  }
+
   function el(tag, attrs, html) {
     const n = document.createElement(tag);
     if (attrs) Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
@@ -518,6 +537,8 @@ NASCAR.UI = (function () {
     $$: $$,
     unaVez: unaVez,
     ocupado: ocupado,
+    etiquetaTipo: etiquetaTipo,
+    colorTipo: colorTipo,
     claveEnvio: claveEnvio,
     el: el,
     acciones: acciones,

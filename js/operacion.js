@@ -516,7 +516,7 @@ NASCAR.Operacion = (function () {
       '<div class="op-card op-card--' + p.estado + (urgente ? ' op-card--urgente' : '') + '">' +
       '<div class="op-card__top">' +
       '<span class="op-card__codigo">' +
-      (p.tipo === 'mesa' ? '🍽️ Mesa ' + U.esc(p.mesa) : '🛵 Domicilio') + '</span>' +
+      U.etiquetaTipo(p, { icono: true }) + '</span>' +
       '<span class="badge ' + (p.estado === 'nuevo' ? 'badge--rojo' : 'badge--ambar') + '">' +
       S.ETIQUETA_ESTADO[p.estado] + '</span>' +
       '</div>' +
