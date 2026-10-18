@@ -8783,6 +8783,10 @@ NASCAR.Store = (function () {
       orden: typeof p.orden === 'number' ? p.orden : (indice + 1) * 10,
       sucursales: Array.isArray(p.sucursales) ? p.sucursales : [],
       imagen: p.imagen || '',
+      /* ¿Hay que prepararlo? Por defecto sí: una carta que nadie ha tocado
+         se comporta como siempre. Sólo lo que se marque como «se entrega en
+         el acto» puede venderse sin pasar por cocina. */
+      requierePreparacion: p.requierePreparacion !== false,
     });
   }
 
@@ -13474,6 +13478,7 @@ NASCAR.Remoto = (function () {
       agotado: unidades.some((u) => u.agotado),
       sucursales: unidades.map((u) => u.unidad_id),
       imagen: p.imagen_url || '',
+      requierePreparacion: p.requiere_preparacion !== false,
     };
   }
 
@@ -19033,6 +19038,12 @@ NASCAR.Gestion = (function () {
         (p.agotado ? ' checked' : '') + ' style="accent-color:var(--ambar);width:18px;height:18px"> Agotado hoy</label>' +
         '</div>' +
 
+        '<label class="op" style="cursor:pointer;margin-bottom:16px">' +
+        '<input type="checkbox" id="pSinCocina"' + (p.requierePreparacion === false ? ' checked' : '') + '>' +
+        '<div><b>Se entrega en el acto</b>' +
+        '<span>Una gaseosa, un empaquetado, algo de vitrina: en la venta directa se cobra ' +
+        'y se entrega sin pasar por cocina. Déjalo sin marcar si hay que prepararlo.</span></div></label>' +
+
         '<div class="fila fila--fin">' +
         '<button class="btn btn--fantasma" id="pNo">Cancelar</button>' +
         '<button class="btn btn--rojo" id="pSi">Guardar</button></div>',
@@ -19054,6 +19065,7 @@ NASCAR.Gestion = (function () {
           sucursales: p.sucursales,
           activo: U.$('#pActivo', m.raiz).checked,
           agotado: U.$('#pAgotado', m.raiz).checked,
+          requierePreparacion: !U.$('#pSinCocina', m.raiz).checked,
         });
       } catch (err) {
         return U.toast(err.message, 'error');

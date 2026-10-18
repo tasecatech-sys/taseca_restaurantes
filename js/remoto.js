@@ -249,6 +249,7 @@ NASCAR.Remoto = (function () {
       agotado: unidades.some((u) => u.agotado),
       sucursales: unidades.map((u) => u.unidad_id),
       imagen: p.imagen_url || '',
+      requierePreparacion: p.requiere_preparacion !== false,
     };
   }
 

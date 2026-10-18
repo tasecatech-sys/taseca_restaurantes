@@ -1321,6 +1321,10 @@ NASCAR.Store = (function () {
       orden: typeof p.orden === 'number' ? p.orden : (indice + 1) * 10,
       sucursales: Array.isArray(p.sucursales) ? p.sucursales : [],
       imagen: p.imagen || '',
+      /* ¿Hay que prepararlo? Por defecto sí: una carta que nadie ha tocado
+         se comporta como siempre. Sólo lo que se marque como «se entrega en
+         el acto» puede venderse sin pasar por cocina. */
+      requierePreparacion: p.requierePreparacion !== false,
     });
   }
 

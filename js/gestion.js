@@ -378,6 +378,12 @@ NASCAR.Gestion = (function () {
         (p.agotado ? ' checked' : '') + ' style="accent-color:var(--ambar);width:18px;height:18px"> Agotado hoy</label>' +
         '</div>' +
 
+        '<label class="op" style="cursor:pointer;margin-bottom:16px">' +
+        '<input type="checkbox" id="pSinCocina"' + (p.requierePreparacion === false ? ' checked' : '') + '>' +
+        '<div><b>Se entrega en el acto</b>' +
+        '<span>Una gaseosa, un empaquetado, algo de vitrina: en la venta directa se cobra ' +
+        'y se entrega sin pasar por cocina. Déjalo sin marcar si hay que prepararlo.</span></div></label>' +
+
         '<div class="fila fila--fin">' +
         '<button class="btn btn--fantasma" id="pNo">Cancelar</button>' +
         '<button class="btn btn--rojo" id="pSi">Guardar</button></div>',
@@ -399,6 +405,7 @@ NASCAR.Gestion = (function () {
           sucursales: p.sucursales,
           activo: U.$('#pActivo', m.raiz).checked,
           agotado: U.$('#pAgotado', m.raiz).checked,
+          requierePreparacion: !U.$('#pSinCocina', m.raiz).checked,
         });
       } catch (err) {
         return U.toast(err.message, 'error');
