@@ -71,6 +71,10 @@
 \i 23_pruebas_sin_duplicados.sql
 \echo '== 24 · Abrir el panel en un solo viaje'
 \i 24_arranque_en_un_viaje.sql
+\echo '== 25 · Venta directa (mostrador)'
+\i 25_venta_directa.sql
+\echo '== 25 · Pruebas de venta directa (se deshacen con ROLLBACK)'
+\i 25_pruebas_venta_directa.sql
 \echo '== 22 · Red de seguridad completa en el camino de un pedido'
 \i 22_relaciones_empresa_completas.sql
 \echo '== 21 · Auditoría: un pedido y su inventario (se deshace con ROLLBACK)'
