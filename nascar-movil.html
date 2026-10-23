@@ -2244,6 +2244,51 @@ summary {
 .modal-fondo.is-in .modal {
   transform: none;
 }
+
+/* Clic fuera: el cuadro NO se cierra, pero acusa recibo. Sin esto el clic
+   no haría nada y parecería que la pantalla se colgó.
+
+   Las dos señales son animaciones y no clases que haya que quitar luego:
+   al terminar, el elemento vuelve solo a su estilo de siempre. */
+@keyframes modal-insiste {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateX(-7px);
+  }
+  75% {
+    transform: translateX(7px);
+  }
+}
+/* Se enciende la salida, que es lo que se estaba buscando */
+@keyframes modal-insiste-x {
+  0%,
+  100% {
+    border-color: var(--borde-fuerte);
+    background: transparent;
+  }
+  40% {
+    border-color: var(--rojo);
+    background: var(--rojo);
+  }
+}
+/* La clase sólo la pone ui.js, y sólo con el cuadro abierto: no hace
+   falta colgar estas reglas de `.is-in`, que es la animación de entrada
+   y tiene su propio momento. */
+.modal.modal--insiste {
+  animation: modal-insiste 190ms ease-in-out;
+}
+.modal--insiste .modal__x {
+  animation: modal-insiste-x 460ms ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Se quita el movimiento, no el aviso: la X sigue encendiéndose. */
+  .modal.modal--insiste {
+    animation: none;
+  }
+}
 .modal__head {
   display: flex;
   align-items: center;
@@ -15906,9 +15951,29 @@ NASCAR.UI = (function () {
     }
 
     $('.modal__x', fondo).addEventListener('click', cerrar);
-    fondo.addEventListener('click', (e) => {
-      if (e.target === fondo) cerrar();
+
+    /* Un clic FUERA no cierra.
+
+       Estos cuadros llevan trabajo escrito dentro —el valor de la base de
+       caja, el motivo de una anulación, el conteo de un cierre— y un clic
+       de más al lado lo borraba todo sin preguntar. Se sale por la X, por
+       «Cancelar» o con Escape: las tres son decisiones, no resbalones.
+
+       Pero el clic tampoco se traga en silencio, que parecería que la
+       pantalla se quedó pegada: el cuadro se mueve un instante y se
+       enciende la X, que es por donde se sale. Se escucha `mousedown` y
+       no `click` a propósito, porque seleccionar texto dentro y soltar el
+       ratón fuera también dispara un `click` en el fondo, y eso no es
+       querer salir. */
+    fondo.addEventListener('mousedown', function (e) {
+      if (e.target !== fondo) return;
+      const caja = $('.modal', fondo);
+      if (!caja) return;
+      caja.classList.remove('modal--insiste');
+      void caja.offsetWidth; // reinicia la animación si se insiste
+      caja.classList.add('modal--insiste');
     });
+
     document.addEventListener('keydown', onKey);
 
     document.body.appendChild(fondo);

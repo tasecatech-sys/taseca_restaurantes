@@ -219,9 +219,29 @@ NASCAR.UI = (function () {
     }
 
     $('.modal__x', fondo).addEventListener('click', cerrar);
-    fondo.addEventListener('click', (e) => {
-      if (e.target === fondo) cerrar();
+
+    /* Un clic FUERA no cierra.
+
+       Estos cuadros llevan trabajo escrito dentro —el valor de la base de
+       caja, el motivo de una anulación, el conteo de un cierre— y un clic
+       de más al lado lo borraba todo sin preguntar. Se sale por la X, por
+       «Cancelar» o con Escape: las tres son decisiones, no resbalones.
+
+       Pero el clic tampoco se traga en silencio, que parecería que la
+       pantalla se quedó pegada: el cuadro se mueve un instante y se
+       enciende la X, que es por donde se sale. Se escucha `mousedown` y
+       no `click` a propósito, porque seleccionar texto dentro y soltar el
+       ratón fuera también dispara un `click` en el fondo, y eso no es
+       querer salir. */
+    fondo.addEventListener('mousedown', function (e) {
+      if (e.target !== fondo) return;
+      const caja = $('.modal', fondo);
+      if (!caja) return;
+      caja.classList.remove('modal--insiste');
+      void caja.offsetWidth; // reinicia la animación si se insiste
+      caja.classList.add('modal--insiste');
     });
+
     document.addEventListener('keydown', onKey);
 
     document.body.appendChild(fondo);

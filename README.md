@@ -357,6 +357,31 @@ que ya tiene el botón, para que nunca se desincronicen—. Cada elemento lleva
 además su `aria-label`, y el activo se distingue por **fondo y barra lateral**,
 no sólo por color.
 
+### Los cuadros emergentes no se cierran por accidente
+
+Un clic **fuera** de un cuadro no lo cierra. Dentro va trabajo escrito —el
+valor de la base de caja, el motivo de una anulación, el conteo de un cierre—
+y un clic de más al lado lo borraba todo sin preguntar.
+
+Se sale por tres caminos, y los tres son una decisión: la **X**, el botón de
+**Cancelar** cuando lo hay, y la tecla **`Escape`**. Esta última se mantiene a
+propósito: no se pulsa sin querer, y es el atajo que un lector de pantalla
+espera encontrar en un `role="dialog"`.
+
+El clic de fuera tampoco se ignora en silencio —parecería que la pantalla se
+colgó—: el cuadro se mueve un instante y se enciende la X, que es por donde se
+sale. Las dos señales son animaciones CSS, así que se deshacen solas y no
+dejan ninguna clase que haya que limpiar después.
+
+Un detalle del porqué: se escucha `mousedown` y no `click`. Seleccionar texto
+**dentro** del cuadro y soltar el ratón fuera dispara un `click` en el fondo,
+y eso no es querer salir.
+
+Está todo en `U.modal()` (`js/ui.js`), por donde pasan todos los cuadros del
+sistema —incluido `U.confirmar()`—, así que la regla es una sola. El **cajón**
+del menú y el **carrito** del portal sí se cierran al tocar fuera: no guardan
+nada que se pueda perder.
+
 ### Móvil y tablet
 
 Por debajo de 900 px la barra se convierte en un **cajón** que entra desde la
