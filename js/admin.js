@@ -47,24 +47,11 @@
     $('#pin').addEventListener('keydown', (e) => e.key === 'Enter' && entrar());
     $('#usuarioAcceso').addEventListener('keydown', (e) => e.key === 'Enter' && $('#pin').focus());
 
-    // Accesos rápidos: un botón por usuario activo, para poder probar
-    // cada perfil sin tener que acordarse de los PIN.
-    $('#accesoRapido').innerHTML = S.getUsuarios()
-      .map(
-        (u) =>
-          '<button data-acceso="' + U.esc(u.usuario) + '" data-pin="' + U.esc(u.pin) + '">' +
-          '<i>' + A.iconoRol(u.rol) + '</i><b>' + U.esc(A.nombreRol(u.rol)) + '</b>' +
-          '<span>' + U.esc(u.usuario) + '</span></button>'
-      )
-      .join('');
-
-    $('#accesoRapido').addEventListener('click', function (e) {
-      const b = e.target.closest('[data-acceso]');
-      if (!b) return;
-      $('#usuarioAcceso').value = b.dataset.acceso;
-      $('#pin').value = b.dataset.pin;
-      entrar();
-    });
+    /* Aquí vivía un «acceso rápido»: un botón por cada usuario de la
+       empresa, con su PIN escrito en el HTML. Servía para probar los
+       perfiles y era, a la vez, la lista completa de quién entra a este
+       negocio y con qué clave, a la vista de cualquiera que abriera la
+       dirección. El usuario se escribe. */
   }
 
   /* =================================================================

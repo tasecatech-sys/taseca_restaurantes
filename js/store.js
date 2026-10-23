@@ -1724,6 +1724,13 @@ NASCAR.Store = (function () {
         'Ya existe otro usuario con el acceso "' + acceso + '" (puede ser de otra empresa).'
       );
 
+    /* Las unidades sólo se tocan si vienen: quien guarda un usuario sin
+       mencionarlas —el alta de una empresa, por ejemplo— no se las borra
+       sin querer. Lista vacía SÍ es una respuesta: significa todas. */
+    const sedes = Array.isArray(datos.unidades)
+      ? datos.unidades.map(Number).filter(Boolean)
+      : null;
+
     const limpio = Object.assign({}, datos, {
       usuario: acceso,
       sucursalId: datos.sucursalId ? Number(datos.sucursalId) : null,
@@ -1733,6 +1740,8 @@ NASCAR.Store = (function () {
          rechaza el rol superadmin. */
       scope: eid === PLATAFORMA ? SCOPE_PLATAFORMA : SCOPE_EMPRESA,
     });
+    if (sedes) limpio.unidades = sedes;
+    else delete limpio.unidades;
 
     if (i >= 0) todos[i] = Object.assign({}, todos[i], limpio);
     else todos.push(conEmpresa(Object.assign({}, limpio, { id: datos.id || 'u-' + id() }), eid));
@@ -5211,6 +5220,10 @@ NASCAR.Store = (function () {
       scope: SCOPE_EMPRESA,
       empresaId: suEmpresa,
       sucursalId: u.sucursalId,
+      /* Atado a una, o con varias entre las que puede moverse. Lo mira
+         setUnidadActiva(); sin esto, fuera de la base de datos las
+         varias unidades no limitarían nada. */
+      unidades: ((u.unidades || []).map(Number)).filter(Boolean),
     });
     return true;
   }

@@ -1720,11 +1720,15 @@ NASCAR.Remoto = (function () {
       usuario: u.usuario,
       rol: u.rol,
       activo: u.activo !== false,
-      // Una unidad, todas ([]), o sin tocar (null) si en la base tenía varias y no se cambió
-      unidades: u.sucursalId
+      /* Las unidades en las que trabaja: una, varias, o ninguna marcada
+         —que es «todas» y viaja como []—. Antes se mandaba null para «no
+         cambiar», porque la pantalla no sabía decir «varias» y había que
+         conservar lo que hubiera en la base; ahora sí lo dice, así que se
+         manda siempre lo que se eligió. */
+      unidades: Array.isArray(u.unidades)
+        ? u.unidades.map(Number).filter(Boolean)
+        : u.sucursalId
         ? [Number(u.sucursalId)]
-        : previo && (previo.unidades || []).length > 1 && !previo.sucursalId
-        ? null
         : [],
     };
     if (u.pin && String(u.pin).trim()) datos.pin = String(u.pin).trim();

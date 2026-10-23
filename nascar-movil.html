@@ -3569,44 +3569,6 @@ tr.fila--sin td {
   color: var(--gris);
 }
 
-/* Accesos rápidos de la pantalla de login */
-.acceso-rapido {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 8px;
-  margin-top: 14px;
-}
-.acceso-rapido button {
-  padding: 11px 8px;
-  border: 1px solid var(--borde-fuerte);
-  border-radius: var(--r-sm);
-  background: var(--negro-800);
-  color: var(--humo);
-  cursor: pointer;
-  transition: all var(--t);
-}
-.acceso-rapido button:hover {
-  border-color: var(--azul);
-  background: var(--negro-600);
-}
-.acceso-rapido i {
-  font-style: normal;
-  font-size: 19px;
-  display: block;
-}
-.acceso-rapido b {
-  display: block;
-  font-family: var(--f-cond);
-  font-size: 14px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--blanco);
-}
-.acceso-rapido span {
-  font-size: 11px;
-  color: var(--gris-osc);
-}
-
 /* ========================= 18. RESPONSIVE =============================== */
 @media (max-width: 1024px) {
   .hero__inner {
@@ -5656,7 +5618,11 @@ tr.fila--sin td {
 
       <label class="campo" style="text-align:left">
         <span>Usuario</span>
-        <input class="input" id="usuarioAcceso" placeholder="admin" autocomplete="username" autocapitalize="off">
+        <!-- Ni `placeholder` con un usuario de verdad ni autocompletado: la
+             pantalla de entrada no sugiere a nadie. Quien entra sabe cuál es
+             el suyo; quien no, no tiene por qué enterarse aquí. -->
+        <input class="input" id="usuarioAcceso" placeholder="Tu usuario"
+               autocomplete="off" autocapitalize="off" spellcheck="false">
       </label>
 
       <label class="campo" style="text-align:left">
@@ -5667,13 +5633,7 @@ tr.fila--sin td {
 
       <button class="btn btn--rojo btn--bloque mt-8" id="btnEntrar">Entrar</button>
 
-      <p class="mini tenue mt-24" style="margin-bottom:4px">Acceso rápido para probar cada perfil</p>
-      <div class="acceso-rapido" id="accesoRapido"></div>
-
-      <p class="mini ambar mt-16" style="margin-bottom:0">
-        Los PIN son de demostración: viajan en el código y no protegen nada.
-      </p>
-      <p class="mini tenue mt-8" style="margin-bottom:0">
+      <p class="mini tenue mt-24" style="margin-bottom:0">
         <a href="#publico">← Volver al sitio público</a>
       </p>
       <!-- Aquí NO va ningún acceso al panel de Taseca. Éste es el portal
@@ -9506,6 +9466,13 @@ NASCAR.Store = (function () {
         'Ya existe otro usuario con el acceso "' + acceso + '" (puede ser de otra empresa).'
       );
 
+    /* Las unidades sólo se tocan si vienen: quien guarda un usuario sin
+       mencionarlas —el alta de una empresa, por ejemplo— no se las borra
+       sin querer. Lista vacía SÍ es una respuesta: significa todas. */
+    const sedes = Array.isArray(datos.unidades)
+      ? datos.unidades.map(Number).filter(Boolean)
+      : null;
+
     const limpio = Object.assign({}, datos, {
       usuario: acceso,
       sucursalId: datos.sucursalId ? Number(datos.sucursalId) : null,
@@ -9515,6 +9482,8 @@ NASCAR.Store = (function () {
          rechaza el rol superadmin. */
       scope: eid === PLATAFORMA ? SCOPE_PLATAFORMA : SCOPE_EMPRESA,
     });
+    if (sedes) limpio.unidades = sedes;
+    else delete limpio.unidades;
 
     if (i >= 0) todos[i] = Object.assign({}, todos[i], limpio);
     else todos.push(conEmpresa(Object.assign({}, limpio, { id: datos.id || 'u-' + id() }), eid));
@@ -12993,6 +12962,10 @@ NASCAR.Store = (function () {
       scope: SCOPE_EMPRESA,
       empresaId: suEmpresa,
       sucursalId: u.sucursalId,
+      /* Atado a una, o con varias entre las que puede moverse. Lo mira
+         setUnidadActiva(); sin esto, fuera de la base de datos las
+         varias unidades no limitarían nada. */
+      unidades: ((u.unidades || []).map(Number)).filter(Boolean),
     });
     return true;
   }
@@ -15306,11 +15279,15 @@ NASCAR.Remoto = (function () {
       usuario: u.usuario,
       rol: u.rol,
       activo: u.activo !== false,
-      // Una unidad, todas ([]), o sin tocar (null) si en la base tenía varias y no se cambió
-      unidades: u.sucursalId
+      /* Las unidades en las que trabaja: una, varias, o ninguna marcada
+         —que es «todas» y viaja como []—. Antes se mandaba null para «no
+         cambiar», porque la pantalla no sabía decir «varias» y había que
+         conservar lo que hubiera en la base; ahora sí lo dice, así que se
+         manda siempre lo que se eligió. */
+      unidades: Array.isArray(u.unidades)
+        ? u.unidades.map(Number).filter(Boolean)
+        : u.sucursalId
         ? [Number(u.sucursalId)]
-        : previo && (previo.unidades || []).length > 1 && !previo.sucursalId
-        ? null
         : [],
     };
     if (u.pin && String(u.pin).trim()) datos.pin = String(u.pin).trim();
@@ -20006,14 +19983,23 @@ NASCAR.Gestion = (function () {
 
     $('#tablaUsuarios').innerHTML = lista
       .map(function (u) {
-        const suc = u.sucursalId ? U.sucursal(u.sucursalId) : null;
+        const sedes = unidadesDe(u).map((id) => U.sucursal(id)).filter(Boolean);
         const esYo = yo && yo.usuarioId === u.id;
         return (
           '<tr' + (u.activo === false ? ' style="opacity:.55"' : '') + '>' +
           '<td><b>' + U.esc(u.nombre) + '</b>' + (esYo ? ' <span class="badge badge--azul">Tú</span>' : '') +
           '<br><span class="mini tenue mono">' + U.esc(u.usuario) + '</span></td>' +
           '<td>' + A.iconoRol(u.rol) + ' ' + U.esc(A.nombreRol(u.rol)) + '</td>' +
-          '<td class="mini">' + (suc ? U.esc(suc.corto) : '<span class="tenue">Todas</span>') + '</td>' +
+          /* Ninguna marcada es «todas»: no es lo mismo que no tener acceso
+             a ninguna, y la tabla tiene que decirlo con esa palabra. */
+          '<td class="mini">' +
+          (!sedes.length
+            ? '<span class="tenue">Todas</span>'
+            : sedes.length <= 2
+            ? U.esc(sedes.map((x) => x.corto).join(' · '))
+            : '<span title="' + U.esc(sedes.map((x) => x.nombre).join(', ')) + '">' +
+              sedes.length + ' unidades</span>') +
+          '</td>' +
           '<td class="mini mono">' + '••••' + '</td>' +
           '<td>' + (u.activo === false
             ? '<span class="badge badge--gris">Inactivo</span>'
@@ -20028,6 +20014,16 @@ NASCAR.Gestion = (function () {
       .join('');
   }
 
+  /* En qué unidades trabaja alguien. `sucursalId` es el atajo de cuando
+     es UNA sola —lo leen la sesión y medio panel—, y `unidades` la lista
+     cuando son varias. Vacío significa todas, también las que se abran
+     después. */
+  function unidadesDe(u) {
+    if (!u) return [];
+    if (u.sucursalId) return [Number(u.sucursalId)];
+    return ((u.unidades || []).map(Number)).filter(Boolean);
+  }
+
   function editarUsuario(usuarioId) {
     if (!A.exigir('usuarios')) return;
     const u = usuarioId
@@ -20035,6 +20031,7 @@ NASCAR.Gestion = (function () {
       : { id: '', nombre: '', usuario: '', pin: '', rol: 'mesero', sucursalId: null, activo: true };
 
     const sucursales = S.getSucursales({ todas: true });
+    const asignadas = unidadesDe(u);
     // Con la base de datos el PIN está cifrado: al editar no se muestra y vacío = no cambia
     const conBase = !!(NASCAR.Remoto && NASCAR.Remoto.activo);
     const pinOpcional = !!usuarioId && !u.pin;
@@ -20060,11 +20057,27 @@ NASCAR.Gestion = (function () {
         '</select></label>' +
         '</div>' +
 
-        '<label class="campo"><span>Unidad asignada</span>' +
-        '<select class="select" id="uSucursal"><option value="">Todas las unidades</option>' +
-        sucursales.map((s) => '<option value="' + s.id + '"' +
-          (Number(u.sucursalId) === Number(s.id) ? ' selected' : '') + '>' + U.esc(s.nombre) + '</option>').join('') +
-        '</select></label>' +
+        /* Varias unidades, no una o todas. Quien lleva dos locales los
+           atiende los dos sin dos usuarios, y quien lleva uno sigue atado
+           a ése. Se marca con casillas porque la pregunta es «¿en cuáles
+           trabaja?», y a eso no se responde con una lista desplegable. */
+        '<div class="campo"><span>Unidades en las que trabaja</span>' +
+        '<div class="lista-check" id="uSedes">' +
+        sucursales
+          .map(
+            (x) =>
+              '<label class="lista-check__fila">' +
+              '<input type="checkbox" value="' + x.id + '"' +
+              (asignadas.indexOf(Number(x.id)) >= 0 ? ' checked' : '') + '>' +
+              '<b>' + U.esc(x.nombre) + '</b>' +
+              (x.activa === false ? '<i>inactiva</i>' : '') +
+              '</label>'
+          )
+          .join('') +
+        '</div>' +
+        /* `<p>` y no `<span>`: dentro de un `.campo`, un `span` hijo es la
+           ETIQUETA del campo y sale en mayúsculas. Esto es una frase. */
+        '<p class="mini tenue" id="uSedesN" style="margin:6px 0 0"></p></div>' +
 
         '<div id="uDescRol" class="caja-datos"></div>' +
 
@@ -20074,9 +20087,7 @@ NASCAR.Gestion = (function () {
 
         (conBase
           ? '<p class="mini tenue" style="margin-bottom:16px">El PIN se guarda cifrado en la base de datos: nadie puede ' +
-            'verlo, sólo cambiarlo.' + (u.unidades && u.unidades.length > 1 && !u.sucursalId
-              ? ' Este usuario tiene varias unidades asignadas en la base; si no cambias la unidad, se conservan.'
-              : '') + '</p>'
+            'verlo, sólo cambiarlo.</p>'
           : '<p class="mini ambar" style="margin-bottom:16px">Este PIN no es seguridad real: sirve para ' +
             'separar perfiles mientras el sistema no tenga servidor.</p>') +
 
@@ -20099,6 +20110,22 @@ NASCAR.Gestion = (function () {
     U.$('#uRol', m.raiz).addEventListener('change', pintarDescRol);
     pintarDescRol();
 
+    /* Lo que significa lo marcado, en una línea y antes de guardar: que
+       no haya que adivinar si «ninguna» es todas o es nada. */
+    const sedesMarcadas = () => U.$$('#uSedes input:checked', m.raiz).map((x) => Number(x.value));
+
+    function pintarSedesN() {
+      const n = sedesMarcadas().length;
+      U.$('#uSedesN', m.raiz).innerHTML =
+        n === 0
+          ? 'Sin marcar ninguna trabaja en <b>todas</b>, también en las que se abran después.'
+          : n === 1
+          ? 'Trabaja sólo en esa unidad: el selector de arriba le queda fijo.'
+          : 'Puede moverse entre esas <b>' + n + '</b> unidades, y sólo entre ellas.';
+    }
+    U.$('#uSedes', m.raiz).addEventListener('change', pintarSedesN);
+    pintarSedesN();
+
     U.$('#uNo', m.raiz).onclick = m.cerrar;
     U.$('#uSi', m.raiz).onclick = function () {
       try {
@@ -20108,7 +20135,11 @@ NASCAR.Gestion = (function () {
           usuario: U.$('#uUsuario', m.raiz).value.trim(),
           pin: U.$('#uPin', m.raiz).value.trim(),
           rol: U.$('#uRol', m.raiz).value,
-          sucursalId: U.$('#uSucursal', m.raiz).value || null,
+          /* `sucursalId` sigue siendo el atajo de «una sola»: así la
+             sesión, el selector de unidad y los permisos no se enteran
+             de nada. Con cero o con varias, manda `unidades`. */
+          unidades: sedesMarcadas(),
+          sucursalId: sedesMarcadas().length === 1 ? sedesMarcadas()[0] : null,
           activo: U.$('#uActivo', m.raiz).checked,
         });
       } catch (err) {
@@ -25885,24 +25916,11 @@ NASCAR.Avisos = (function () {
     $('#pin').addEventListener('keydown', (e) => e.key === 'Enter' && entrar());
     $('#usuarioAcceso').addEventListener('keydown', (e) => e.key === 'Enter' && $('#pin').focus());
 
-    // Accesos rápidos: un botón por usuario activo, para poder probar
-    // cada perfil sin tener que acordarse de los PIN.
-    $('#accesoRapido').innerHTML = S.getUsuarios()
-      .map(
-        (u) =>
-          '<button data-acceso="' + U.esc(u.usuario) + '" data-pin="' + U.esc(u.pin) + '">' +
-          '<i>' + A.iconoRol(u.rol) + '</i><b>' + U.esc(A.nombreRol(u.rol)) + '</b>' +
-          '<span>' + U.esc(u.usuario) + '</span></button>'
-      )
-      .join('');
-
-    $('#accesoRapido').addEventListener('click', function (e) {
-      const b = e.target.closest('[data-acceso]');
-      if (!b) return;
-      $('#usuarioAcceso').value = b.dataset.acceso;
-      $('#pin').value = b.dataset.pin;
-      entrar();
-    });
+    /* Aquí vivía un «acceso rápido»: un botón por cada usuario de la
+       empresa, con su PIN escrito en el HTML. Servía para probar los
+       perfiles y era, a la vez, la lista completa de quién entra a este
+       negocio y con qué clave, a la vista de cualquiera que abriera la
+       dirección. El usuario se escribe. */
   }
 
   /* =================================================================

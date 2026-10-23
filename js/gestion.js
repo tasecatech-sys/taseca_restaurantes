@@ -941,14 +941,23 @@ NASCAR.Gestion = (function () {
 
     $('#tablaUsuarios').innerHTML = lista
       .map(function (u) {
-        const suc = u.sucursalId ? U.sucursal(u.sucursalId) : null;
+        const sedes = unidadesDe(u).map((id) => U.sucursal(id)).filter(Boolean);
         const esYo = yo && yo.usuarioId === u.id;
         return (
           '<tr' + (u.activo === false ? ' style="opacity:.55"' : '') + '>' +
           '<td><b>' + U.esc(u.nombre) + '</b>' + (esYo ? ' <span class="badge badge--azul">Tú</span>' : '') +
           '<br><span class="mini tenue mono">' + U.esc(u.usuario) + '</span></td>' +
           '<td>' + A.iconoRol(u.rol) + ' ' + U.esc(A.nombreRol(u.rol)) + '</td>' +
-          '<td class="mini">' + (suc ? U.esc(suc.corto) : '<span class="tenue">Todas</span>') + '</td>' +
+          /* Ninguna marcada es «todas»: no es lo mismo que no tener acceso
+             a ninguna, y la tabla tiene que decirlo con esa palabra. */
+          '<td class="mini">' +
+          (!sedes.length
+            ? '<span class="tenue">Todas</span>'
+            : sedes.length <= 2
+            ? U.esc(sedes.map((x) => x.corto).join(' · '))
+            : '<span title="' + U.esc(sedes.map((x) => x.nombre).join(', ')) + '">' +
+              sedes.length + ' unidades</span>') +
+          '</td>' +
           '<td class="mini mono">' + '••••' + '</td>' +
           '<td>' + (u.activo === false
             ? '<span class="badge badge--gris">Inactivo</span>'
@@ -963,6 +972,16 @@ NASCAR.Gestion = (function () {
       .join('');
   }
 
+  /* En qué unidades trabaja alguien. `sucursalId` es el atajo de cuando
+     es UNA sola —lo leen la sesión y medio panel—, y `unidades` la lista
+     cuando son varias. Vacío significa todas, también las que se abran
+     después. */
+  function unidadesDe(u) {
+    if (!u) return [];
+    if (u.sucursalId) return [Number(u.sucursalId)];
+    return ((u.unidades || []).map(Number)).filter(Boolean);
+  }
+
   function editarUsuario(usuarioId) {
     if (!A.exigir('usuarios')) return;
     const u = usuarioId
@@ -970,6 +989,7 @@ NASCAR.Gestion = (function () {
       : { id: '', nombre: '', usuario: '', pin: '', rol: 'mesero', sucursalId: null, activo: true };
 
     const sucursales = S.getSucursales({ todas: true });
+    const asignadas = unidadesDe(u);
     // Con la base de datos el PIN está cifrado: al editar no se muestra y vacío = no cambia
     const conBase = !!(NASCAR.Remoto && NASCAR.Remoto.activo);
     const pinOpcional = !!usuarioId && !u.pin;
@@ -995,11 +1015,27 @@ NASCAR.Gestion = (function () {
         '</select></label>' +
         '</div>' +
 
-        '<label class="campo"><span>Unidad asignada</span>' +
-        '<select class="select" id="uSucursal"><option value="">Todas las unidades</option>' +
-        sucursales.map((s) => '<option value="' + s.id + '"' +
-          (Number(u.sucursalId) === Number(s.id) ? ' selected' : '') + '>' + U.esc(s.nombre) + '</option>').join('') +
-        '</select></label>' +
+        /* Varias unidades, no una o todas. Quien lleva dos locales los
+           atiende los dos sin dos usuarios, y quien lleva uno sigue atado
+           a ése. Se marca con casillas porque la pregunta es «¿en cuáles
+           trabaja?», y a eso no se responde con una lista desplegable. */
+        '<div class="campo"><span>Unidades en las que trabaja</span>' +
+        '<div class="lista-check" id="uSedes">' +
+        sucursales
+          .map(
+            (x) =>
+              '<label class="lista-check__fila">' +
+              '<input type="checkbox" value="' + x.id + '"' +
+              (asignadas.indexOf(Number(x.id)) >= 0 ? ' checked' : '') + '>' +
+              '<b>' + U.esc(x.nombre) + '</b>' +
+              (x.activa === false ? '<i>inactiva</i>' : '') +
+              '</label>'
+          )
+          .join('') +
+        '</div>' +
+        /* `<p>` y no `<span>`: dentro de un `.campo`, un `span` hijo es la
+           ETIQUETA del campo y sale en mayúsculas. Esto es una frase. */
+        '<p class="mini tenue" id="uSedesN" style="margin:6px 0 0"></p></div>' +
 
         '<div id="uDescRol" class="caja-datos"></div>' +
 
@@ -1009,9 +1045,7 @@ NASCAR.Gestion = (function () {
 
         (conBase
           ? '<p class="mini tenue" style="margin-bottom:16px">El PIN se guarda cifrado en la base de datos: nadie puede ' +
-            'verlo, sólo cambiarlo.' + (u.unidades && u.unidades.length > 1 && !u.sucursalId
-              ? ' Este usuario tiene varias unidades asignadas en la base; si no cambias la unidad, se conservan.'
-              : '') + '</p>'
+            'verlo, sólo cambiarlo.</p>'
           : '<p class="mini ambar" style="margin-bottom:16px">Este PIN no es seguridad real: sirve para ' +
             'separar perfiles mientras el sistema no tenga servidor.</p>') +
 
@@ -1034,6 +1068,22 @@ NASCAR.Gestion = (function () {
     U.$('#uRol', m.raiz).addEventListener('change', pintarDescRol);
     pintarDescRol();
 
+    /* Lo que significa lo marcado, en una línea y antes de guardar: que
+       no haya que adivinar si «ninguna» es todas o es nada. */
+    const sedesMarcadas = () => U.$$('#uSedes input:checked', m.raiz).map((x) => Number(x.value));
+
+    function pintarSedesN() {
+      const n = sedesMarcadas().length;
+      U.$('#uSedesN', m.raiz).innerHTML =
+        n === 0
+          ? 'Sin marcar ninguna trabaja en <b>todas</b>, también en las que se abran después.'
+          : n === 1
+          ? 'Trabaja sólo en esa unidad: el selector de arriba le queda fijo.'
+          : 'Puede moverse entre esas <b>' + n + '</b> unidades, y sólo entre ellas.';
+    }
+    U.$('#uSedes', m.raiz).addEventListener('change', pintarSedesN);
+    pintarSedesN();
+
     U.$('#uNo', m.raiz).onclick = m.cerrar;
     U.$('#uSi', m.raiz).onclick = function () {
       try {
@@ -1043,7 +1093,11 @@ NASCAR.Gestion = (function () {
           usuario: U.$('#uUsuario', m.raiz).value.trim(),
           pin: U.$('#uPin', m.raiz).value.trim(),
           rol: U.$('#uRol', m.raiz).value,
-          sucursalId: U.$('#uSucursal', m.raiz).value || null,
+          /* `sucursalId` sigue siendo el atajo de «una sola»: así la
+             sesión, el selector de unidad y los permisos no se enteran
+             de nada. Con cero o con varias, manda `unidades`. */
+          unidades: sedesMarcadas(),
+          sucursalId: sedesMarcadas().length === 1 ? sedesMarcadas()[0] : null,
           activo: U.$('#uActivo', m.raiz).checked,
         });
       } catch (err) {

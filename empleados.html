@@ -41,7 +41,11 @@
 
       <label class="campo" style="text-align:left">
         <span>Usuario</span>
-        <input class="input" id="usuarioAcceso" placeholder="admin" autocomplete="username" autocapitalize="off">
+        <!-- Ni `placeholder` con un usuario de verdad ni autocompletado: la
+             pantalla de entrada no sugiere a nadie. Quien entra sabe cuál es
+             el suyo; quien no, no tiene por qué enterarse aquí. -->
+        <input class="input" id="usuarioAcceso" placeholder="Tu usuario"
+               autocomplete="off" autocapitalize="off" spellcheck="false">
       </label>
 
       <label class="campo" style="text-align:left">
@@ -52,13 +56,7 @@
 
       <button class="btn btn--rojo btn--bloque mt-8" id="btnEntrar">Entrar</button>
 
-      <p class="mini tenue mt-24" style="margin-bottom:4px">Acceso rápido para probar cada perfil</p>
-      <div class="acceso-rapido" id="accesoRapido"></div>
-
-      <p class="mini ambar mt-16" style="margin-bottom:0">
-        Los PIN son de demostración: viajan en el código y no protegen nada.
-      </p>
-      <p class="mini tenue mt-8" style="margin-bottom:0">
+      <p class="mini tenue mt-24" style="margin-bottom:0">
         <a href="index.html">← Volver al sitio público</a>
       </p>
       <!-- Aquí NO va ningún acceso al panel de Taseca. Éste es el portal

@@ -3543,44 +3543,6 @@ tr.fila--sin td {
   color: var(--gris);
 }
 
-/* Accesos rápidos de la pantalla de login */
-.acceso-rapido {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 8px;
-  margin-top: 14px;
-}
-.acceso-rapido button {
-  padding: 11px 8px;
-  border: 1px solid var(--borde-fuerte);
-  border-radius: var(--r-sm);
-  background: var(--negro-800);
-  color: var(--humo);
-  cursor: pointer;
-  transition: all var(--t);
-}
-.acceso-rapido button:hover {
-  border-color: var(--azul);
-  background: var(--negro-600);
-}
-.acceso-rapido i {
-  font-style: normal;
-  font-size: 19px;
-  display: block;
-}
-.acceso-rapido b {
-  display: block;
-  font-family: var(--f-cond);
-  font-size: 14px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--blanco);
-}
-.acceso-rapido span {
-  font-size: 11px;
-  color: var(--gris-osc);
-}
-
 /* ========================= 18. RESPONSIVE =============================== */
 @media (max-width: 1024px) {
   .hero__inner {

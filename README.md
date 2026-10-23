@@ -572,10 +572,30 @@ stock **vacíos**: no hereda los de otra.
 
 ### Usuarios y permisos
 
-No cambió ninguna regla de permisos. El campo `sucursalId` del usuario ya
-permitía **una unidad** o **todas** (vacío); ahora se llama *Unidad asignada*.
-Asignar varias unidades concretas a una persona queda para cuando haga falta.
-`guardarSucursal` comprueba el permiso también en el store (doble barrera).
+No cambió ninguna regla de permisos. `guardarSucursal` comprueba el permiso
+también en el store (doble barrera).
+
+**En qué unidades trabaja cada quien** se marca con casillas, no con una lista
+desplegable: la pregunta es «¿en cuáles?», y a eso no se responde eligiendo
+una. Son tres respuestas posibles:
+
+| Marcadas | Qué significa |
+|---|---|
+| **Ninguna** | Trabaja en **todas**, también en las que se abran después |
+| **Una** | Atado a ésa: el selector de unidad de la barra le queda fijo |
+| **Varias** | Puede moverse entre ésas, y **sólo** entre ésas |
+
+Quien lleva dos locales los atiende los dos con **un** usuario, que es como
+estaba el negocio y no como estaba el formulario.
+
+Por dentro no hay campo nuevo: `sucursalId` sigue siendo el atajo de «una
+sola» —lo leen la sesión, el selector de la barra y medio panel— y `unidades`
+es la lista cuando son varias. La base ya lo soportaba desde la fase 2
+(`core.usuario_unidades`, y `sp_guardar_usuario` con `p_unidades INTEGER[]`:
+`NULL` = no cambiar, `'{}'` = todas); lo que faltaba era poder **decirlo**
+desde la pantalla. La sesión lleva las unidades en los dos modos —con base de
+datos y sin ella— y `setUnidadActiva()` rechaza una que no sea suya, no sólo
+la esconde del selector.
 
 ### Migración (versión 8)
 
@@ -1084,7 +1104,12 @@ por eso no se hizo aquí.
 ## 👥 Roles y usuarios
 
 Cada persona entra al panel con **su usuario** y ve solamente lo suyo.
-En la pantalla de entrada hay botones de acceso rápido para probar cada perfil.
+
+La pantalla de entrada **no sugiere a nadie**: ni `placeholder` con un usuario
+de verdad, ni autocompletado del navegador, ni la fila de «accesos rápidos»
+que hubo mientras esto se probaba —un botón por persona, con su PIN escrito en
+el HTML—. Quien entra sabe cuál es el suyo; quien no, no tiene por qué
+enterarse ahí. Los de abajo son los de la **semilla**, para probar en local.
 
 | Usuario | PIN | Rol | Ve |
 |---|---|---|---|
