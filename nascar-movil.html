@@ -6057,7 +6057,8 @@ tr.fila--sin td {
           <table class="tabla">
             <thead><tr><th>Concepto</th><th>Qué es</th><th>De dónde sale</th></tr></thead>
             <tbody>
-              <tr><td><b>Stock actual</b></td><td>Lo que hay hoy, según el último ajuste</td><td>Se digita aquí</td></tr>
+              <tr><td><b>Stock actual</b></td><td>Lo último que se contó o se ajustó, sin las ventas de hoy</td><td>Se digita aquí, o lo deja un cierre</td></tr>
+              <tr><td><b>Quedan</b></td><td>Lo que debería haber <b>ahora</b>, ya con lo vendido hoy descontado</td><td>Es el <code>SLDC</code> de la jornada abierta</td></tr>
               <tr><td><b>Saldo inicial (IN)</b></td><td>Con cuánto empezó la jornada</td><td>Saldo físico del cierre anterior</td></tr>
               <tr><td><b>Entradas (EN)</b></td><td>Lo que entró ese día</td><td>Cierres → Entradas</td></tr>
               <tr><td><b>Ventas (Z)</b></td><td>Lo que se vendió esa jornada</td><td>Automático, de los pedidos</td></tr>
@@ -6068,9 +6069,12 @@ tr.fila--sin td {
           </table>
         </div>
         <p class="mini tenue mt-16" style="margin-bottom:0">
-          El <b>stock actual</b> no se descuenta solo con cada venta: para eso haría falta un módulo
-          de recetas que diga cuánto insumo consume cada plato. Por ahora se actualiza a mano,
-          o de una vez al terminar un cierre desde <b>Cierres → Cruce</b>.
+          El <b>stock actual</b> guardado no baja solo con cada venta, y no es un olvido: el saldo
+          real de una jornada se decide contándolo, y el cierre existe justo para eso. Lo que sí
+          hace la venta es restar en <b>Quedan</b>, que es lo que se ve en la columna y lo que mira
+          el semáforo de stock bajo. Para que el stock guardado se moviera solo haría falta un
+          módulo de recetas que diga cuánto insumo gasta cada plato; mientras tanto se actualiza a
+          mano, o de una vez al terminar un cierre desde <b>Inventario → Cierres de inventario</b>.
         </p>
       </div>
     </section>
@@ -12425,6 +12429,25 @@ NASCAR.Store = (function () {
 
     const porSede = suc ? existenciasDeSucursal(suc, eid) : null;
 
+    /* Lo que DEBERÍA quedar ahora mismo, sin esperar al cierre.
+
+       Es la misma cuenta del cruce —punto de partida + entradas −
+       vendido— aplicada a la jornada abierta, con las mismas piezas:
+       getVentasProducto() es el campo Z y getEntradasPorProducto() el
+       EN. No se llama a calcularCruce() a propósito: con base de datos
+       esa función es una petición SÍNCRONA, y esta pantalla se repinta
+       en cada tecla del buscador. Esto es aritmética sobre lo que ya
+       está en memoria.
+
+       El `stockActual` guardado no se toca: sigue siendo lo último que
+       se contó, y el cierre lo sigue cuadrando contra el conteo físico.
+
+       Sin unidad elegida no hay jornada que mirar y se queda como
+       estaba: el catálogo tal cual. */
+    const hoyOp = hoyOperativo();
+    const vendidoHoy = suc ? getVentasProducto(hoyOp, suc) : {};
+    const entradasHoy = suc ? getEntradasPorProducto(hoyOp, suc) : {};
+
     const productos = getStock({
       area: opciones.area || undefined,
       texto: opciones.texto || undefined,
@@ -12436,17 +12459,32 @@ NASCAR.Store = (function () {
       const contado =
         porSede && Object.prototype.hasOwnProperty.call(porSede.saldos, p.codigo);
       const existencia = contado ? porSede.saldos[p.codigo] : p.stockActual;
-      const estado = estadoDeExistencia(existencia, p.stockMinimo);
+
+      /* Si el punto de partida ES el conteo de hoy, la jornada ya está
+         contada y volver a restarle sus ventas la contaría dos veces.
+         En ese caso el número bueno es el que se contó, tal cual. */
+      const yaContadoHoy = contado && porSede.fuente[p.codigo] === hoyOp;
+      const vendido = yaContadoHoy ? 0 : vendidoHoy[p.codigo] || 0;
+      const entraron = yaContadoHoy ? 0 : entradasHoy[p.codigo] || 0;
+
+      /* El semáforo mira lo que QUEDA, no lo que se contó ayer: avisar de
+         stock bajo sobre un número viejo es avisar tarde. */
+      const quedan = Math.max(0, existencia + entraron - vendido);
+      const estado = estadoDeExistencia(quedan, p.stockMinimo);
 
       /* Cantidad SUGERIDA, sólo como referencia: lo que falta para
          volver al mínimo. Sin mínimo configurado no hay sugerencia que
          dar, y se devuelve 0 para no inventar un número. */
-      const faltante = Math.max(0, p.stockMinimo - existencia);
+      const faltante = Math.max(0, p.stockMinimo - quedan);
 
       return Object.assign({}, p, {
         existencia: existencia,
         origen: contado ? 'cierre' : 'catalogo',
         fuente: contado ? porSede.fuente[p.codigo] : null,
+        // De la jornada abierta, para la pantalla de Stock
+        vendidoHoy: vendido,
+        entradasHoy: entraron,
+        quedan: quedan,
         estado: estado,
         sugerido: p.stockMinimo > 0 ? faltante : 0,
         sinMinimo: p.stockMinimo <= 0,
@@ -19660,8 +19698,10 @@ NASCAR.Gestion = (function () {
 
     // --- De dónde sale el número que se está mirando
     const fuente =
-      'Stock de <b>' + U.esc(abast.sucursalNombre) + '</b>. Lo que la unidad ya contó en un cierre muestra ' +
-      'el saldo de ese conteo (▣); lo que nunca ha contado, el stock registrado en el producto. ' +
+      'Stock de <b>' + U.esc(abast.sucursalNombre) + '</b>. Se parte de lo que la unidad contó en su ' +
+      'último cierre (▣) o, si nunca lo contó, del stock registrado en el producto, y se le restan ' +
+      'las <b>ventas de la jornada abierta</b>: eso es lo que debería quedar ahora, con la misma ' +
+      'cuenta del <b>cruce de inventario</b> (partida + entradas − vendido). ' +
       'Los productos de otras unidades no aparecen aquí.';
 
     /* En una instalación nueva el catálogo viene sin cantidades ni
@@ -19727,6 +19767,17 @@ NASCAR.Gestion = (function () {
               ? ' <span class="mini tenue" title="Producto compartido con otra unidad (anterior a las unidades)">⇄</span>'
               : '');
 
+        /* Lo que se movió hoy, debajo del número de partida. Sólo se
+           escribe cuando hubo movimiento: una línea que siempre dice
+           «−0» es ruido en una tabla que se lee de un vistazo. */
+        const movido = (p.vendidoHoy || 0) || (p.entradasHoy || 0);
+        const celdaQuedan = !movido
+          ? ''
+          : '<div class="mini tenue nowrap" style="margin-top:3px">' +
+            (p.entradasHoy ? '<span class="verde">+' + p.entradasHoy + '</span> ' : '') +
+            (p.vendidoHoy ? '−' + p.vendidoHoy + ' vendido ' : '') +
+            '· quedan <b class="num">' + p.quedan + '</b></div>';
+
         return (
           '<tr' + (!p.activo ? ' style="opacity:.55"' : '') + '>' +
           '<td class="mono"><b>' + U.esc(p.codigo) + '</b></td>' +
@@ -19735,7 +19786,7 @@ NASCAR.Gestion = (function () {
           '<td><span class="badge badge--linea">' +
           (p.area === 'bar' ? '🍺 Bar' : '🍽️ Comidas') + '</span></td>' +
           '<td class="mini tenue">' + U.esc(p.unidad) + '</td>' +
-          '<td class="derecha nowrap">' + celdaExistencia + '</td>' +
+          '<td class="derecha nowrap">' + celdaExistencia + celdaQuedan + '</td>' +
           '<td class="col-num">' + (p.stockMinimo || '—') + '</td>' +
           '<td class="nowrap">' +
           (!p.activo
@@ -19853,14 +19904,18 @@ NASCAR.Gestion = (function () {
         '</select></label>' +
         '<label class="campo"><span>Unidad de conteo</span>' +
         '<input class="input" id="sUnidad" value="' + U.esc(p.unidad) + '" placeholder="unidad, botella, porción…"></label>' +
-        '<label class="campo"><span>Stock actual</span>' +
+        '<label class="campo"><span>Stock actual (lo último contado)</span>' +
         '<input class="input" type="number" min="0" step="1" id="sActual" value="' + Number(p.stockActual) + '"></label>' +
         '<label class="campo"><span>Stock mínimo</span>' +
         '<input class="input" type="number" min="0" step="1" id="sMinimo" value="' + Number(p.stockMinimo) + '"></label>' +
         '</div>' +
 
         '<p class="mini tenue" style="margin:-4px 0 12px">Unidad: ' + (p.sucursales || []).map(badgeUnidad).join(' ') + '</p>' +
-        '<div class="campo"><span>¿Qué productos de la carta descuentan este stock?</span>' +
+        /* Decía «¿qué productos descuentan este stock?», y no es lo que
+           pasa: vender NO mueve el «stock actual», que es lo último que
+           se contó. Lo que hace es sumar a la Z del cruce. La pregunta
+           ahora dice lo que de verdad ocurre. */
+        '<div class="campo"><span>¿Qué productos de la carta gastan este insumo?</span>' +
         (carta.length
           ? '<input class="input" id="sBuscaRef" placeholder="Buscar en la carta…" autocomplete="off">' +
             '<div class="lista-check" id="sRefs">' +
@@ -19878,8 +19933,11 @@ NASCAR.Gestion = (function () {
               .join('') +
             '</div>'
           : '<p class="mini ambar">Esta unidad todavía no tiene carta. Crea los platos primero.</p>') +
-        '<span class="mini tenue">De aquí sale el campo <b>Z</b> (ventas) del cruce de inventario: se suma ' +
-        'lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
+        '<span class="mini tenue">Vender <b>no baja</b> el stock actual de arriba, que es lo que ' +
+        'contaste la última vez: lo que hace es sumar a <b>Z</b> (vendido) en el ' +
+        '<b>cruce de inventario</b>, que es donde se ve lo que debería quedar ' +
+        '(inicial + entradas − vendido) y se compara con el conteo del cierre. ' +
+        'Se suma lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
         '<b id="sRefsN" class="bloque-n"></b></span></div>' +
 
         '<label class="fila mini" style="gap:8px;margin:6px 0 16px">' +

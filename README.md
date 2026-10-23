@@ -1291,6 +1291,30 @@ productos no tienen mínimo y dónde se define.
 
 El mínimo se configura producto a producto desde **Editar**.
 
+### «Stock actual» y «Quedan» no son lo mismo
+
+Vender **no baja** el `stockActual` guardado, y no es un descuido: el saldo
+real de una jornada se decide **contándolo**, y el cierre existe justo para
+eso. Descontar solo con cada venta pediría un módulo de recetas que supiera
+cuánto insumo gasta cada plato, que todavía no existe.
+
+Lo que sí hace la venta es entrar en la cuenta de la jornada. La tabla de
+Stock muestra las dos cosas:
+
+| | Qué es |
+|---|---|
+| **Stock actual** | Lo último que se contó en un cierre (▣) o se digitó |
+| **Quedan** | Lo que debería haber **ahora**: partida + entradas − vendido hoy |
+
+El **semáforo** (🟢 🟡 🔴) y la lista de *productos por pedir* miran **Quedan**,
+no la partida: avisar de stock bajo sobre un número de ayer es avisar tarde.
+
+Es la misma cuenta del `SLDC` del cruce de inventario, calculada en memoria
+sobre los pedidos y entradas de la jornada que ya están cargados —no se le
+pide nada a la base de datos, porque esta pantalla se repinta con cada tecla
+del buscador—. Si la unidad **ya contó hoy**, la partida es ese conteo y no se
+le vuelven a restar las ventas del día: se contarían dos veces.
+
 ### Arriba: tarjetas y filtros
 
 Cuatro tarjetas —Total, 🟢 Normal, 🟡 Bajo, 🔴 Sin stock— y unos chips que

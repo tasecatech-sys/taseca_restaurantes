@@ -618,8 +618,10 @@ NASCAR.Gestion = (function () {
 
     // --- De dónde sale el número que se está mirando
     const fuente =
-      'Stock de <b>' + U.esc(abast.sucursalNombre) + '</b>. Lo que la unidad ya contó en un cierre muestra ' +
-      'el saldo de ese conteo (▣); lo que nunca ha contado, el stock registrado en el producto. ' +
+      'Stock de <b>' + U.esc(abast.sucursalNombre) + '</b>. Se parte de lo que la unidad contó en su ' +
+      'último cierre (▣) o, si nunca lo contó, del stock registrado en el producto, y se le restan ' +
+      'las <b>ventas de la jornada abierta</b>: eso es lo que debería quedar ahora, con la misma ' +
+      'cuenta del <b>cruce de inventario</b> (partida + entradas − vendido). ' +
       'Los productos de otras unidades no aparecen aquí.';
 
     /* En una instalación nueva el catálogo viene sin cantidades ni
@@ -685,6 +687,17 @@ NASCAR.Gestion = (function () {
               ? ' <span class="mini tenue" title="Producto compartido con otra unidad (anterior a las unidades)">⇄</span>'
               : '');
 
+        /* Lo que se movió hoy, debajo del número de partida. Sólo se
+           escribe cuando hubo movimiento: una línea que siempre dice
+           «−0» es ruido en una tabla que se lee de un vistazo. */
+        const movido = (p.vendidoHoy || 0) || (p.entradasHoy || 0);
+        const celdaQuedan = !movido
+          ? ''
+          : '<div class="mini tenue nowrap" style="margin-top:3px">' +
+            (p.entradasHoy ? '<span class="verde">+' + p.entradasHoy + '</span> ' : '') +
+            (p.vendidoHoy ? '−' + p.vendidoHoy + ' vendido ' : '') +
+            '· quedan <b class="num">' + p.quedan + '</b></div>';
+
         return (
           '<tr' + (!p.activo ? ' style="opacity:.55"' : '') + '>' +
           '<td class="mono"><b>' + U.esc(p.codigo) + '</b></td>' +
@@ -693,7 +706,7 @@ NASCAR.Gestion = (function () {
           '<td><span class="badge badge--linea">' +
           (p.area === 'bar' ? '🍺 Bar' : '🍽️ Comidas') + '</span></td>' +
           '<td class="mini tenue">' + U.esc(p.unidad) + '</td>' +
-          '<td class="derecha nowrap">' + celdaExistencia + '</td>' +
+          '<td class="derecha nowrap">' + celdaExistencia + celdaQuedan + '</td>' +
           '<td class="col-num">' + (p.stockMinimo || '—') + '</td>' +
           '<td class="nowrap">' +
           (!p.activo
@@ -811,14 +824,18 @@ NASCAR.Gestion = (function () {
         '</select></label>' +
         '<label class="campo"><span>Unidad de conteo</span>' +
         '<input class="input" id="sUnidad" value="' + U.esc(p.unidad) + '" placeholder="unidad, botella, porción…"></label>' +
-        '<label class="campo"><span>Stock actual</span>' +
+        '<label class="campo"><span>Stock actual (lo último contado)</span>' +
         '<input class="input" type="number" min="0" step="1" id="sActual" value="' + Number(p.stockActual) + '"></label>' +
         '<label class="campo"><span>Stock mínimo</span>' +
         '<input class="input" type="number" min="0" step="1" id="sMinimo" value="' + Number(p.stockMinimo) + '"></label>' +
         '</div>' +
 
         '<p class="mini tenue" style="margin:-4px 0 12px">Unidad: ' + (p.sucursales || []).map(badgeUnidad).join(' ') + '</p>' +
-        '<div class="campo"><span>¿Qué productos de la carta descuentan este stock?</span>' +
+        /* Decía «¿qué productos descuentan este stock?», y no es lo que
+           pasa: vender NO mueve el «stock actual», que es lo último que
+           se contó. Lo que hace es sumar a la Z del cruce. La pregunta
+           ahora dice lo que de verdad ocurre. */
+        '<div class="campo"><span>¿Qué productos de la carta gastan este insumo?</span>' +
         (carta.length
           ? '<input class="input" id="sBuscaRef" placeholder="Buscar en la carta…" autocomplete="off">' +
             '<div class="lista-check" id="sRefs">' +
@@ -836,8 +853,11 @@ NASCAR.Gestion = (function () {
               .join('') +
             '</div>'
           : '<p class="mini ambar">Esta unidad todavía no tiene carta. Crea los platos primero.</p>') +
-        '<span class="mini tenue">De aquí sale el campo <b>Z</b> (ventas) del cruce de inventario: se suma ' +
-        'lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
+        '<span class="mini tenue">Vender <b>no baja</b> el stock actual de arriba, que es lo que ' +
+        'contaste la última vez: lo que hace es sumar a <b>Z</b> (vendido) en el ' +
+        '<b>cruce de inventario</b>, que es donde se ve lo que debería quedar ' +
+        '(inicial + entradas − vendido) y se compara con el conteo del cierre. ' +
+        'Se suma lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
         '<b id="sRefsN" class="bloque-n"></b></span></div>' +
 
         '<label class="fila mini" style="gap:8px;margin:6px 0 16px">' +

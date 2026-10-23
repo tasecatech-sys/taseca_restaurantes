@@ -4683,6 +4683,25 @@ NASCAR.Store = (function () {
 
     const porSede = suc ? existenciasDeSucursal(suc, eid) : null;
 
+    /* Lo que DEBERÍA quedar ahora mismo, sin esperar al cierre.
+
+       Es la misma cuenta del cruce —punto de partida + entradas −
+       vendido— aplicada a la jornada abierta, con las mismas piezas:
+       getVentasProducto() es el campo Z y getEntradasPorProducto() el
+       EN. No se llama a calcularCruce() a propósito: con base de datos
+       esa función es una petición SÍNCRONA, y esta pantalla se repinta
+       en cada tecla del buscador. Esto es aritmética sobre lo que ya
+       está en memoria.
+
+       El `stockActual` guardado no se toca: sigue siendo lo último que
+       se contó, y el cierre lo sigue cuadrando contra el conteo físico.
+
+       Sin unidad elegida no hay jornada que mirar y se queda como
+       estaba: el catálogo tal cual. */
+    const hoyOp = hoyOperativo();
+    const vendidoHoy = suc ? getVentasProducto(hoyOp, suc) : {};
+    const entradasHoy = suc ? getEntradasPorProducto(hoyOp, suc) : {};
+
     const productos = getStock({
       area: opciones.area || undefined,
       texto: opciones.texto || undefined,
@@ -4694,17 +4713,32 @@ NASCAR.Store = (function () {
       const contado =
         porSede && Object.prototype.hasOwnProperty.call(porSede.saldos, p.codigo);
       const existencia = contado ? porSede.saldos[p.codigo] : p.stockActual;
-      const estado = estadoDeExistencia(existencia, p.stockMinimo);
+
+      /* Si el punto de partida ES el conteo de hoy, la jornada ya está
+         contada y volver a restarle sus ventas la contaría dos veces.
+         En ese caso el número bueno es el que se contó, tal cual. */
+      const yaContadoHoy = contado && porSede.fuente[p.codigo] === hoyOp;
+      const vendido = yaContadoHoy ? 0 : vendidoHoy[p.codigo] || 0;
+      const entraron = yaContadoHoy ? 0 : entradasHoy[p.codigo] || 0;
+
+      /* El semáforo mira lo que QUEDA, no lo que se contó ayer: avisar de
+         stock bajo sobre un número viejo es avisar tarde. */
+      const quedan = Math.max(0, existencia + entraron - vendido);
+      const estado = estadoDeExistencia(quedan, p.stockMinimo);
 
       /* Cantidad SUGERIDA, sólo como referencia: lo que falta para
          volver al mínimo. Sin mínimo configurado no hay sugerencia que
          dar, y se devuelve 0 para no inventar un número. */
-      const faltante = Math.max(0, p.stockMinimo - existencia);
+      const faltante = Math.max(0, p.stockMinimo - quedan);
 
       return Object.assign({}, p, {
         existencia: existencia,
         origen: contado ? 'cierre' : 'catalogo',
         fuente: contado ? porSede.fuente[p.codigo] : null,
+        // De la jornada abierta, para la pantalla de Stock
+        vendidoHoy: vendido,
+        entradasHoy: entraron,
+        quedan: quedan,
         estado: estado,
         sugerido: p.stockMinimo > 0 ? faltante : 0,
         sinMinimo: p.stockMinimo <= 0,
