@@ -530,9 +530,18 @@ Son varios, no uno: el insumo *Arepas* lo gastan la *Arepa Norteña*, la *Arepa
 Paisa* y la *Arepa Avengers*, y su Z suma lo vendido de todas. En el formulario
 de stock se marcan con casillas, con buscador para cartas largas.
 
-Lo que sigue sin existir es el **consumo por cantidades**: hoy cada venta
-descuenta una unidad del insumo, no «1 pan y 2 lonchas de queso». Eso es el
-módulo de recetas, y `core.producto_insumos.cantidad` es su punto de enganche.
+**Y cada uno gasta lo suyo.** Al lado de cada plato marcado se escribe *cuánto*
+gasta: un pollo entero gasta **2 alas**, así que vender un pollo suma 2 a la Z
+de las alas, no 1. Vive en `core.producto_insumos.cantidad`, y al revés de lo
+que decía este README hasta la versión 28, **ya funciona**: los cuatro sitios
+que calculan consumo —`core.fn_z_insumo`, la vista del cruce, el cruce de la
+fase 2 y el retorno por anulación— siempre multiplicaron por esa columna. Lo
+que faltaba era poder escribirla.
+
+Un plato gasta **varios** insumos a la vez: un pollo entero baja alas, piernas
+y pechuga en la misma venta. Hasta la 28 el modo local no sabía hacer eso —el
+mapa `refId → código` se pisaba y sólo contaba el último insumo—, así que el
+cruce sin base de datos se quedaba corto.
 
 ### El catálogo real de NASCAR
 
@@ -564,8 +573,9 @@ que cambia no es el programa: es **lo que cada unidad tiene cargado**.
 
 En COMIC'ENDO se ve bien la diferencia entre los dos catálogos: el inventario
 cuenta *pan de hamburguesa, carne, quesos*; la carta vende *Hamburguesa doble
-carne*. Sólo las gaseosas se venden tal cual, y son las únicas con
-`ventaRefIds` — las demás esperan al módulo de recetas.
+carne*. Sólo las gaseosas se venden tal cual, y son las únicas que vienen con
+`ventaRefIds` cargado — las demás hay que enlazarlas desde *Panel → Stock*,
+marcando qué platos las gastan y cuánto gasta cada uno.
 
 ### La unidad activa
 
@@ -1330,8 +1340,9 @@ El mínimo se configura producto a producto desde **Editar**.
 
 Vender **no baja** el `stockActual` guardado, y no es un descuido: el saldo
 real de una jornada se decide **contándolo**, y el cierre existe justo para
-eso. Descontar solo con cada venta pediría un módulo de recetas que supiera
-cuánto insumo gasta cada plato, que todavía no existe.
+eso. Lo que la venta sí sabe es cuánto insumo gastó —2 alas por pollo— y con
+eso alimenta la `Z` del cruce; de ahí sale lo que *debería* quedar, que es
+contra lo que se compara el conteo.
 
 Lo que sí hace la venta es entrar en la cuenta de la jornada. La tabla de
 Stock muestra las dos cosas:
@@ -1477,9 +1488,10 @@ Y una línea en el historial del pedido, con el detalle del retorno.
 
 ### Retorno de inventario
 
-Se usa **la misma relación que el cruce del cierre: `ventaRefIds`**. No hay
-recetas ni un segundo mapeo. Un plato sin producto de inventario asociado no
-consume nada, y al anular tampoco devuelve nada.
+Se usa **la misma relación que el cruce del cierre: `ventaRefIds`**, con sus
+cantidades. No hay un segundo mapeo: anular un pollo entero devuelve sus 2
+alas porque es el mismo dato que las descontó. Un plato sin producto de
+inventario asociado no consume nada, y al anular tampoco devuelve nada.
 
 Conviene recordar cómo funciona el inventario aquí: **una venta nunca resta del
 `stockActual`**. Lo que hace es sumar a la columna `Z` del cruce, que se calcula
@@ -1979,7 +1991,7 @@ serializables, sin nada que dependa de `localStorage`.
 | **Catálogo real** | Reemplazar `NASCAR.INVENTARIO` en `data.js` por los códigos que ya usan las meseras en el papel. |
 | **API** | Reescribir en `store.js` los métodos de inventario para que hagan `fetch()`. Las pantallas no cambian. |
 | **Usuarios reales** | Los cierres ya guardan `usuarioId` (hoy `null`) y `usuarioNombre`. Falta conectarlos a un login por empleado. |
-| **Recetas / consumo** | Hoy Z sólo cuenta lo que se vende como producto terminado. Para descontar insumos (una hamburguesa consume 1 pan, 1 carne) hace falta un módulo de recetas; el campo `ventaRefIds` es el punto de enganche. |
+| **Recetas desde el plato** | La cantidad que gasta cada plato ya existe (`producto_insumos.cantidad`), pero se escribe desde el INSUMO: para armar un pollo hay que entrar a Alas, Piernas y Pechuga por separado. Falta poder hacerlo al revés, desde el plato, que es como se piensa una receta. |
 | **Módulo de compras** | Las entradas se digitan a mano. Lo natural es que lleguen desde facturas de proveedor. |
 | **Bloqueo por concurrencia** | El id único evita duplicados, pero dos dispositivos sin conexión entre sí no se ven hasta que haya servidor. |
 

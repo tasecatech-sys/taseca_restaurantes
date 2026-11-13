@@ -1620,11 +1620,36 @@ textarea {
 .lista-check__fila:hover {
   background: rgba(255, 255, 255, 0.04);
 }
-.lista-check__fila input {
+/* La casilla, y sólo la casilla: la fila lleva también un campo de
+   cantidad —cuánto gasta ese plato— y con `input` a secas se quedaba
+   del tamaño de un sello. */
+.lista-check__fila input[type='checkbox'] {
   accent-color: var(--rojo);
   width: 17px;
   height: 17px;
   flex-shrink: 0;
+}
+
+/* Cuánto gasta este plato de este insumo: «2 unidad». */
+.lista-check__cant {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.lista-check__cant i {
+  margin-left: 0; /* el auto es de la caja, no del texto de dentro */
+}
+.input--xs {
+  width: 68px;
+  padding: 5px 8px;
+  font-size: 13px;
+  text-align: right;
+}
+.input--xs:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .lista-check__fila b {
   font-weight: 600;

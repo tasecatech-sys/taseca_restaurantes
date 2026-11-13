@@ -1102,7 +1102,14 @@ NASCAR.Remoto = (function () {
       area: s.area,
       unidad: s.unidad_medida || 'unidad',
       activo: s.activo,
-      ventaRefIds: (s.productos || []).map((id) => 'p' + id),
+      /* Qué platos gastan este insumo y cuánto gasta cada uno. La vista
+         devuelve pares desde 28_recetas_cantidad.sql; antes devolvía
+         sólo ids, y con esos la cantidad es 1. */
+      ventaRefIds: (s.productos || []).map(function (x) {
+        if (x && typeof x === 'object')
+          return { refId: 'p' + x.producto_id, cantidad: Number(x.cantidad) || 1 };
+        return { refId: 'p' + x, cantidad: 1 };
+      }),
       stockActual: n(u.stock_actual),
       stockMinimo: n(u.stock_minimo),
       sucursales: unidades.map((x) => x.unidad_id),
@@ -1198,12 +1205,27 @@ NASCAR.Remoto = (function () {
     return Number(m[1]);
   }
 
+  /**
+   * Qué gasta un insumo, para mandárselo a la base.
+   *
+   * Pares {producto_id, cantidad}, no una lista de ids: la cantidad es
+   * cuánto gasta cada venta de ese plato —un pollo entero gasta 2 alas—
+   * y es lo que core.producto_insumos.cantidad guarda.
+   *
+   * Acepta las dos formas, igual que el store: la lista de ids de
+   * siempre (que vale 1) y la de pares.
+   */
   function productosDeCarta(refs) {
-    return (refs || []).filter(Boolean).map(function (ref) {
-      if (!/^p\d+$/.test(String(ref)))
-        throw new Error('Ese producto de la carta es del modo local de este navegador. Elige uno de la lista.');
-      return Number(String(ref).slice(1));
-    });
+    return (refs || [])
+      .map(function (x) {
+        const ref = x && typeof x === 'object' ? x.refId : x;
+        if (!ref) return null;
+        if (!/^p\d+$/.test(String(ref)))
+          throw new Error('Ese producto de la carta es del modo local de este navegador. Elige uno de la lista.');
+        const cant = x && typeof x === 'object' ? Number(x.cantidad) : NaN;
+        return { producto_id: Number(String(ref).slice(1)), cantidad: cant > 0 ? cant : 1 };
+      })
+      .filter(Boolean);
   }
 
   function cruceDesdeBase(r, sucursalId, fechaCierre, area) {

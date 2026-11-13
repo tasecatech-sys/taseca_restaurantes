@@ -973,16 +973,30 @@ NASCAR.Gestion = (function () {
                   (p.ventaRefIds.indexOf(c.id) >= 0 ? ' checked' : '') + '>' +
                   '<b>' + U.esc(c.nombre) + '</b>' +
                   (c.categoria ? '<i>' + U.esc(c.categoria) + '</i>' : '') +
+                  /* Cuánto gasta ESE plato de ESTE insumo. Un pollo entero
+                     gasta 2 alas. Sólo se habilita con la casilla marcada:
+                     una cantidad de algo que no se gasta no quiere decir
+                     nada. */
+                  '<span class="lista-check__cant">' +
+                  '<input type="number" min="0.001" step="any" class="input input--xs" ' +
+                  'data-cant="' + U.esc(c.id) + '" ' +
+                  'value="' + ((p.ventaCantidades || {})[c.id] || 1) + '" ' +
+                  'title="Cuánto gasta cada venta de este plato"' +
+                  (p.ventaRefIds.indexOf(c.id) >= 0 ? '' : ' disabled') + '>' +
+                  '<i>' + U.esc(p.unidad || 'unidad') + '</i></span>' +
                   '</label>'
               )
               .join('') +
             '</div>'
           : '<p class="mini ambar">Esta unidad todavía no tiene carta. Crea los platos primero.</p>') +
-        '<span class="mini tenue">Vender <b>no baja</b> el stock actual de arriba, que es lo que ' +
+        '<span class="mini tenue">Marca los platos y escribe <b>cuánto gasta cada uno</b>: ' +
+        'un pollo entero gasta 2 alas, así que vender un pollo suma 2 a las alas. ' +
+        'Un plato puede gastar varios insumos a la vez.<br>' +
+        'Vender <b>no baja</b> el stock actual de arriba, que es lo que ' +
         'contaste la última vez: lo que hace es sumar a <b>Z</b> (vendido) en el ' +
         '<b>cruce de inventario</b>, que es donde se ve lo que debería quedar ' +
         '(inicial + entradas − vendido) y se compara con el conteo del cierre. ' +
-        'Se suma lo vendido de TODOS los que marques. Sin ninguno marcado, Z queda en 0.' +
+        'Sin ningún plato marcado, Z queda en 0.' +
         '<b id="sRefsN" class="bloque-n"></b></span></div>' +
 
         '<label class="fila mini" style="gap:8px;margin:6px 0 16px">' +
@@ -994,9 +1008,14 @@ NASCAR.Gestion = (function () {
         '<button class="btn btn--rojo" id="sSi">Guardar</button></div>',
     });
 
-    /* Cuántos van marcados, y el buscador de la lista. */
+    /* Qué platos van marcados y cuánto gasta cada uno. Se devuelven como
+       pares, que es como los guarda el store (ver normalizarConsumo). */
     const marcados = () =>
-      U.$$('#sRefs input:checked', m.raiz).map((i) => i.value);
+      U.$$('#sRefs input[type="checkbox"]:checked', m.raiz).map(function (i) {
+        const campo = U.$('[data-cant="' + i.value + '"]', m.raiz);
+        const n = campo ? Number(campo.value) : 1;
+        return { refId: i.value, cantidad: n > 0 ? n : 1 };
+      });
 
     function contarRefs() {
       const n = U.$('#sRefsN', m.raiz);
@@ -1009,7 +1028,19 @@ NASCAR.Gestion = (function () {
 
     const lista = U.$('#sRefs', m.raiz);
     if (lista) {
-      lista.addEventListener('change', contarRefs);
+      lista.addEventListener('change', function (e) {
+        /* La cantidad sigue a la casilla: desmarcar la apaga, marcar la
+           enciende. Así no queda un número editable que no se usa. */
+        const caja = e.target.closest('input[type="checkbox"]');
+        if (caja) {
+          const campo = U.$('[data-cant="' + caja.value + '"]', m.raiz);
+          if (campo) {
+            campo.disabled = !caja.checked;
+            if (caja.checked && !(Number(campo.value) > 0)) campo.value = 1;
+          }
+        }
+        contarRefs();
+      });
       contarRefs();
     }
 

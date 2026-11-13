@@ -1496,6 +1496,62 @@ NASCAR.Store = (function () {
              ventaRefIds, stockActual, stockMinimo,
              sucursales (las unidades que llevan este producto)
      =============================================================== */
+  /**
+   * CUÁNTO gasta cada plato, no sólo CUÁLES lo gastan.
+   *
+   * `ventaRefIds` dice qué platos de la carta gastan este insumo.
+   * `ventaCantidades` dice cuánto gasta cada uno: un pollo entero gasta
+   * 2 alas, así que vender un pollo tiene que restar 2 de las alas.
+   *
+   * Son dos campos y no una lista de pares porque `ventaRefIds` ya
+   * estaba guardado así en medio centenar de sitios y en casi todos la
+   * cantidad es 1. Que sean dos NO los deja desparejarse: esta función
+   * es la única que los escribe, y garantiza que toda referencia tenga
+   * su cantidad y que no queden cantidades de referencias que ya no
+   * están.
+   *
+   * Acepta las dos formas de entrada: la lista de ids de siempre y una
+   * de pares {refId, cantidad}, que es como viene de la base.
+   */
+  function normalizarConsumo(p) {
+    const ids = [];
+    const cantidades = {};
+    const propia = {}; // la cantidad vino en el propio par, no de rebote
+
+    (Array.isArray(p.ventaRefIds) ? p.ventaRefIds : []).forEach(function (x) {
+      const esPar = x && typeof x === 'object';
+      const ref = esPar ? x.refId : x;
+      if (ref === undefined || ref === null || ref === '') return;
+      const clave = String(ref);
+      if (ids.indexOf(clave) >= 0) return;
+      ids.push(clave);
+
+      const n = esPar ? Number(x.cantidad) : NaN;
+      cantidades[clave] = n > 0 ? n : 1;
+      if (n > 0) propia[clave] = true;
+    });
+
+    /* El mapa suelto sólo RELLENA lo que no trajo cantidad propia.
+
+       Si mandara sobre ella, cambiar una cantidad desde el formulario no
+       se guardaría nunca: guardarProductoStock fusiona los cambios sobre
+       lo que ya había, así que llegan las referencias nuevas (con su
+       cantidad nueva) junto al `ventaCantidades` viejo, y el viejo
+       revertiría el cambio en silencio.
+
+       Las cantidades de referencias que ya no están se caen solas: este
+       bucle recorre `ids`, no el objeto que llegó. */
+    const sueltas = p.ventaCantidades;
+    if (sueltas && typeof sueltas === 'object')
+      ids.forEach(function (ref) {
+        if (propia[ref]) return;
+        const n = Number(sueltas[ref]);
+        if (n > 0) cantidades[ref] = n;
+      });
+
+    return { ventaRefIds: ids, ventaCantidades: cantidades };
+  }
+
   function normalizarProductoStock(p) {
     return Object.assign({}, p, {
       codigo: String(p.codigo || '').trim().toUpperCase(),
@@ -1504,11 +1560,39 @@ NASCAR.Store = (function () {
       area: p.area === 'bar' ? 'bar' : 'comidas',
       unidad: p.unidad || 'unidad',
       activo: p.activo !== false,
-      ventaRefIds: Array.isArray(p.ventaRefIds) ? p.ventaRefIds : [],
       stockActual: enteroNoNegativo(p.stockActual, 0),
       stockMinimo: enteroNoNegativo(p.stockMinimo, 0),
       sucursales: Array.isArray(p.sucursales) ? p.sucursales : [],
+    }, normalizarConsumo(p));
+  }
+
+  /**
+   * Plato de la carta → qué insumos gasta y cuánto de cada uno.
+   *
+   *   { 'p12': [ { codigo: 'CE-03', area: 'comidas', cantidad: 2 }, … ] }
+   *
+   * Un plato gasta VARIOS insumos: un pollo entero gasta alas, piernas y
+   * pechuga a la vez. Por eso el valor es una lista.
+   *
+   * Esto se armaba en los dos sitios que calculan consumo, y los dos
+   * traían el mismo par de errores: `porRef[ref] = codigo` PISABA —un
+   * plato sólo podía gastar un insumo, el último que lo mencionara— y se
+   * leía de NASCAR.INVENTARIO, que es la SEMILLA, en vez del catálogo
+   * administrable, así que lo que se marcaba en el panel no movía la Z
+   * de nadie. Ahora hay un solo sitio y lee lo que de verdad hay.
+   */
+  function mapaDeConsumo(empresaId) {
+    const mapa = {};
+    getStock({ todos: true, empresaId: empresaId }).forEach(function (ins) {
+      ins.ventaRefIds.forEach(function (ref) {
+        (mapa[ref] = mapa[ref] || []).push({
+          codigo: ins.codigo,
+          area: ins.area,
+          cantidad: ins.ventaCantidades[ref] || 1,
+        });
+      });
     });
+    return mapa;
   }
 
   function enteroNoNegativo(v, porDefecto) {
@@ -3429,21 +3513,19 @@ NASCAR.Store = (function () {
      inventario, no consume nada y aquí tampoco devuelve nada. */
   function consumoDePedido(pedido, itemsBaja) {
     const baja = (itemsBaja || []).map(String);
-    const porRef = {};
-    (NASCAR.INVENTARIO || []).forEach(function (prod) {
-      (prod.ventaRefIds || []).forEach(function (ref) {
-        porRef[ref] = prod.codigo;
-      });
-    });
+    const porRef = mapaDeConsumo(pedido.empresaId);
 
     const mapa = {};
     (pedido.items || []).forEach(function (it) {
       if (it.origen === 'dia') return; // el menú del día no lleva saldo
       // Dado de baja: no vuelve, así que no entra en el retorno
       if (baja.length && baja.indexOf(String(it.itemId)) >= 0) return;
-      const cod = porRef[it.refId];
-      if (!cod) return;
-      mapa[cod] = (mapa[cod] || 0) + Number(it.cantidad || 0);
+
+      /* Un plato devuelve TODO lo que gastó, cada cosa por su cantidad:
+         anular un pollo entero devuelve sus 2 alas, no «un ala». */
+      (porRef[it.refId] || []).forEach(function (g) {
+        mapa[g.codigo] = (mapa[g.codigo] || 0) + Number(it.cantidad || 0) * g.cantidad;
+      });
     });
 
     return Object.keys(mapa).map(function (codigo) {
@@ -4523,13 +4605,8 @@ NASCAR.Store = (function () {
      productos de inventario con saldo.
      =============================================================== */
   function getVentasProducto(fechaOperativa, sucursalId) {
-    // refId de la carta -> código de inventario
-    const porRef = {};
-    (NASCAR.INVENTARIO || []).forEach(function (p) {
-      (p.ventaRefIds || []).forEach(function (ref) {
-        porRef[ref] = p.codigo;
-      });
-    });
+    // Plato de la carta -> qué insumos gasta y cuánto de cada uno
+    const porRef = mapaDeConsumo();
 
     /* Área -> ¿el retorno de una factura anulada se imputa a ESTA
        jornada? Si sí, sus productos dejan de contar como vendidos aquí.
@@ -4542,9 +4619,6 @@ NASCAR.Store = (function () {
       return (a.areasRetornadas || []).indexOf(area) >= 0;
     }
 
-    const areaDe = {};
-    (NASCAR.INVENTARIO || []).forEach((prod) => (areaDe[prod.codigo] = prod.area));
-
     const mapa = {};
     leer(K.pedidos, []).forEach(function (pedido) {
       if (pedido.estado === 'cancelado') return;
@@ -4553,10 +4627,14 @@ NASCAR.Store = (function () {
 
       pedido.items.forEach(function (it) {
         if (it.origen === 'dia') return; // el menú del día no lleva saldo
-        const cod = porRef[it.refId];
-        if (!cod) return; // vendido pero sin producto de inventario asociado
-        if (pedido.estado === 'anulado' && devuelveEnEstaJornada(pedido, areaDe[cod])) return;
-        mapa[cod] = (mapa[cod] || 0) + Number(it.cantidad || 0);
+        // Vendido pero sin insumo asociado: no suma a la Z de nadie
+        (porRef[it.refId] || []).forEach(function (g) {
+          /* El área la trae el propio insumo: un plato puede gastar cosas
+             de áreas distintas, y el retorno de una anulación se imputa
+             por área, no por plato. */
+          if (pedido.estado === 'anulado' && devuelveEnEstaJornada(pedido, g.area)) return;
+          mapa[g.codigo] = (mapa[g.codigo] || 0) + Number(it.cantidad || 0) * g.cantidad;
+        });
       });
     });
     return mapa;
