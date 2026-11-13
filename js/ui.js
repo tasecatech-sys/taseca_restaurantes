@@ -524,8 +524,42 @@ NASCAR.UI = (function () {
   /* ---------------------------------------------------------------
      Año en el pie de página + reveal al hacer scroll
      --------------------------------------------------------------- */
+  /**
+   * La foto de un plato, para la tarjeta de la carta.
+   *
+   * La misma en el portal del cliente y en la pantalla de mesa, que
+   * pintan la misma tarjeta: si se escribiera en cada sitio, mañana una
+   * de las dos se quedaría atrás.
+   *
+   * Sin foto devuelve cadena vacía, no un hueco ni una imagen de
+   * relleno: una carta sin fotos tiene que seguir viéndose igual que
+   * antes de que esto existiera.
+   */
+  function fotoPlato(plato) {
+    const src = plato && plato.imagen ? String(plato.imagen).trim() : '';
+    if (!src) return '';
+    return (
+      '<img class="plato__foto" src="' + esc(src) + '" alt="" ' +
+      'loading="lazy" decoding="async">'
+    );
+  }
+
   function iniciarComunes() {
     $$('[data-anio]').forEach((n) => (n.textContent = new Date().getFullYear()));
+
+    /* Una foto que no carga no deja el icono de imagen rota en la carta:
+       se quita y la tarjeta queda como si no tuviera. La dirección la
+       escribe una persona, así que esto va a pasar.
+
+       En captura porque el evento `error` de una imagen no burbujea. */
+    document.addEventListener(
+      'error',
+      function (e) {
+        const n = e.target;
+        if (n && n.classList && n.classList.contains('plato__foto')) n.remove();
+      },
+      true
+    );
 
     const objetivos = $$('.reveal');
     if (!objetivos.length) return;
@@ -573,6 +607,7 @@ NASCAR.UI = (function () {
     numeroWhatsApp: numeroWhatsApp,
     enlaceWhatsApp: enlaceWhatsApp,
     comprimirImagen: comprimirImagen,
+    fotoPlato: fotoPlato,
     paramURL: paramURL,
     iniciarComunes: iniciarComunes,
   };

@@ -1277,6 +1277,31 @@ textarea {
   transform: translateY(-3px);
   background: var(--negro-600);
 }
+/* La foto del plato, cuando el producto tiene una.
+
+   Sangra hasta el borde de la tarjeta: los márgenes negativos compensan
+   exactamente el padding de .plato, así que si ese padding cambia hay
+   que cambiarlos aquí. Sin foto no se pinta nada y la tarjeta queda
+   igual que siempre. */
+.plato__foto {
+  display: block;
+  width: calc(100% + 40px);
+  /* La regla global `img { max-width: 100% }` recortaría la sangría y la
+     foto quedaría corrida hacia la izquierda. */
+  max-width: none;
+  height: 170px;
+  margin: -20px -20px 2px;
+  object-fit: cover;
+  border-radius: var(--r) var(--r) 0 0;
+  /* Mientras carga, el hueco es del color de la tarjeta y no un vacío
+     blanco que parpadea. */
+  background: var(--negro-800);
+}
+.no-disp .plato__foto {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
 .plato__top {
   display: flex;
   justify-content: space-between;
@@ -7014,6 +7039,56 @@ NASCAR.PATRONES = [
     muestra: 'Nada: el corte limpio entre secciones',
     emblema: '',
   },
+];
+
+/* -------------------------------------------------------------------------
+   ICONOS DE CATEGORÍA
+
+   El icono de una categoría se elegía escribiéndolo en una casilla de
+   texto. Eso obliga a saber poner un emoji en el teclado —en un
+   computador de mostrador, nadie— y deja entrar cualquier cosa: una
+   letra suelta, un espacio, tres emojis seguidos.
+
+   Lista cerrada, como los patrones y las áreas: se escoge de un
+   desplegable. El nombre es para poder encontrarlo leyendo, que es como
+   se busca en una lista larga.
+
+   Agregar uno es agregar una línea aquí. Quitar uno NO borra el que ya
+   tenga una categoría guardada: el editor lo conserva (ver
+   js/gestion.js → editarCategoria).
+   ------------------------------------------------------------------------- */
+NASCAR.ICONOS_CATEGORIA = [
+  { icono: '🍽️', nombre: 'General' },
+  { icono: '🔥', nombre: 'A la parrilla' },
+  { icono: '🍖', nombre: 'Carnes' },
+  { icono: '🍗', nombre: 'Pollo' },
+  { icono: '🐟', nombre: 'Pescados y mariscos' },
+  { icono: '🍲', nombre: 'Sopas y caldos' },
+  { icono: '🍚', nombre: 'Arroces' },
+  { icono: '🫓', nombre: 'Arepas' },
+  { icono: '🌮', nombre: 'Mexicana' },
+  { icono: '🍔', nombre: 'Hamburguesas' },
+  { icono: '🌭', nombre: 'Perros y salchipapas' },
+  { icono: '🍕', nombre: 'Pizzas' },
+  { icono: '🥪', nombre: 'Sándwiches' },
+  { icono: '🍟', nombre: 'Fritos y acompañamientos' },
+  { icono: '🥗', nombre: 'Ensaladas' },
+  { icono: '🥘', nombre: 'Platos del día' },
+  { icono: '🍳', nombre: 'Desayunos' },
+  { icono: '🥐', nombre: 'Panadería' },
+  { icono: '🍰', nombre: 'Postres' },
+  { icono: '🍦', nombre: 'Helados' },
+  { icono: '☕', nombre: 'Café' },
+  { icono: '🧃', nombre: 'Jugos y refrescos' },
+  { icono: '🥤', nombre: 'Gaseosas' },
+  { icono: '🍺', nombre: 'Cervezas' },
+  { icono: '🍹', nombre: 'Cócteles' },
+  { icono: '🍷', nombre: 'Vinos y licores' },
+  { icono: '🧊', nombre: 'Para la mesa' },
+  { icono: '👶', nombre: 'Para niños' },
+  { icono: '🌱', nombre: 'Vegetariano' },
+  { icono: '⭐', nombre: 'Especiales' },
+  { icono: '🎁', nombre: 'Combos y promociones' },
 ];
 
 /* El tema con el que Taseca entrega una empresa nueva. Sobrio y neutro:
@@ -16289,8 +16364,42 @@ NASCAR.UI = (function () {
   /* ---------------------------------------------------------------
      Año en el pie de página + reveal al hacer scroll
      --------------------------------------------------------------- */
+  /**
+   * La foto de un plato, para la tarjeta de la carta.
+   *
+   * La misma en el portal del cliente y en la pantalla de mesa, que
+   * pintan la misma tarjeta: si se escribiera en cada sitio, mañana una
+   * de las dos se quedaría atrás.
+   *
+   * Sin foto devuelve cadena vacía, no un hueco ni una imagen de
+   * relleno: una carta sin fotos tiene que seguir viéndose igual que
+   * antes de que esto existiera.
+   */
+  function fotoPlato(plato) {
+    const src = plato && plato.imagen ? String(plato.imagen).trim() : '';
+    if (!src) return '';
+    return (
+      '<img class="plato__foto" src="' + esc(src) + '" alt="" ' +
+      'loading="lazy" decoding="async">'
+    );
+  }
+
   function iniciarComunes() {
     $$('[data-anio]').forEach((n) => (n.textContent = new Date().getFullYear()));
+
+    /* Una foto que no carga no deja el icono de imagen rota en la carta:
+       se quita y la tarjeta queda como si no tuviera. La dirección la
+       escribe una persona, así que esto va a pasar.
+
+       En captura porque el evento `error` de una imagen no burbujea. */
+    document.addEventListener(
+      'error',
+      function (e) {
+        const n = e.target;
+        if (n && n.classList && n.classList.contains('plato__foto')) n.remove();
+      },
+      true
+    );
 
     const objetivos = $$('.reveal');
     if (!objetivos.length) return;
@@ -16338,6 +16447,7 @@ NASCAR.UI = (function () {
     numeroWhatsApp: numeroWhatsApp,
     enlaceWhatsApp: enlaceWhatsApp,
     comprimirImagen: comprimirImagen,
+    fotoPlato: fotoPlato,
     paramURL: paramURL,
     iniciarComunes: iniciarComunes,
   };
@@ -19548,6 +19658,27 @@ NASCAR.Gestion = (function () {
       .join('');
   }
 
+  /* Las opciones del desplegable de iconos.
+
+     Si la categoría ya tiene uno que no está en la lista —lo escribió
+     alguien cuando esto era una casilla de texto, o se quitó de
+     NASCAR.ICONOS_CATEGORIA— se añade arriba en vez de perderse. Abrir
+     a editar el nombre no puede cambiarle el icono por la espalda. */
+  function opcionesDeIcono(actual) {
+    const lista = NASCAR.ICONOS_CATEGORIA || [];
+    const elegido = String(actual || '').trim();
+    const conocido = lista.some((x) => x.icono === elegido);
+
+    const opcion = (icono, texto, sel) =>
+      '<option value="' + U.esc(icono) + '"' + (sel ? ' selected' : '') + '>' +
+      U.esc(icono + '  ' + texto) + '</option>';
+
+    return (
+      (elegido && !conocido ? opcion(elegido, 'el que tenía', true) : '') +
+      lista.map((x) => opcion(x.icono, x.nombre, conocido && x.icono === elegido)).join('')
+    );
+  }
+
   function editarCategoria(catId) {
     if (!A.exigir('carta')) return;
     const c = catId
@@ -19563,7 +19694,7 @@ NASCAR.Gestion = (function () {
         '<label class="campo"><span>Nombre <i class="req">*</i></span>' +
         '<input class="input" id="cNombre" value="' + U.esc(c.nombre) + '" placeholder="Ej. Parrilla"></label>' +
         '<label class="campo"><span>Icono</span>' +
-        '<input class="input" id="cIcono" value="' + U.esc(c.icono || '') + '" placeholder="🔥" maxlength="4"></label>' +
+        '<select class="select" id="cIcono">' + opcionesDeIcono(c.icono) + '</select></label>' +
         '</div>' +
         '<label class="campo"><span>Orden de aparición</span>' +
         '<input class="input" type="number" min="0" step="10" id="cOrden" value="' + Number(c.orden || 0) + '"></label>' +
@@ -24347,6 +24478,7 @@ NASCAR.Avisos = (function () {
         const tag = etiquetas[p.tag];
         return (
           '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
+          U.fotoPlato(p) +
           '<div class="plato__top">' +
           '<h3>' + U.esc(p.nombre) + '</h3>' +
           '<span class="plato__precio">' + U.money(p.precio) + '</span>' +
@@ -25706,6 +25838,7 @@ NASCAR.Avisos = (function () {
       .map(function (p) {
         return (
           '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
+          U.fotoPlato(p) +
           '<div class="plato__top"><h3>' + U.esc(p.nombre) + '</h3>' +
           '<span class="plato__precio">' + U.money(p.precio) + '</span></div>' +
           '<p class="plato__desc">' + U.esc(p.desc) + '</p>' +

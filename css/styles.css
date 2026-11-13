@@ -1251,6 +1251,31 @@ textarea {
   transform: translateY(-3px);
   background: var(--negro-600);
 }
+/* La foto del plato, cuando el producto tiene una.
+
+   Sangra hasta el borde de la tarjeta: los márgenes negativos compensan
+   exactamente el padding de .plato, así que si ese padding cambia hay
+   que cambiarlos aquí. Sin foto no se pinta nada y la tarjeta queda
+   igual que siempre. */
+.plato__foto {
+  display: block;
+  width: calc(100% + 40px);
+  /* La regla global `img { max-width: 100% }` recortaría la sangría y la
+     foto quedaría corrida hacia la izquierda. */
+  max-width: none;
+  height: 170px;
+  margin: -20px -20px 2px;
+  object-fit: cover;
+  border-radius: var(--r) var(--r) 0 0;
+  /* Mientras carga, el hueco es del color de la tarjeta y no un vacío
+     blanco que parpadea. */
+  background: var(--negro-800);
+}
+.no-disp .plato__foto {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
 .plato__top {
   display: flex;
   justify-content: space-between;

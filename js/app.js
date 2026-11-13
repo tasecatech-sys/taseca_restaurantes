@@ -220,6 +220,7 @@
         const tag = etiquetas[p.tag];
         return (
           '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
+          U.fotoPlato(p) +
           '<div class="plato__top">' +
           '<h3>' + U.esc(p.nombre) + '</h3>' +
           '<span class="plato__precio">' + U.money(p.precio) + '</span>' +

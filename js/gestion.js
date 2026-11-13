@@ -450,6 +450,27 @@ NASCAR.Gestion = (function () {
       .join('');
   }
 
+  /* Las opciones del desplegable de iconos.
+
+     Si la categoría ya tiene uno que no está en la lista —lo escribió
+     alguien cuando esto era una casilla de texto, o se quitó de
+     NASCAR.ICONOS_CATEGORIA— se añade arriba en vez de perderse. Abrir
+     a editar el nombre no puede cambiarle el icono por la espalda. */
+  function opcionesDeIcono(actual) {
+    const lista = NASCAR.ICONOS_CATEGORIA || [];
+    const elegido = String(actual || '').trim();
+    const conocido = lista.some((x) => x.icono === elegido);
+
+    const opcion = (icono, texto, sel) =>
+      '<option value="' + U.esc(icono) + '"' + (sel ? ' selected' : '') + '>' +
+      U.esc(icono + '  ' + texto) + '</option>';
+
+    return (
+      (elegido && !conocido ? opcion(elegido, 'el que tenía', true) : '') +
+      lista.map((x) => opcion(x.icono, x.nombre, conocido && x.icono === elegido)).join('')
+    );
+  }
+
   function editarCategoria(catId) {
     if (!A.exigir('carta')) return;
     const c = catId
@@ -465,7 +486,7 @@ NASCAR.Gestion = (function () {
         '<label class="campo"><span>Nombre <i class="req">*</i></span>' +
         '<input class="input" id="cNombre" value="' + U.esc(c.nombre) + '" placeholder="Ej. Parrilla"></label>' +
         '<label class="campo"><span>Icono</span>' +
-        '<input class="input" id="cIcono" value="' + U.esc(c.icono || '') + '" placeholder="🔥" maxlength="4"></label>' +
+        '<select class="select" id="cIcono">' + opcionesDeIcono(c.icono) + '</select></label>' +
         '</div>' +
         '<label class="campo"><span>Orden de aparición</span>' +
         '<input class="input" type="number" min="0" step="10" id="cOrden" value="' + Number(c.orden || 0) + '"></label>' +

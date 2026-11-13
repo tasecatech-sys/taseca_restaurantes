@@ -398,6 +398,56 @@ NASCAR.PATRONES = [
   },
 ];
 
+/* -------------------------------------------------------------------------
+   ICONOS DE CATEGORÍA
+
+   El icono de una categoría se elegía escribiéndolo en una casilla de
+   texto. Eso obliga a saber poner un emoji en el teclado —en un
+   computador de mostrador, nadie— y deja entrar cualquier cosa: una
+   letra suelta, un espacio, tres emojis seguidos.
+
+   Lista cerrada, como los patrones y las áreas: se escoge de un
+   desplegable. El nombre es para poder encontrarlo leyendo, que es como
+   se busca en una lista larga.
+
+   Agregar uno es agregar una línea aquí. Quitar uno NO borra el que ya
+   tenga una categoría guardada: el editor lo conserva (ver
+   js/gestion.js → editarCategoria).
+   ------------------------------------------------------------------------- */
+NASCAR.ICONOS_CATEGORIA = [
+  { icono: '🍽️', nombre: 'General' },
+  { icono: '🔥', nombre: 'A la parrilla' },
+  { icono: '🍖', nombre: 'Carnes' },
+  { icono: '🍗', nombre: 'Pollo' },
+  { icono: '🐟', nombre: 'Pescados y mariscos' },
+  { icono: '🍲', nombre: 'Sopas y caldos' },
+  { icono: '🍚', nombre: 'Arroces' },
+  { icono: '🫓', nombre: 'Arepas' },
+  { icono: '🌮', nombre: 'Mexicana' },
+  { icono: '🍔', nombre: 'Hamburguesas' },
+  { icono: '🌭', nombre: 'Perros y salchipapas' },
+  { icono: '🍕', nombre: 'Pizzas' },
+  { icono: '🥪', nombre: 'Sándwiches' },
+  { icono: '🍟', nombre: 'Fritos y acompañamientos' },
+  { icono: '🥗', nombre: 'Ensaladas' },
+  { icono: '🥘', nombre: 'Platos del día' },
+  { icono: '🍳', nombre: 'Desayunos' },
+  { icono: '🥐', nombre: 'Panadería' },
+  { icono: '🍰', nombre: 'Postres' },
+  { icono: '🍦', nombre: 'Helados' },
+  { icono: '☕', nombre: 'Café' },
+  { icono: '🧃', nombre: 'Jugos y refrescos' },
+  { icono: '🥤', nombre: 'Gaseosas' },
+  { icono: '🍺', nombre: 'Cervezas' },
+  { icono: '🍹', nombre: 'Cócteles' },
+  { icono: '🍷', nombre: 'Vinos y licores' },
+  { icono: '🧊', nombre: 'Para la mesa' },
+  { icono: '👶', nombre: 'Para niños' },
+  { icono: '🌱', nombre: 'Vegetariano' },
+  { icono: '⭐', nombre: 'Especiales' },
+  { icono: '🎁', nombre: 'Combos y promociones' },
+];
+
 /* El tema con el que Taseca entrega una empresa nueva. Sobrio y neutro:
    es un punto de partida, no la identidad definitiva del cliente. Desde
    el panel se personaliza después. */
