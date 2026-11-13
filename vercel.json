@@ -12,6 +12,17 @@
       "has": [{ "type": "host", "value": "taseca.taseca.tech" }],
       "destination": "/taseca-admin.html"
     },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "restaurante.taseca.tech" }],
+      "destination": "/restaurantes.html"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "restaurantes.taseca.tech" }],
+      "destination": "/restaurantes.html"
+    },
+    { "source": "/restaurantes", "destination": "/restaurantes.html" },
     { "source": "/taseca", "destination": "/taseca-admin.html" },
     { "source": "/taseca/:empresa/panel", "destination": "/empleados.html" },
     { "source": "/taseca/:empresa/mesa", "destination": "/mesa.html" },

@@ -13459,9 +13459,14 @@ window.NASCAR = window.NASCAR || {};
     return RESERVADOS.indexOf(sub) >= 0 ? '' : sub;
   }
 
-  /* Las páginas del negocio, tal como se escriben en la dirección. El panel
-     de Taseca no está aquí: no es de ninguna empresa. */
+  /* Las páginas del negocio, tal como se escriben en la dirección. Las de
+     Taseca no están aquí: no son de ninguna empresa. */
   const PAGINAS = { '': 'index.html', panel: 'empleados.html', mesa: 'mesa.html', cierre: 'cierre.html' };
+
+  /* Tramos de ruta que son de la PLATAFORMA. Sin esto, /restaurantes se
+     leería como «la empresa restaurantes» y la portada arrancaría creyendo
+     ser un negocio que no existe. */
+  const RUTAS_PLATAFORMA = ['taseca', 'restaurantes'];
 
   /* empresa_pizzeria_del_parque  ⇄  pizzeria-del-parque */
   function aRanura(codigo) {
@@ -13483,7 +13488,8 @@ window.NASCAR = window.NASCAR || {};
     let tramo = partes[1] || '';
     if (tramo === 'taseca') tramo = partes[2] || '';
     if (!tramo || tramo.indexOf('.') >= 0) return '';
-    if (tramo === 'taseca' || Object.prototype.hasOwnProperty.call(PAGINAS, tramo)) return '';
+    if (RUTAS_PLATAFORMA.indexOf(tramo) >= 0) return '';
+    if (Object.prototype.hasOwnProperty.call(PAGINAS, tramo)) return '';
     return tramo.toLowerCase();
   }
 
@@ -13521,6 +13527,11 @@ window.NASCAR = window.NASCAR || {};
   NASCAR.Backend = {
     empresaDe: empresaDe, subdominioDe: subdominioDe, esDeEsteEquipo: esDeEsteEquipo,
     ranuraDe: ranuraDe, aRanura: aRanura, aCodigo: aCodigo, PAGINAS: PAGINAS,
+    /* La nube, suelta. La portada de la plataforma (restaurantes.html) lista
+       las empresas y no es de ninguna, así que nunca entra por la rama que
+       llena NASCAR.BACKEND: necesita leerla por su cuenta. Son los mismos
+       datos públicos de siempre; la clave ya viaja en este archivo. */
+    NUBE: NUBE,
   };
   NASCAR.rutaDe = rutaDe;
 
@@ -13559,7 +13570,7 @@ window.NASCAR = window.NASCAR || {};
 
   function alPanelSiPidenUnaSeccion(empresa) {
     if (!empresa) return false;
-    if (/(empleados|taseca-admin|mesa|cierre)\.html$/i.test(location.pathname)) return false;
+    if (/(empleados|taseca-admin|mesa|cierre|restaurantes)\.html$/i.test(location.pathname)) return false;
     if (/\/(panel|cierre|mesa)$/i.test(location.pathname)) return false;
     const seccion = (location.hash || '').replace('#', '').toLowerCase();
     if (SECCIONES_PANEL.indexOf(seccion) < 0) return false;

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taseca · Sistema para restaurantes — Pide en nuestros restaurantes</title>
+<meta name="description" content="El sistema con el que estos restaurantes toman pedidos, cobran y controlan su cocina. Mira la lista y pide en línea en el que quieras.">
+<meta name="theme-color" content="#05070f">
+
+<meta property="og:title" content="Taseca · Sistema para restaurantes">
+<meta property="og:description" content="Del pedido a la caja, en un solo sistema. Y la lista de restaurantes donde ya puedes pedir.">
+<meta property="og:type" content="website">
+
+<!-- El triángulo de Taseca. Esta página es de la PLATAFORMA, no de ningún
+     restaurante: ni el favicon ni nada de aquí lleva marca de un cliente. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='%2305070f'/><polygon points='100,25 175,165 25,165' fill='none' stroke='%23d4a437' stroke-width='10'/><circle cx='100' cy='115' r='20' fill='%23d4a437'/><circle cx='100' cy='115' r='9' fill='%2305070f'/><circle cx='100' cy='115' r='4' fill='%2300e5ff'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+
+<!-- styles.css aporta la ESTRUCTURA de componentes (.btn, .contenedor,
+     .vacio…) y taseca.css la PIEL de la plataforma, igual que en el panel
+     de Taseca. Ver la nota de aislamiento al principio de css/taseca.css. -->
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/taseca.css">
+</head>
+
+<body class="taseca tsc-portada">
+
+<!-- ===================== LOGOTIPO CORPORATIVO =====================
+     El mismo de taseca-admin.html: triángulo dorado, ojo de analítica y
+     barras de datos. Se define una vez y se referencia con <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="tscOro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5d97f"/>
+      <stop offset="55%" stop-color="#d4a437"/>
+      <stop offset="100%" stop-color="#b8862a"/>
+    </linearGradient>
+    <symbol id="tsc-logo" viewBox="0 0 200 200">
+      <polygon points="100,15 180,170 20,170" fill="none" stroke="url(#tscOro)" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="100,40 160,158 40,158" fill="none" stroke="#00e5ff" stroke-width="1" stroke-opacity=".5" stroke-dasharray="3,3"/>
+      <circle cx="100" cy="15" r="3" fill="#00e5ff"/><circle cx="180" cy="170" r="3" fill="#00e5ff"/><circle cx="20" cy="170" r="3" fill="#00e5ff"/>
+      <path d="M 55 105 Q 100 70 145 105 Q 100 140 55 105 Z" fill="#05070f" stroke="url(#tscOro)" stroke-width="2.5"/>
+      <circle cx="100" cy="105" r="18" fill="url(#tscOro)"/>
+      <circle cx="100" cy="105" r="13" fill="none" stroke="#05070f" stroke-width=".8"/>
+      <circle cx="100" cy="105" r="8" fill="#05070f"/>
+      <circle cx="100" cy="105" r="3" fill="#00e5ff"/>
+      <circle cx="104" cy="101" r="2" fill="#f5d97f"/>
+      <line x1="100" y1="80" x2="100" y2="65" stroke="#00e5ff" stroke-width="1.2" stroke-opacity=".7"/>
+      <line x1="78" y1="95" x2="68" y2="88" stroke="#00e5ff" stroke-width="1.2" stroke-opacity=".7"/>
+      <line x1="122" y1="95" x2="132" y2="88" stroke="#00e5ff" stroke-width="1.2" stroke-opacity=".7"/>
+      <rect x="70" y="148" width="8" height="8" fill="#00e5ff" opacity=".7"/>
+      <rect x="82" y="142" width="8" height="14" fill="url(#tscOro)" opacity=".85"/>
+      <rect x="94" y="138" width="8" height="18" fill="url(#tscOro)"/>
+      <rect x="106" y="144" width="8" height="12" fill="url(#tscOro)" opacity=".85"/>
+      <rect x="118" y="140" width="8" height="16" fill="#00e5ff" opacity=".7"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ========================= CABECERA ========================= -->
+<header class="tsc-top">
+  <div class="contenedor tsc-top__barra">
+    <a class="tsc-marca" href="https://taseca.tech/" rel="noopener">
+      <svg class="tsc-marca__logo" aria-label="Taseca"><use href="#tsc-logo"></use></svg>
+      <span class="tsc-marca__texto">
+        <span class="tsc-marca__nombre">TASECA</span>
+        <span class="tsc-marca__sub">Restaurantes</span>
+      </span>
+    </a>
+
+    <nav class="tsc-top__nav">
+      <a href="#restaurantes">Dónde pedir</a>
+      <a href="#sistema">El sistema</a>
+      <a class="btn btn--sm tsc-btn-oro" href="https://wa.me/573125302674" target="_blank" rel="noopener">Quiero el sistema</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================ HERO ============================ -->
+  <section class="tsc-hero">
+    <div class="contenedor">
+      <span class="tsc-pill">◈ Software para restaurantes y cafés bar</span>
+
+      <h1 class="tsc-hero__titulo">
+        El sistema que mueve<br><em>estos restaurantes</em>
+      </h1>
+
+      <p class="tsc-hero__bajada">
+        Del pedido a la caja, en un solo sitio: mesas, domicilios, cocina en
+        tiempo real, pagos, cierres e inventario. Abajo están los negocios que
+        ya atienden con Taseca — entra al que quieras y pide en línea.
+      </p>
+
+      <div class="tsc-hero__acciones">
+        <a class="btn tsc-btn-oro" href="#restaurantes">Ver dónde pedir</a>
+        <a class="btn btn--fantasma" href="#sistema">Cómo funciona el sistema</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================== RESTAURANTES ========================
+       La lista NO está escrita aquí: la pinta js/restaurantes.js con lo
+       que diga la plataforma. Ningún negocio está clavado en el código —
+       dar de alta uno nuevo lo hace aparecer solo. -->
+  <section class="tsc-seccion" id="restaurantes">
+    <div class="contenedor">
+      <div class="tsc-seccion__cabeza">
+        <span class="tsc-kicker">Dónde pedir</span>
+        <h2>Nuestros restaurantes</h2>
+        <p>Estos negocios atienden con Taseca. Toca uno para ver su carta y pedir.</p>
+      </div>
+
+      <div class="tsc-directorio" id="directorio" aria-live="polite">
+        <!-- Mientras llega la respuesta: tres siluetas, para que la página
+             no dé un salto cuando aparezcan las de verdad. -->
+        <div class="tsc-rest tsc-rest--fantasma"></div>
+        <div class="tsc-rest tsc-rest--fantasma"></div>
+        <div class="tsc-rest tsc-rest--fantasma"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================== EL SISTEMA ========================== -->
+  <section class="tsc-seccion tsc-seccion--alt" id="sistema">
+    <div class="contenedor">
+      <div class="tsc-seccion__cabeza">
+        <span class="tsc-kicker">El sistema</span>
+        <h2>Todo el negocio en un solo lugar</h2>
+        <p>Lo mismo que usan los restaurantes de arriba, listo para el tuyo.</p>
+      </div>
+
+      <div class="tsc-rejilla">
+        <article class="tsc-tarjeta">
+          <span class="tsc-tarjeta__num">01</span>
+          <h3>Pedidos de mesa y domicilio</h3>
+          <p>El cliente pide desde su celular con el QR de la mesa o a domicilio.
+             Todo entra al mismo sitio: nada se pierde en WhatsApp.</p>
+        </article>
+        <article class="tsc-tarjeta">
+          <span class="tsc-tarjeta__num">02</span>
+          <h3>Cocina en tiempo real</h3>
+          <p>La comanda llega sola a la pantalla de cocina y cada quien ve lo
+             suyo: cocinero, mesero y domiciliario.</p>
+        </article>
+        <article class="tsc-tarjeta">
+          <span class="tsc-tarjeta__num">03</span>
+          <h3>Caja, pagos y cierres</h3>
+          <p>Entregar no es cobrar: el dinero se confirma en caja, con su
+             comprobante, y el cierre del día cuadra solo.</p>
+        </article>
+        <article class="tsc-tarjeta">
+          <span class="tsc-tarjeta__num">04</span>
+          <h3>Inventario y reportes</h3>
+          <p>Lo que entra, lo que sale y lo que falta. Las ventas del día se
+             ven desde el celular, sin armar ningún reporte.</p>
+        </article>
+      </div>
+
+      <div class="tsc-cta">
+        <div>
+          <h3>¿Quieres el sistema en tu restaurante?</h3>
+          <p>Te lo adaptamos a tu marca y a tu operación. Diagnóstico gratis de 30 minutos.</p>
+        </div>
+        <a class="btn tsc-btn-oro" href="https://wa.me/573125302674" target="_blank" rel="noopener">
+          Escribir por WhatsApp
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================ PIE ============================
+     Los datos son los de TASECA, la plataforma. Ningún restaurante
+     cliente pone su contacto aquí: cada uno tiene el suyo en su página. -->
+<footer class="tsc-pie">
+  <div class="contenedor">
+    <div class="tsc-pie__cols">
+
+      <div class="tsc-pie__marca">
+        <a class="tsc-marca" href="https://taseca.tech/" rel="noopener">
+          <svg class="tsc-marca__logo" aria-label="Taseca"><use href="#tsc-logo"></use></svg>
+          <span class="tsc-marca__texto">
+            <span class="tsc-marca__nombre">TASECA</span>
+            <span class="tsc-marca__sub">Software · Automatización · Analítica</span>
+          </span>
+        </a>
+        <p>Convertimos procesos desordenados en sistemas que funcionan.</p>
+      </div>
+
+      <div class="tsc-pie__col">
+        <span class="tsc-pie__titulo">Hablemos</span>
+        <a href="https://wa.me/573125302674" target="_blank" rel="noopener">WhatsApp +57 312 530 2674</a>
+        <a href="tel:+573125302674">+57 312 530 2674</a>
+        <a href="https://www.instagram.com/taseca.tech" target="_blank" rel="noopener">Instagram @taseca.tech</a>
+      </div>
+
+      <div class="tsc-pie__col">
+        <span class="tsc-pie__titulo">Taseca</span>
+        <a href="https://taseca.tech/" rel="noopener">taseca.tech ↗</a>
+        <a href="https://taseca.tech/#productos" rel="noopener">Otros sistemas</a>
+        <a href="https://taseca.tech/#contacto" rel="noopener">Diagnóstico gratis</a>
+      </div>
+
+    </div>
+
+    <div class="tsc-pie__fin">
+      <span>© <span id="anio">2026</span> TASECA. Todos los derechos reservados.</span>
+      <span>Hecho en Colombia</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/backend.js"></script>
+<script src="js/restaurantes.js"></script>
+</body>
+</html>
