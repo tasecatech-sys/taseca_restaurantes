@@ -1251,6 +1251,33 @@ textarea {
   transform: translateY(-3px);
   background: var(--negro-600);
 }
+/* El bloque de la foto en el editor de un producto: lo que hay ahora y
+   los botones para cambiarlo. */
+.foto-plato {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.foto-plato__vista {
+  width: 104px;
+  height: 78px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--borde-fuerte);
+  border-radius: var(--r-sm);
+  background: var(--negro-800);
+  overflow: hidden;
+}
+.foto-plato__vista img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.foto-plato__acciones {
+  min-width: 0;
+}
+
 /* La foto del plato, cuando el producto tiene una.
 
    Sangra hasta el borde de la tarjeta: los márgenes negativos compensan

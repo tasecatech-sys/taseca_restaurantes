@@ -310,6 +310,109 @@ NASCAR.Gestion = (function () {
       .join('');
   }
 
+  /* =================================================================
+     LA FOTO DE UN PLATO
+
+     Antes era una casilla para pegar una dirección, que es pedirle a
+     quien monta la carta que suba la imagen a algún sitio por su cuenta.
+     Nadie lo hace, y por eso ninguna carta tenía fotos.
+
+     Ahora se elige el archivo y se sube a Supabase Storage. La casilla de
+     la dirección se queda: sirve para pegar una foto que ya esté en
+     internet, y para ver dónde quedó la que se subió.
+     ================================================================= */
+
+  /* El nombre del archivo es el CÓDIGO del producto, para que volver a
+     subir otra foto reemplace la anterior en vez de dejar basura.
+
+     Un producto que todavía no se ha guardado no tiene código, así que
+     se le pone uno provisional; cuando se vuelva a editar, ya con
+     código, la siguiente foto irá a su sitio definitivo. */
+  function nombreDeFoto(p) {
+    const base = String(p.codigo || '').trim() || 'nuevo-' + Date.now().toString(36);
+    return base.replace(/[^A-Za-z0-9._-]/g, '-') + '.jpg';
+  }
+
+  function bloqueFoto(p) {
+    /* Sin base en la nube no hay Storage: queda la casilla de siempre en
+       vez de un botón que no haría nada. */
+    const sePuedeSubir = typeof S.subirFotoCarta === 'function';
+
+    return (
+      '<div class="campo"><span>Foto del plato</span>' +
+      '<div class="foto-plato" id="pFotoCaja">' +
+      '<div class="foto-plato__vista" id="pFotoVista"></div>' +
+      '<div class="foto-plato__acciones">' +
+      (sePuedeSubir
+        ? '<label class="btn btn--fantasma btn--sm" style="cursor:pointer;margin:0">' +
+          '📷 Subir foto' +
+          '<input type="file" id="pFotoArchivo" accept="image/*" hidden></label> '
+        : '') +
+      '<button type="button" class="btn btn--fantasma btn--sm" id="pFotoQuitar">Quitar</button>' +
+      '<p class="mini tenue" style="margin:8px 0 0">' +
+      (sePuedeSubir
+        ? 'Se guarda en la carpeta de tu empresa. Subir otra con el mismo plato reemplaza la anterior.'
+        : 'Pega la dirección de una imagen que ya esté publicada.') +
+      '</p>' +
+      '</div></div>' +
+      '<input class="input mt-8" id="pImagen" value="' + U.esc(p.imagen || '') +
+      '" placeholder="https://…"></div>'
+    );
+  }
+
+  /* Conecta el bloque de la foto una vez abierto el cuadro. Todo gira en
+     torno a #pImagen: ahí vive el valor que se guarda, lo haya puesto la
+     subida o la mano de alguien. */
+  function conectarFoto(m, p) {
+    const campo = U.$('#pImagen', m.raiz);
+    const vista = U.$('#pFotoVista', m.raiz);
+    const archivo = U.$('#pFotoArchivo', m.raiz);
+    const quitar = U.$('#pFotoQuitar', m.raiz);
+    if (!campo || !vista) return;
+
+    function pintar() {
+      const src = campo.value.trim();
+      vista.innerHTML = src
+        ? '<img src="' + U.esc(src) + '" alt="">'
+        : '<span class="mini tenue">Sin foto</span>';
+      if (quitar) quitar.classList.toggle('oculto', !src);
+    }
+
+    campo.addEventListener('input', pintar);
+
+    if (quitar)
+      quitar.addEventListener('click', function () {
+        /* Sólo se quita de la carta. El archivo se queda en Storage: lo
+           puede estar usando otro plato, y borrar de verdad algo que no
+           se ve es como se pierden las fotos. */
+        campo.value = '';
+        pintar();
+      });
+
+    if (archivo)
+      archivo.addEventListener('change', function () {
+        const f = this.files && this.files[0];
+        if (!f) return;
+        this.value = ''; // para poder reintentar con el mismo archivo
+
+        vista.innerHTML = '<span class="mini tenue">⏳ Subiendo…</span>';
+
+        U.comprimirImagen(f)
+          .then((img) => S.subirFotoCarta(img.dataUrl, nombreDeFoto(p)))
+          .then(function (url) {
+            campo.value = url;
+            pintar();
+            U.toast('Foto subida.');
+          })
+          .catch(function (err) {
+            pintar();
+            U.toast(err.message || 'No se pudo subir la foto.', 'error');
+          });
+      });
+
+    pintar();
+  }
+
   function editarProducto(platoId) {
     if (!A.exigir('carta')) return;
 
@@ -360,8 +463,7 @@ NASCAR.Gestion = (function () {
         '<input class="input" type="number" min="0" step="10" id="pOrden" value="' + Number(p.orden) + '"></label>' +
         '</div>' +
 
-        '<label class="campo"><span>Imagen (URL opcional)</span>' +
-        '<input class="input" id="pImagen" value="' + U.esc(p.imagen || '') + '" placeholder="https://…"></label>' +
+        bloqueFoto(p) +
 
         '<div class="campo"><span>Unidad</span>' +
         '<div class="fila" style="gap:6px">' + p.sucursales.map(badgeUnidad).join('') + '</div>' +
@@ -388,6 +490,8 @@ NASCAR.Gestion = (function () {
         '<button class="btn btn--fantasma" id="pNo">Cancelar</button>' +
         '<button class="btn btn--rojo" id="pSi">Guardar</button></div>',
     });
+
+    conectarFoto(m, p);
 
     U.$('#pNo', m.raiz).onclick = m.cerrar;
     U.$('#pSi', m.raiz).onclick = function () {

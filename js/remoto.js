@@ -868,6 +868,74 @@ NASCAR.Remoto = (function () {
       return r ? { dataUrl: r.imagen, nombreArchivo: 'comprobante', pesoKB: n(r.peso_kb), subido: r.creado_en } : null;
     },
 
+    /* =================================================================
+       LA FOTO DE UN PLATO
+
+       A Storage, no a la base: una carta son 50 o 200 productos por
+       empresa, y una foto dentro de la base cuesta seis veces más y
+       engorda cada copia de seguridad (ver database/COSTOS_SUPABASE.md).
+       En core.productos.imagen_url queda sólo la dirección.
+
+       La ruta la manda la política de database/27_fotos_en_storage.sql:
+       el primer tramo tiene que ser el código de la empresa del token.
+       Aquí no se elige, se obedece.
+
+       Asíncrona a propósito, al revés que el resto de este archivo: subir
+       una foto por una red de celular tarda, y bloquear la pantalla
+       mientras tanto sería peor que esperar con un aviso.
+       ================================================================= */
+    subirFotoCarta: function (dataUrl, nombreArchivo) {
+      const base = String(CFG.url || '').replace(/\/rest\/v1\/?$/, '/storage/v1');
+      if (base === CFG.url)
+        return Promise.reject(new Error(
+          'Las fotos se guardan en Supabase Storage, y esta instalación no va contra Supabase.'
+        ));
+
+      const emp = S.getEmpresaActual();
+      if (!emp) return Promise.reject(new Error('No hay empresa activa.'));
+      if (!token()) return Promise.reject(new Error('Hay que iniciar sesión para subir una foto.'));
+
+      const ruta = emp.id + '/' + nombreArchivo;
+
+      return fetch(dataUrl)
+        .then((r) => r.blob())
+        .then(function (blob) {
+          return fetch(base + '/object/carta/' + encodeURI(ruta), {
+            method: 'POST',
+            headers: {
+              apikey: CFG.apikey || '',
+              Authorization: 'Bearer ' + token(),
+              'Content-Type': blob.type || 'image/jpeg',
+              /* Reemplaza si ya existe: volver a subir con el mismo
+                 nombre es justo como se cambia la foto de un plato. */
+              'x-upsert': 'true',
+              'cache-control': 'max-age=31536000',
+            },
+            body: blob,
+          });
+        })
+        .then(function (r) {
+          if (r.ok) return;
+          return r.text().then(function (t) {
+            /* El error de Storage viene en JSON y con palabras suyas. Se
+               traduce lo que le puede pasar a quien está subiendo. */
+            if (r.status === 403 || r.status === 401)
+              throw new Error('Tu sesión no tiene permiso para subir fotos de esta empresa.');
+            if (r.status === 404)
+              throw new Error('Falta el bucket «carta»: ejecuta database/27_fotos_en_storage.sql.');
+            if (r.status === 413)
+              throw new Error('La foto pesa más de lo que admite el servidor.');
+            throw new Error('Storage respondió ' + r.status + '. ' + String(t).slice(0, 160));
+          });
+        })
+        .then(function () {
+          /* La dirección pública no cambia al reemplazar el archivo, así
+             que sin esto el navegador seguiría enseñando la foto vieja
+             durante un año: justo lo que dice el cache-control de arriba. */
+          return base + '/object/public/carta/' + encodeURI(ruta) + '?v=' + Date.now();
+        });
+    },
+
     cambiarEstado: function (pedidoId, estado) {
       if (estado === 'cancelado') return operaciones.cancelarPedido(pedidoId, 'Cancelado desde el panel');
       return ponerPedido(aPedido(rpc('cambiar_estado', { p_pedido_id: idBase(pedidoId), p_estado: estado })));
