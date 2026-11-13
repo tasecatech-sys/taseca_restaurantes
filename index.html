@@ -3,20 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NASCAR · Restaurante — Parrilla, tradicional y domicilios</title>
-<meta name="description" content="Restaurante NASCAR: carta a la parrilla, almuerzos del día y domicilios en cuatro locales de Bogotá. Pide en línea en minutos.">
+<title>Restaurante</title>
+<meta name="description" content="Carta, menú del día y pedidos a domicilio. Pide en línea en minutos.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="apple-mobile-web-app-title" content="Restaurante">
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#06080c">
 
-<meta property="og:title" content="NASCAR · Cocina de alta velocidad">
-<meta property="og:description" content="Menú del día, arepas, comidas rápidas y bar en cuatro locales de Bogotá.">
+<meta property="og:title" content="Restaurante">
+<meta property="og:description" content="Carta, menú del día y pedidos a domicilio.">
 <meta property="og:type" content="website">
 
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2306080c'/><rect x='4' y='4' width='8' height='8' fill='%23fff'/><rect x='20' y='4' width='8' height='8' fill='%23fff'/><rect x='12' y='12' width='8' height='8' fill='%23fff'/><rect x='4' y='20' width='8' height='8' fill='%23fff'/><rect x='20' y='20' width='8' height='8' fill='%23fff'/></svg>">
+<!-- Un plato, no la bandera a cuadros: esa es de NASCAR, y esta página
+     sirve a cualquier empresa. Si la empresa subió el suyo, js/tema.js lo
+     cambia en cuanto llega el dato. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f1115'/><circle cx='16' cy='16' r='9' fill='none' stroke='%23fff' stroke-width='2'/><circle cx='16' cy='16' r='4' fill='%23fff'/></svg>">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,7 +36,10 @@
     <a href="index.html" class="logo">
       <span class="logo__cuadros cuadros cuadros--fina"></span>
       <span>
-        <span class="logo__marca">NAS<em>CAR</em></span>
+        <!-- Vacío a propósito: lo llena js/tema.js con la marca de la
+             empresa de esta visita. Con un nombre escrito aquí, toda
+             empresa enseñaba el de NASCAR mientras cargaba. -->
+        <span class="logo__marca"></span>
         <span class="logo__sub">Restaurante</span>
       </span>
     </a>
@@ -71,13 +77,13 @@
       <p class="hero__texto" id="heroTexto"></p>
 
       <div class="hero__cta">
-        <a href="#dia" class="btn btn--rojo"><span data-emblema>🏁</span> Ver platos de hoy</a>
+        <a href="#dia" class="btn btn--rojo"><span data-emblema></span> Ver platos de hoy</a>
         <a href="#carta" class="btn btn--fantasma">Ver la carta</a>
       </div>
 
       <div class="hero__datos">
         <div class="hero__dato">
-          <b id="statPlatos">30+</b>
+          <b id="statPlatos">—</b>
           <span>Platos en carta</span>
         </div>
         <div class="hero__dato">

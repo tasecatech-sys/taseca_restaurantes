@@ -298,8 +298,15 @@
     const nombreUnidad = $('#unidadPortalNombre');
     if (nombreUnidad) nombreUnidad.textContent = unidadPortal ? U.sucursal(unidadPortal).nombre : '—';
 
-    // Textos de marca configurables desde el panel
-    $$('[data-marca]').forEach((n) => (n.textContent = cfg.marca));
+    /* Textos de marca configurables desde el panel.
+
+       El LOGOTIPO queda fuera aunque lleve data-marca: lo pinta
+       js/tema.js y puede ser una imagen, así que escribirle el nombre
+       encima la borraría. El del pie se veía en texto por esto. */
+    $$('[data-marca]').forEach(function (n) {
+      if (n.classList.contains('logo__marca')) return;
+      n.textContent = cfg.marca;
+    });
     personalizarPortal(cfg);
   }
 

@@ -125,10 +125,19 @@ ROUTER_JS = """
 (function () {
   'use strict';
 
-  var VISTAS = { publico: 'NASCAR \\u00b7 Restaurante',
-                 mesa:    'NASCAR \\u00b7 Pedido de mesa',
-                 cierre:  'NASCAR \\u00b7 Cierre de inventario',
-                 panel:   'NASCAR \\u00b7 Panel' };
+  /* Sólo lo que ES cada vista. La marca se le antepone al vuelo, con la
+     de la empresa cargada: escribir aquí un nombre de cliente hacía que
+     cualquier otra empresa enseñara el suyo en la pestaña. */
+  var VISTAS = { publico: 'Restaurante',
+                 mesa:    'Pedido de mesa',
+                 cierre:  'Cierre de inventario',
+                 panel:   'Panel' };
+
+  function marcaActual() {
+    var S = window.NASCAR && NASCAR.Store;
+    try { return (S && S.getConfig && S.getConfig().marca) || ''; }
+    catch (e) { return ''; }
+  }
 
   /* Que modulo necesita cada vista. En un solo archivo las vistas son
      el equivalente de las paginas sueltas, asi que el # es la URL: si
@@ -184,7 +193,8 @@ ROUTER_JS = """
       var operativo = PORTAL_DE_VISTA[destino] === 'operativo';
       btns[j].hidden = !vistaDisponible(destino) || (operativo && !haySesion());
     }
-    document.title = VISTAS[v];
+    var m = marcaActual();
+    document.title = m ? m + ' \\u00b7 ' + VISTAS[v] : VISTAS[v];
     window.scrollTo(0, 0);
   }
 
@@ -241,9 +251,9 @@ def main() -> None:
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="apple-mobile-web-app-title" content="Restaurante">
 <meta name="format-detection" content="telephone=no">
-<title>NASCAR · Restaurante</title>
+<title>Restaurante</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#06080c">
 

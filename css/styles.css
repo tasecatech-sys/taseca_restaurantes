@@ -630,6 +630,10 @@ textarea {
   letter-spacing: 0.02em;
   color: var(--blanco);
   line-height: 1;
+  /* El HTML lo trae vacío —la marca es de la empresa, no del archivo— y
+     js/tema.js lo llena cuando llega el dato. Se le reserva el alto para
+     que la cabecera no dé un salto en ese momento. */
+  min-height: 27px;
 }
 .logo__marca em {
   font-style: normal;

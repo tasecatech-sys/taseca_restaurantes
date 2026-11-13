@@ -129,9 +129,47 @@ NASCAR.Tema = (function () {
    * se deja lo que venga en el HTML. Así una página nunca se queda sin
    * marca por un tema a medio configurar.
    */
+  /**
+   * La ficha que va al lado del logotipo.
+   *
+   * Es un MOTIVO de marca —la bandera a cuadros de la carrera, o el que
+   * haya elegido la empresa—, no un logo. Cuando la empresa subió el
+   * suyo sobra: se veía un rectángulo de color suelto pegado a su
+   * imagen, como si fueran dos logos.
+   *
+   * La excepción es la barra lateral encogida: ahí la ficha es lo ÚNICO
+   * que queda a la vista, así que la imagen la sustituye en lugar de
+   * quitarla. Si se escondiera, el panel encogido se quedaría sin marca.
+   */
+  function pintarFichas(t) {
+    const conImagen = !!t.logo;
+
+    document.querySelectorAll('.logo__cuadros').forEach(function (ficha) {
+      const esIso = ficha.classList.contains('app-side__iso');
+
+      if (esIso && conImagen) {
+        ficha.classList.remove('cuadros', 'cuadros--fina', 'oculto');
+        ficha.innerHTML =
+          '<img src="' + t.logo + '" alt="" ' +
+          'style="width:100%;height:100%;object-fit:contain;display:block">';
+        return;
+      }
+
+      /* Se vuelve a dejar como estaba: aplicar() corre otra vez cada vez
+         que cambia la empresa activa, y la anterior pudo tener imagen. */
+      if (esIso) {
+        ficha.innerHTML = '';
+        ficha.classList.add('cuadros', 'cuadros--fina');
+      }
+      ficha.classList.toggle('oculto', conImagen);
+    });
+  }
+
   function pintarLogotipo(t) {
     const empresa = S.getEmpresaActual();
     const nombre = empresa ? empresa.nombre : '';
+
+    pintarFichas(t);
 
     document.querySelectorAll('.logo__marca').forEach(function (nodo) {
       if (t.logo) {

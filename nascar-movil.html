@@ -6,9 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NASCAR">
+<meta name="apple-mobile-web-app-title" content="Restaurante">
 <meta name="format-detection" content="telephone=no">
-<title>NASCAR · Restaurante</title>
+<title>Restaurante</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#06080c">
 
@@ -656,6 +656,10 @@ textarea {
   letter-spacing: 0.02em;
   color: var(--blanco);
   line-height: 1;
+  /* El HTML lo trae vacío —la marca es de la empresa, no del archivo— y
+     js/tema.js lo llena cuando llega el dato. Se le reserva el alto para
+     que la cabecera no dé un salto en ese momento. */
+  min-height: 27px;
 }
 .logo__marca em {
   font-style: normal;
@@ -5255,7 +5259,10 @@ tr.fila--sin td {
     <a href="#publico" class="logo">
       <span class="logo__cuadros cuadros cuadros--fina"></span>
       <span>
-        <span class="logo__marca">NAS<em>CAR</em></span>
+        <!-- Vacío a propósito: lo llena js/tema.js con la marca de la
+             empresa de esta visita. Con un nombre escrito aquí, toda
+             empresa enseñaba el de NASCAR mientras cargaba. -->
+        <span class="logo__marca"></span>
         <span class="logo__sub">Restaurante</span>
       </span>
     </a>
@@ -5293,13 +5300,13 @@ tr.fila--sin td {
       <p class="hero__texto" id="heroTexto"></p>
 
       <div class="hero__cta">
-        <a href="#dia" class="btn btn--rojo"><span data-emblema>🏁</span> Ver platos de hoy</a>
+        <a href="#dia" class="btn btn--rojo"><span data-emblema></span> Ver platos de hoy</a>
         <a href="#carta" class="btn btn--fantasma">Ver la carta</a>
       </div>
 
       <div class="hero__datos">
         <div class="hero__dato">
-          <b id="statPlatos">30+</b>
+          <b id="statPlatos">—</b>
           <span>Platos en carta</span>
         </div>
         <div class="hero__dato">
@@ -5511,7 +5518,7 @@ tr.fila--sin td {
   <div class="contenedor mesa-top__barra">
     <a href="#publico" class="logo">
       <span class="logo__cuadros cuadros cuadros--fina"></span>
-      <span><span class="logo__marca">NAS<em>CAR</em></span></span>
+      <span><span class="logo__marca"></span></span>
     </a>
 
     <div class="mesa-chapa crece" style="flex:0 0 auto;margin-left:auto">
@@ -5575,7 +5582,7 @@ tr.fila--sin td {
     <a href="#panel" class="logo">
       <span class="logo__cuadros cuadros cuadros--fina"></span>
       <span>
-        <span class="logo__marca">NAS<em>CAR</em></span>
+        <span class="logo__marca"></span>
         <span class="logo__sub">Cierre de inventario</span>
       </span>
     </a>
@@ -5607,7 +5614,7 @@ tr.fila--sin td {
     <div class="login-caja">
       <div class="logo">
         <span class="logo__cuadros cuadros cuadros--fina"></span>
-        <span><span class="logo__marca">NAS<em>CAR</em></span><span class="logo__sub">Panel interno</span></span>
+        <span><span class="logo__marca"></span><span class="logo__sub">Panel interno</span></span>
       </div>
 
       <p class="tenue mini mb-24">
@@ -5677,7 +5684,7 @@ tr.fila--sin td {
       <a href="#publico" class="app-side__marca logo">
         <span class="app-side__iso logo__cuadros cuadros cuadros--fina"></span>
         <span class="app-side__nombre">
-          <span class="logo__marca">NAS<em>CAR</em></span>
+          <span class="logo__marca"></span>
           <span class="logo__sub">Panel interno</span>
         </span>
       </a>
@@ -23668,9 +23675,47 @@ NASCAR.Tema = (function () {
    * se deja lo que venga en el HTML. Así una página nunca se queda sin
    * marca por un tema a medio configurar.
    */
+  /**
+   * La ficha que va al lado del logotipo.
+   *
+   * Es un MOTIVO de marca —la bandera a cuadros de la carrera, o el que
+   * haya elegido la empresa—, no un logo. Cuando la empresa subió el
+   * suyo sobra: se veía un rectángulo de color suelto pegado a su
+   * imagen, como si fueran dos logos.
+   *
+   * La excepción es la barra lateral encogida: ahí la ficha es lo ÚNICO
+   * que queda a la vista, así que la imagen la sustituye en lugar de
+   * quitarla. Si se escondiera, el panel encogido se quedaría sin marca.
+   */
+  function pintarFichas(t) {
+    const conImagen = !!t.logo;
+
+    document.querySelectorAll('.logo__cuadros').forEach(function (ficha) {
+      const esIso = ficha.classList.contains('app-side__iso');
+
+      if (esIso && conImagen) {
+        ficha.classList.remove('cuadros', 'cuadros--fina', 'oculto');
+        ficha.innerHTML =
+          '<img src="' + t.logo + '" alt="" ' +
+          'style="width:100%;height:100%;object-fit:contain;display:block">';
+        return;
+      }
+
+      /* Se vuelve a dejar como estaba: aplicar() corre otra vez cada vez
+         que cambia la empresa activa, y la anterior pudo tener imagen. */
+      if (esIso) {
+        ficha.innerHTML = '';
+        ficha.classList.add('cuadros', 'cuadros--fina');
+      }
+      ficha.classList.toggle('oculto', conImagen);
+    });
+  }
+
   function pintarLogotipo(t) {
     const empresa = S.getEmpresaActual();
     const nombre = empresa ? empresa.nombre : '';
+
+    pintarFichas(t);
 
     document.querySelectorAll('.logo__marca').forEach(function (nodo) {
       if (t.logo) {
@@ -24380,8 +24425,15 @@ NASCAR.Avisos = (function () {
     const nombreUnidad = $('#unidadPortalNombre');
     if (nombreUnidad) nombreUnidad.textContent = unidadPortal ? U.sucursal(unidadPortal).nombre : '—';
 
-    // Textos de marca configurables desde el panel
-    $$('[data-marca]').forEach((n) => (n.textContent = cfg.marca));
+    /* Textos de marca configurables desde el panel.
+
+       El LOGOTIPO queda fuera aunque lleve data-marca: lo pinta
+       js/tema.js y puede ser una imagen, así que escribirle el nombre
+       encima la borraría. El del pie se veía en texto por esto. */
+    $$('[data-marca]').forEach(function (n) {
+      if (n.classList.contains('logo__marca')) return;
+      n.textContent = cfg.marca;
+    });
     personalizarPortal(cfg);
   }
 
@@ -28413,10 +28465,19 @@ NASCAR.Avisos = (function () {
 (function () {
   'use strict';
 
-  var VISTAS = { publico: 'NASCAR \u00b7 Restaurante',
-                 mesa:    'NASCAR \u00b7 Pedido de mesa',
-                 cierre:  'NASCAR \u00b7 Cierre de inventario',
-                 panel:   'NASCAR \u00b7 Panel' };
+  /* Sólo lo que ES cada vista. La marca se le antepone al vuelo, con la
+     de la empresa cargada: escribir aquí un nombre de cliente hacía que
+     cualquier otra empresa enseñara el suyo en la pestaña. */
+  var VISTAS = { publico: 'Restaurante',
+                 mesa:    'Pedido de mesa',
+                 cierre:  'Cierre de inventario',
+                 panel:   'Panel' };
+
+  function marcaActual() {
+    var S = window.NASCAR && NASCAR.Store;
+    try { return (S && S.getConfig && S.getConfig().marca) || ''; }
+    catch (e) { return ''; }
+  }
 
   /* Que modulo necesita cada vista. En un solo archivo las vistas son
      el equivalente de las paginas sueltas, asi que el # es la URL: si
@@ -28472,7 +28533,8 @@ NASCAR.Avisos = (function () {
       var operativo = PORTAL_DE_VISTA[destino] === 'operativo';
       btns[j].hidden = !vistaDisponible(destino) || (operativo && !haySesion());
     }
-    document.title = VISTAS[v];
+    var m = marcaActual();
+    document.title = m ? m + ' \u00b7 ' + VISTAS[v] : VISTAS[v];
     window.scrollTo(0, 0);
   }
 
