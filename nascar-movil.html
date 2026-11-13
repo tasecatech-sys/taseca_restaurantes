@@ -24658,7 +24658,15 @@ NASCAR.Avisos = (function () {
      esconde, porque si no se queda esperando algo que no existe. Quién es
      quién lo decide S.manejaMenuDia() mirando los datos. */
   function sinMenuDia() {
-    return !unidadPortal || !S.manejaMenuDia(unidadPortal);
+    if (!unidadPortal) return true;
+    if (S.manejaMenuDia(unidadPortal)) return false;
+
+    /* No lleva menú del día. Se esconde SÓLO si queda la carta: en un
+       local sin carta y sin menú, esconder esto deja el portal sin nada
+       que pedir y sin una palabra que lo explique, que es peor que el
+       problema que vinimos a arreglar. Ahí el mensaje se queda, porque
+       es lo único que le dice al cliente qué está pasando. */
+    return !sinCarta();
   }
 
   function pintarDia() {
