@@ -235,6 +235,41 @@ taseca-admin.html   →  platform.taseca.tech
 El portal de Taseca queda en **otro dominio** a propósito: no cuelga de ninguna
 empresa, ni siquiera en la URL.
 
+### La raíz de un dominio no se resuelve con un *rewrite*
+
+`restaurante.taseca.tech/` mostraba la página de NASCAR, y no por una regla mal
+escrita: **Vercel mira primero el sistema de archivos**. Encuentra `index.html`
+—que ES la página de un negocio, y hoy ocupa la raíz de todos los dominios— lo
+sirve, y el `rewrite` de esa raíz no llega a evaluarse nunca. La misma regla
+para `/restaurantes` sí funciona, porque ahí no hay ningún archivo que la gane.
+
+Los **redirects corren antes** que el sistema de archivos. Por eso las puertas
+que no son de ningún negocio viven en `redirects` dentro de `vercel.json`:
+
+| Dominio | Lleva a | Qué es |
+|---|---|---|
+| `restaurante.taseca.tech` | `/restaurantes` | La portada de la plataforma y el directorio |
+| `admin.taseca.tech` · `taseca.taseca.tech` | `/taseca` | El panel de Taseca |
+
+Son **temporales (307)**, no permanentes: el día que la plataforma sea dueña de
+su propia raíz —renombrando `index.html`, que no debería ocuparla— se quitan sin
+que ningún navegador los tenga cacheados.
+
+**Ojo con `vercel.json`:** no admite comentarios ni claves inventadas. Vercel lo
+valida contra su esquema y **rechaza el despliegue** si encuentra una propiedad
+de más. El porqué de cada regla se explica aquí, no ahí dentro.
+
+### La portada de la plataforma
+
+`restaurantes.html` es la cara pública de Taseca: qué es el sistema y en qué
+negocios se puede pedir. La lista **no está escrita en el código**: sale de
+`rest.empresas` y `rest.unidades`, las dos vistas que la base publica sin
+sesión. Dar de alta una empresa la hace aparecer sola; desactivarla la quita.
+
+Cada tarjeta se pinta con **su** identidad —su logotipo de texto, sus iniciales
+y sus colores salen de su propia ficha—, así que ningún cliente está tratado
+distinto: NASCAR es una empresa más también aquí.
+
 ### En la versión de un solo archivo
 
 `nascar-movil.html` no tiene direcciones —es un archivo—, así que la separación

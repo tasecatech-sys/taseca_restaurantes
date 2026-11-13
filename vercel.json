@@ -1,55 +1,92 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "trailingSlash": false,
-
-  "_comentario_raiz": [
-    "La raíz de un dominio NO se puede resolver con un rewrite. Vercel mira",
-    "primero el sistema de archivos: encuentra index.html, lo sirve, y la",
-    "regla nunca llega a evaluarse. Así es como restaurante.taseca.tech",
-    "acababa mostrando la página de un restaurante — index.html ES la página",
-    "de un negocio, y hoy ocupa la raíz de todos los dominios.",
-    "Los redirects sí corren ANTES del sistema de archivos, así que las",
-    "puertas que no son de ningún negocio van aquí abajo.",
-    "Temporales (307) a propósito: el día que la plataforma sea dueña de su",
-    "propia raíz, esto se quita sin que ningún navegador lo tenga cacheado."
-  ],
   "redirects": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "restaurante.taseca.tech" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "restaurante.taseca.tech"
+        }
+      ],
       "destination": "/restaurantes",
       "permanent": false
     },
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "restaurantes.taseca.tech" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "restaurantes.taseca.tech"
+        }
+      ],
       "destination": "/restaurantes",
       "permanent": false
     },
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "admin.taseca.tech" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.taseca.tech"
+        }
+      ],
       "destination": "/taseca",
       "permanent": false
     },
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "taseca.taseca.tech" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "taseca.taseca.tech"
+        }
+      ],
       "destination": "/taseca",
       "permanent": false
     }
   ],
-
   "rewrites": [
-    { "source": "/restaurantes", "destination": "/restaurantes.html" },
-    { "source": "/taseca", "destination": "/taseca-admin.html" },
-    { "source": "/taseca/:empresa/panel", "destination": "/empleados.html" },
-    { "source": "/taseca/:empresa/mesa", "destination": "/mesa.html" },
-    { "source": "/taseca/:empresa/cierre", "destination": "/cierre.html" },
-    { "source": "/taseca/:empresa", "destination": "/index.html" },
-    { "source": "/:empresa/panel", "destination": "/empleados.html" },
-    { "source": "/:empresa/mesa", "destination": "/mesa.html" },
-    { "source": "/:empresa/cierre", "destination": "/cierre.html" },
-    { "source": "/:empresa", "destination": "/index.html" }
+    {
+      "source": "/restaurantes",
+      "destination": "/restaurantes.html"
+    },
+    {
+      "source": "/taseca",
+      "destination": "/taseca-admin.html"
+    },
+    {
+      "source": "/taseca/:empresa/panel",
+      "destination": "/empleados.html"
+    },
+    {
+      "source": "/taseca/:empresa/mesa",
+      "destination": "/mesa.html"
+    },
+    {
+      "source": "/taseca/:empresa/cierre",
+      "destination": "/cierre.html"
+    },
+    {
+      "source": "/taseca/:empresa",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:empresa/panel",
+      "destination": "/empleados.html"
+    },
+    {
+      "source": "/:empresa/mesa",
+      "destination": "/mesa.html"
+    },
+    {
+      "source": "/:empresa/cierre",
+      "destination": "/cierre.html"
+    },
+    {
+      "source": "/:empresa",
+      "destination": "/index.html"
+    }
   ]
 }
