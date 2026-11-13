@@ -127,8 +127,29 @@
   /* Cada sucursal publica UNA modalidad —menú armado o menú del chef— y
      getMenuPublico() dice cuál y con qué. Aquí sólo se pinta; el dibujo
      de las tarjetas es el mismo de la mesa y del mesero (js/menu-dia.js). */
+  /* Hay locales que NO llevan menú del día: un bar, una arepera. En ellos
+     la sección no se muestra, igual que la carta en los que trabajan sólo
+     con menú.
+
+     Ojo con la diferencia, que es toda la gracia: «esta unidad no lleva
+     menú del día» no es lo mismo que «hoy todavía no lo han publicado».
+     Lo segundo sí se dice —el cliente puede volver mañana—; lo primero se
+     esconde, porque si no se queda esperando algo que no existe. Quién es
+     quién lo decide S.manejaMenuDia() mirando los datos. */
+  function sinMenuDia() {
+    return !unidadPortal || !S.manejaMenuDia(unidadPortal);
+  }
+
   function pintarDia() {
     const cont = $('#listaDia');
+
+    const oculta = sinMenuDia();
+    const seccion = $('#dia');
+    if (seccion) seccion.hidden = oculta;
+    // Los enlaces del menú y del hero tampoco llevan a ninguna parte
+    $$('a[href="#dia"]').forEach((a) => (a.hidden = oculta));
+    if (oculta) return;
+
     const suc = unidadPortal ? U.sucursal(unidadPortal) : null;
     const menu = suc ? S.getMenuPublico(S.hoy(), suc.id) : null;
     const html = menu ? M.tarjetas(menu, { sucursal: suc, clave: 'pub' }) : '';

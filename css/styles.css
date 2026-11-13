@@ -203,6 +203,18 @@ textarea {
 .oculto {
   display: none !important;
 }
+
+/* El `hidden` del HTML tiene que ganar siempre.
+
+   El navegador lo aplica con `[hidden] { display: none }`, que es una
+   regla floja: cualquier clase que fije un display le gana. Así, un
+   `<a hidden class="btn">` se seguía viendo —`.btn` pone display:flex—
+   mientras que un enlace pelado sí se escondía. Dos comportamientos
+   distintos para lo mismo, y el que falla es el del botón, que es el
+   más visible. */
+[hidden] {
+  display: none !important;
+}
 .centro {
   text-align: center;
 }
@@ -1089,6 +1101,12 @@ textarea {
   background: linear-gradient(90deg, rgba(228, 0, 43, 0.16), transparent 70%);
   border: 1px solid rgba(228, 0, 43, 0.32);
 }
+/* La barra de «¿dónde quieres pedir?» ya no cuelga de la sección del menú
+   del día, así que se separa ella sola del hero. */
+.barra-donde {
+  margin-top: 36px;
+}
+
 .barra-dia__fecha {
   font-family: var(--f-cond);
   font-size: 19px;

@@ -130,6 +130,30 @@
   </div>
 </section>
 
+<!-- ================== DÓNDE QUIERE PEDIR ==================
+     Vivía dentro de la sección del menú del día, y de ahí tuvo que salir:
+     elegir el local vale para TODA la visita, no sólo para el menú. Hay
+     locales que no llevan menú del día —un bar, una arepera— y esa
+     sección se esconde entera; con el selector dentro, el cliente se
+     quedaba sin poder cambiarse de local.
+
+     El id sigue siendo `filtroSucursalDia` por no tocar js/app.js en algo
+     que no es este arreglo; lo que decide es de toda la página. -->
+<div class="contenedor barra-donde">
+  <div class="barra-dia reveal">
+    <div>
+      <span class="titulo-seccion__kicker" style="margin:0">Hoy</span>
+      <div class="barra-dia__fecha" id="fechaHoy">—</div>
+    </div>
+    <div class="fila">
+      <label class="campo" style="margin:0">
+        <span>¿Dónde quieres pedir?</span>
+        <select class="select" id="filtroSucursalDia"></select>
+      </label>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== PLATOS DEL DÍA ==================== -->
 <section class="seccion seccion--oscura" id="dia">
   <div class="contenedor">
@@ -139,19 +163,6 @@
            (Panel → Menú del día). Aquí no va ningún texto fijo. -->
       <h2 id="tituloDia"></h2>
       <p id="mensajeDia"></p>
-    </div>
-
-    <div class="barra-dia reveal">
-      <div>
-        <span class="titulo-seccion__kicker" style="margin:0">Hoy</span>
-        <div class="barra-dia__fecha" id="fechaHoy">—</div>
-      </div>
-      <div class="fila">
-        <label class="campo" style="margin:0">
-          <span>¿Dónde quieres pedir?</span>
-          <select class="select" id="filtroSucursalDia"></select>
-        </label>
-      </div>
     </div>
 
     <div class="platos-dia" id="listaDia"></div>

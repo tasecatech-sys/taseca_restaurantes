@@ -229,6 +229,18 @@ textarea {
 .oculto {
   display: none !important;
 }
+
+/* El `hidden` del HTML tiene que ganar siempre.
+
+   El navegador lo aplica con `[hidden] { display: none }`, que es una
+   regla floja: cualquier clase que fije un display le gana. Así, un
+   `<a hidden class="btn">` se seguía viendo —`.btn` pone display:flex—
+   mientras que un enlace pelado sí se escondía. Dos comportamientos
+   distintos para lo mismo, y el que falla es el del botón, que es el
+   más visible. */
+[hidden] {
+  display: none !important;
+}
 .centro {
   text-align: center;
 }
@@ -1115,6 +1127,12 @@ textarea {
   background: linear-gradient(90deg, rgba(228, 0, 43, 0.16), transparent 70%);
   border: 1px solid rgba(228, 0, 43, 0.32);
 }
+/* La barra de «¿dónde quieres pedir?» ya no cuelga de la sección del menú
+   del día, así que se separa ella sola del hero. */
+.barra-donde {
+  margin-top: 36px;
+}
+
 .barra-dia__fecha {
   font-family: var(--f-cond);
   font-size: 19px;
@@ -5405,6 +5423,30 @@ tr.fila--sin td {
   </div>
 </section>
 
+<!-- ================== DÓNDE QUIERE PEDIR ==================
+     Vivía dentro de la sección del menú del día, y de ahí tuvo que salir:
+     elegir el local vale para TODA la visita, no sólo para el menú. Hay
+     locales que no llevan menú del día —un bar, una arepera— y esa
+     sección se esconde entera; con el selector dentro, el cliente se
+     quedaba sin poder cambiarse de local.
+
+     El id sigue siendo `filtroSucursalDia` por no tocar js/app.js en algo
+     que no es este arreglo; lo que decide es de toda la página. -->
+<div class="contenedor barra-donde">
+  <div class="barra-dia reveal">
+    <div>
+      <span class="titulo-seccion__kicker" style="margin:0">Hoy</span>
+      <div class="barra-dia__fecha" id="fechaHoy">—</div>
+    </div>
+    <div class="fila">
+      <label class="campo" style="margin:0">
+        <span>¿Dónde quieres pedir?</span>
+        <select class="select" id="filtroSucursalDia"></select>
+      </label>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== PLATOS DEL DÍA ==================== -->
 <section class="seccion seccion--oscura" id="dia">
   <div class="contenedor">
@@ -5414,19 +5456,6 @@ tr.fila--sin td {
            (Panel → Menú del día). Aquí no va ningún texto fijo. -->
       <h2 id="tituloDia"></h2>
       <p id="mensajeDia"></p>
-    </div>
-
-    <div class="barra-dia reveal">
-      <div>
-        <span class="titulo-seccion__kicker" style="margin:0">Hoy</span>
-        <div class="barra-dia__fecha" id="fechaHoy">—</div>
-      </div>
-      <div class="fila">
-        <label class="campo" style="margin:0">
-          <span>¿Dónde quieres pedir?</span>
-          <select class="select" id="filtroSucursalDia"></select>
-        </label>
-      </div>
     </div>
 
     <div class="platos-dia" id="listaDia"></div>
@@ -10570,6 +10599,40 @@ NASCAR.Store = (function () {
       : null;
   }
 
+  /**
+   * ¿Esta unidad maneja menú del día?
+   *
+   * No es lo mismo que «hoy no lo han publicado todavía». Un bar o una
+   * arepera NO llevan menú del día y nunca lo van a llevar: al cliente no
+   * hay que decirle «se publica cada mañana», porque se queda esperando
+   * algo que no va a llegar.
+   *
+   * Se responde con los DATOS, no con una casilla más que alguien tendría
+   * que acordarse de marcar: si la unidad ha publicado algo en la ventana
+   * que la aplicación tiene cargada, es que lleva menú del día.
+   *
+   * La ventana la decide la vista rest.menus_dia: de 7 días atrás a 14
+   * adelante. Eso cubre de sobra el caso real —un restaurante que sólo
+   * publica entre semana, mirado un lunes por la mañana, todavía tiene el
+   * del viernes— sin pedirle nada a nadie.
+   *
+   * Se miran las dos modalidades. En la del chef puede no haber documento
+   * de menú: los platos viven aparte, así que buscar sólo documentos
+   * dejaría fuera justo a los restaurantes que usan el menú del chef.
+   */
+  function manejaMenuDia(sucursalId, empresaId) {
+    if (!sucursalId) return false;
+    const eid = empresaId || empresaActivaId();
+    const suc = Number(sucursalId);
+
+    const hayDoc = leer(K.menusDia, []).some(
+      (m) => (m.empresaId || EMPRESA_DEFECTO) === eid && Number(m.sucursalId) === suc
+    );
+    if (hayDoc) return true;
+
+    return getTodosPlatosDia(eid).some((p) => Number(p.sucursalId) === suc);
+  }
+
   /** Qué modalidad se publica. Sin documento: la de siempre, el chef. */
   function tipoMenuDia(fecha, sucursalId, empresaId) {
     const m = getMenuDia(fecha, sucursalId, empresaId);
@@ -13384,6 +13447,7 @@ NASCAR.Store = (function () {
     TIPOS_MENU: TIPOS_MENU,
     getMenuDia: getMenuDia,
     tipoMenuDia: tipoMenuDia,
+    manejaMenuDia: manejaMenuDia,
     getMenuPublico: getMenuPublico,
     setTipoMenuDia: setTipoMenuDia,
     guardarDatosArmado: guardarDatosArmado,
@@ -24584,8 +24648,29 @@ NASCAR.Avisos = (function () {
   /* Cada sucursal publica UNA modalidad —menú armado o menú del chef— y
      getMenuPublico() dice cuál y con qué. Aquí sólo se pinta; el dibujo
      de las tarjetas es el mismo de la mesa y del mesero (js/menu-dia.js). */
+  /* Hay locales que NO llevan menú del día: un bar, una arepera. En ellos
+     la sección no se muestra, igual que la carta en los que trabajan sólo
+     con menú.
+
+     Ojo con la diferencia, que es toda la gracia: «esta unidad no lleva
+     menú del día» no es lo mismo que «hoy todavía no lo han publicado».
+     Lo segundo sí se dice —el cliente puede volver mañana—; lo primero se
+     esconde, porque si no se queda esperando algo que no existe. Quién es
+     quién lo decide S.manejaMenuDia() mirando los datos. */
+  function sinMenuDia() {
+    return !unidadPortal || !S.manejaMenuDia(unidadPortal);
+  }
+
   function pintarDia() {
     const cont = $('#listaDia');
+
+    const oculta = sinMenuDia();
+    const seccion = $('#dia');
+    if (seccion) seccion.hidden = oculta;
+    // Los enlaces del menú y del hero tampoco llevan a ninguna parte
+    $$('a[href="#dia"]').forEach((a) => (a.hidden = oculta));
+    if (oculta) return;
+
     const suc = unidadPortal ? U.sucursal(unidadPortal) : null;
     const menu = suc ? S.getMenuPublico(S.hoy(), suc.id) : null;
     const html = menu ? M.tarjetas(menu, { sucursal: suc, clave: 'pub' }) : '';

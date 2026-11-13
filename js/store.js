@@ -2715,6 +2715,40 @@ NASCAR.Store = (function () {
       : null;
   }
 
+  /**
+   * ¿Esta unidad maneja menú del día?
+   *
+   * No es lo mismo que «hoy no lo han publicado todavía». Un bar o una
+   * arepera NO llevan menú del día y nunca lo van a llevar: al cliente no
+   * hay que decirle «se publica cada mañana», porque se queda esperando
+   * algo que no va a llegar.
+   *
+   * Se responde con los DATOS, no con una casilla más que alguien tendría
+   * que acordarse de marcar: si la unidad ha publicado algo en la ventana
+   * que la aplicación tiene cargada, es que lleva menú del día.
+   *
+   * La ventana la decide la vista rest.menus_dia: de 7 días atrás a 14
+   * adelante. Eso cubre de sobra el caso real —un restaurante que sólo
+   * publica entre semana, mirado un lunes por la mañana, todavía tiene el
+   * del viernes— sin pedirle nada a nadie.
+   *
+   * Se miran las dos modalidades. En la del chef puede no haber documento
+   * de menú: los platos viven aparte, así que buscar sólo documentos
+   * dejaría fuera justo a los restaurantes que usan el menú del chef.
+   */
+  function manejaMenuDia(sucursalId, empresaId) {
+    if (!sucursalId) return false;
+    const eid = empresaId || empresaActivaId();
+    const suc = Number(sucursalId);
+
+    const hayDoc = leer(K.menusDia, []).some(
+      (m) => (m.empresaId || EMPRESA_DEFECTO) === eid && Number(m.sucursalId) === suc
+    );
+    if (hayDoc) return true;
+
+    return getTodosPlatosDia(eid).some((p) => Number(p.sucursalId) === suc);
+  }
+
   /** Qué modalidad se publica. Sin documento: la de siempre, el chef. */
   function tipoMenuDia(fecha, sucursalId, empresaId) {
     const m = getMenuDia(fecha, sucursalId, empresaId);
@@ -5529,6 +5563,7 @@ NASCAR.Store = (function () {
     TIPOS_MENU: TIPOS_MENU,
     getMenuDia: getMenuDia,
     tipoMenuDia: tipoMenuDia,
+    manejaMenuDia: manejaMenuDia,
     getMenuPublico: getMenuPublico,
     setTipoMenuDia: setTipoMenuDia,
     guardarDatosArmado: guardarDatosArmado,
