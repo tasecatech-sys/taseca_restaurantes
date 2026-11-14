@@ -435,7 +435,7 @@ NASCAR.Caja = (function () {
       '<div><span>Quién</span><b>' + quienEs(p) + '</b></div>' +
       '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
       '<div><span>' + (p.estadoPago === 'confirmado' ? 'Pagó con' : 'Dice pagar con') +
-      '</span><b>' + U.esc(p.metodoPago) + '</b></div>' +
+      '</span><b>' + U.esc(S.nombreDeMetodo(p.metodoPago)) + '</b></div>' +
       '<div><span>' + (enCola ? 'Esperando' : 'Cuándo') + '</span><b>' +
       (enCola ? U.haceCuanto(p.creado) : U.esc(p.fecha) + ' · ' + U.hora(p.creado)) +
       '</b></div>' +

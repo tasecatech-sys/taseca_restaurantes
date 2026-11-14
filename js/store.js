@@ -947,6 +947,52 @@ NASCAR.Store = (function () {
     return mezclar(DEFAULTS.config, todas[eid] || {});
   }
 
+  /**
+   * EL RECARGO DE UN MÉTODO DE PAGO
+   *
+   * Lo que se le cobra al cliente POR PAGAR ASÍ: la comisión de la
+   * pasarela, el 4×1000, lo que el negocio decida. Es configurable por
+   * método desde ⚙️ Configuración → 💳 Métodos de pago.
+   *
+   * Dos formas, porque las dos existen en la calle:
+   *   'fijo'       -> tantos pesos, se cobre lo que se cobre
+   *   'porcentaje' -> tanto por ciento de lo que se va a cobrar
+   *
+   * La BASE del porcentaje es subtotal + domicilio, es decir todo lo que
+   * va a pasar por el método de pago. Cobrar el porcentaje sólo sobre la
+   * comida dejaría sin cubrir la comisión del domicilio.
+   *
+   * Se redondea al peso: no existe la moneda de a céntimo, y un total
+   * con decimales no se puede cobrar en caja.
+   *
+   * Vive aquí y no en cada pantalla para que el portal, el panel y la
+   * factura digan el mismo número. Si cada uno lo calculara por su
+   * cuenta, tarde o temprano dirían cosas distintas.
+   */
+  /* Cómo se llama un método de pago. Sale de la configuración de la
+     empresa, que es quien le puso el nombre; si el método ya no existe
+     —un pedido viejo con un método que se quitó— se devuelve su id, que
+     al menos dice algo. Antes cada pantalla lo resolvía a su manera y la
+     ficha de caja acababa enseñando «nequi» en minúscula. */
+  function nombreDeMetodo(metodoId, empresaId) {
+    const m = (getConfig(empresaId).metodosPago || []).find((x) => x.id === metodoId);
+    return (m && m.nombre) || metodoId || '';
+  }
+
+  function recargoDeMetodo(metodoId, base, empresaId) {
+    const m = (getConfig(empresaId).metodosPago || []).find((x) => x.id === metodoId);
+    if (!m) return 0;
+
+    const valor = Number(m.recargo) || 0;
+    if (valor <= 0) return 0;
+
+    const monto = m.recargoTipo === 'porcentaje'
+      ? ((Number(base) || 0) * valor) / 100
+      : valor;
+
+    return Math.max(0, Math.round(monto));
+  }
+
   function guardarConfig(cambios, empresaId) {
     const eid = empresaId || empresaActivaId();
     const todas = leer(K.config, {}) || {};
@@ -3340,6 +3386,11 @@ NASCAR.Store = (function () {
 
     const eid = datos.empresaId || empresaActivaId();
 
+    /* El recargo se CALCULA aquí y se GUARDA en el pedido, no se recalcula
+       al leerlo: si mañana se cambia el recargo de Nequi, las facturas de
+       ayer tienen que seguir diciendo lo que se cobró de verdad. */
+    const recargo = recargoDeMetodo(datos.metodoPago || 'efectivo', subtotal + domicilio, eid);
+
     /* Cada pedido es de UNA unidad, y esa unidad tiene que estar activa.
        Lo que viene de la carta tiene que ser de ESA unidad: una venta de
        NASCAR-Comidas nunca puede llevar un producto de otra. */
@@ -3369,7 +3420,8 @@ NASCAR.Store = (function () {
       items: items,
       subtotal: subtotal,
       domicilio: domicilio,
-      total: subtotal + domicilio,
+      recargo: recargo,
+      total: subtotal + domicilio + recargo,
       metodoPago: datos.metodoPago || 'efectivo',
       // Todo pago arranca pendiente y sólo caja lo confirma (Ventas y caja → Pagos)
       estadoPago: 'pendiente',
@@ -5565,6 +5617,8 @@ NASCAR.Store = (function () {
     registrarBase: registrarBase,
     informeCaja: informeCaja,
     grupoDeMetodo: grupoDeMetodo,
+    recargoDeMetodo: recargoDeMetodo,
+    nombreDeMetodo: nombreDeMetodo,
     PLATAFORMA: PLATAFORMA,
     SCOPE_PLATAFORMA: SCOPE_PLATAFORMA,
     SCOPE_EMPRESA: SCOPE_EMPRESA,

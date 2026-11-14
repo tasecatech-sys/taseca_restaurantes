@@ -1338,9 +1338,32 @@ NASCAR.Gestion = (function () {
     });
 
     $('#listaMetodosPago').addEventListener('change', function (e) {
+      if (!A.exigir('config_pagos')) return pintarMetodosPago();
+
+      /* El recargo: cuánto y de qué forma. No pasa por la comprobación de
+         «al menos uno activo» de abajo porque no activa ni desactiva
+         nada. */
+      const val = e.target.closest('[data-recargo]');
+      const tipo = e.target.closest('[data-recargo-tipo]');
+      if (val || tipo) {
+        const id = (val || tipo).dataset.recargo || (val || tipo).dataset.recargoTipo;
+        const n = Number(U.$('[data-recargo="' + id + '"]', ctx.raiz).value);
+        S.guardarConfig({
+          metodosPago: S.getConfig().metodosPago.map((m) =>
+            m.id === id
+              ? Object.assign({}, m, {
+                  recargo: n > 0 ? n : 0,
+                  recargoTipo: U.$('[data-recargo-tipo="' + id + '"]', ctx.raiz).value,
+                })
+              : m
+          ),
+        });
+        U.toast('Recargo actualizado.');
+        return avisarCambio();
+      }
+
       const chk = e.target.closest('[data-metodo]');
       if (!chk) return;
-      if (!A.exigir('config_pagos')) return pintarMetodosPago();
 
       const metodos = S.getConfig().metodosPago.map(function (m) {
         return m.id === chk.dataset.metodo ? Object.assign({}, m, { activo: chk.checked }) : m;
@@ -1454,16 +1477,36 @@ NASCAR.Gestion = (function () {
 
     $('#listaMetodosPago').innerHTML =
       (c.metodosPago || [])
-        .map(
-          (m) =>
+        .map(function (m) {
+          const valor = Number(m.recargo) || 0;
+          const esPct = m.recargoTipo === 'porcentaje';
+          return (
             '<label class="op" style="cursor:' + (puedeEditar ? 'pointer' : 'default') + '">' +
             '<input type="checkbox" data-metodo="' + m.id + '"' + (m.activo ? ' checked' : '') +
             (puedeEditar ? '' : ' disabled') + '>' +
-            '<div><b>' + U.esc(m.nombre) + '</b><span>' + U.esc(m.descripcion || '') + '</span></div></label>'
-        )
+            '<div><b>' + U.esc(m.nombre) + '</b><span>' + U.esc(m.descripcion || '') + '</span>' +
+
+            /* El recargo: lo que se le cobra al cliente POR PAGAR ASÍ.
+               Va dentro de la misma fila del método porque es una
+               propiedad suya, no una configuración aparte. */
+            '<span class="metodo-recargo' + (puedeEditar ? '' : ' oculto') + '">' +
+            'Recargo al cliente' +
+            '<input class="input input--xs" type="number" min="0" step="any" ' +
+            'data-recargo="' + U.esc(m.id) + '" value="' + valor + '">' +
+            '<select class="select select--xs" data-recargo-tipo="' + U.esc(m.id) + '">' +
+            '<option value="fijo"' + (esPct ? '' : ' selected') + '>$ fijos</option>' +
+            '<option value="porcentaje"' + (esPct ? ' selected' : '') + '>% del total</option>' +
+            '</select></span>' +
+
+            '</div></label>'
+          );
+        })
         .join('') +
       (puedeEditar
-        ? '<p class="mini tenue">Lo que desactives aquí deja de ofrecerse al cliente en el pedido a domicilio.</p>'
+        ? '<p class="mini tenue">Lo que desactives aquí deja de ofrecerse al cliente en el pedido a domicilio.<br>' +
+          'El <b>recargo</b> se le suma al total del pedido, como el domicilio, y el cliente lo ve ' +
+          'antes de confirmar. En <b>0</b> no se cobra nada. El porcentaje se calcula sobre ' +
+          'subtotal + domicilio, que es todo lo que pasa por ese método.</p>'
         : '<p class="mini ambar">Sólo el rol Admin puede cambiar los métodos de pago.</p>');
   }
 

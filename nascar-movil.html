@@ -1673,6 +1673,25 @@ textarea {
   font-size: 13px;
   text-align: right;
 }
+.select--xs {
+  padding: 5px 8px;
+  font-size: 13px;
+  width: auto;
+}
+
+/* El recargo de un método de pago, dentro de su propia fila: es una
+   propiedad del método, no una configuración aparte. */
+.metodo-recargo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-family: var(--f-cond);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-osc);
+}
 .input--xs:disabled {
   opacity: 0.35;
   cursor: not-allowed;
@@ -8884,6 +8903,52 @@ NASCAR.Store = (function () {
     return mezclar(DEFAULTS.config, todas[eid] || {});
   }
 
+  /**
+   * EL RECARGO DE UN MÉTODO DE PAGO
+   *
+   * Lo que se le cobra al cliente POR PAGAR ASÍ: la comisión de la
+   * pasarela, el 4×1000, lo que el negocio decida. Es configurable por
+   * método desde ⚙️ Configuración → 💳 Métodos de pago.
+   *
+   * Dos formas, porque las dos existen en la calle:
+   *   'fijo'       -> tantos pesos, se cobre lo que se cobre
+   *   'porcentaje' -> tanto por ciento de lo que se va a cobrar
+   *
+   * La BASE del porcentaje es subtotal + domicilio, es decir todo lo que
+   * va a pasar por el método de pago. Cobrar el porcentaje sólo sobre la
+   * comida dejaría sin cubrir la comisión del domicilio.
+   *
+   * Se redondea al peso: no existe la moneda de a céntimo, y un total
+   * con decimales no se puede cobrar en caja.
+   *
+   * Vive aquí y no en cada pantalla para que el portal, el panel y la
+   * factura digan el mismo número. Si cada uno lo calculara por su
+   * cuenta, tarde o temprano dirían cosas distintas.
+   */
+  /* Cómo se llama un método de pago. Sale de la configuración de la
+     empresa, que es quien le puso el nombre; si el método ya no existe
+     —un pedido viejo con un método que se quitó— se devuelve su id, que
+     al menos dice algo. Antes cada pantalla lo resolvía a su manera y la
+     ficha de caja acababa enseñando «nequi» en minúscula. */
+  function nombreDeMetodo(metodoId, empresaId) {
+    const m = (getConfig(empresaId).metodosPago || []).find((x) => x.id === metodoId);
+    return (m && m.nombre) || metodoId || '';
+  }
+
+  function recargoDeMetodo(metodoId, base, empresaId) {
+    const m = (getConfig(empresaId).metodosPago || []).find((x) => x.id === metodoId);
+    if (!m) return 0;
+
+    const valor = Number(m.recargo) || 0;
+    if (valor <= 0) return 0;
+
+    const monto = m.recargoTipo === 'porcentaje'
+      ? ((Number(base) || 0) * valor) / 100
+      : valor;
+
+    return Math.max(0, Math.round(monto));
+  }
+
   function guardarConfig(cambios, empresaId) {
     const eid = empresaId || empresaActivaId();
     const todas = leer(K.config, {}) || {};
@@ -11277,6 +11342,11 @@ NASCAR.Store = (function () {
 
     const eid = datos.empresaId || empresaActivaId();
 
+    /* El recargo se CALCULA aquí y se GUARDA en el pedido, no se recalcula
+       al leerlo: si mañana se cambia el recargo de Nequi, las facturas de
+       ayer tienen que seguir diciendo lo que se cobró de verdad. */
+    const recargo = recargoDeMetodo(datos.metodoPago || 'efectivo', subtotal + domicilio, eid);
+
     /* Cada pedido es de UNA unidad, y esa unidad tiene que estar activa.
        Lo que viene de la carta tiene que ser de ESA unidad: una venta de
        NASCAR-Comidas nunca puede llevar un producto de otra. */
@@ -11306,7 +11376,8 @@ NASCAR.Store = (function () {
       items: items,
       subtotal: subtotal,
       domicilio: domicilio,
-      total: subtotal + domicilio,
+      recargo: recargo,
+      total: subtotal + domicilio + recargo,
       metodoPago: datos.metodoPago || 'efectivo',
       // Todo pago arranca pendiente y sólo caja lo confirma (Ventas y caja → Pagos)
       estadoPago: 'pendiente',
@@ -13502,6 +13573,8 @@ NASCAR.Store = (function () {
     registrarBase: registrarBase,
     informeCaja: informeCaja,
     grupoDeMetodo: grupoDeMetodo,
+    recargoDeMetodo: recargoDeMetodo,
+    nombreDeMetodo: nombreDeMetodo,
     PLATAFORMA: PLATAFORMA,
     SCOPE_PLATAFORMA: SCOPE_PLATAFORMA,
     SCOPE_EMPRESA: SCOPE_EMPRESA,
@@ -14271,6 +14344,7 @@ NASCAR.Remoto = (function () {
       })),
       subtotal: n(p.subtotal),
       domicilio: n(p.costo_domicilio),
+      recargo: n(p.recargo_pago),
       total: n(p.total),
       metodoPago: p.metodo_pago,
       estadoPago: p.estado_pago,
@@ -14412,6 +14486,9 @@ NASCAR.Remoto = (function () {
       },
       metodosPago: (e.metodos_pago || []).map((m) => ({
         id: m.codigo, nombre: m.nombre, descripcion: m.descripcion || '', activo: m.activo,
+        // Lo que se le cobra al cliente por pagar así (30_recargo_por_metodo.sql)
+        recargo: Number(m.recargo) || 0,
+        recargoTipo: m.recargo_tipo === 'porcentaje' ? 'porcentaje' : 'fijo',
       })),
       redes: { instagram: e.instagram_url || '', facebook: e.facebook_url || '' },
       tiempos: { mesa: e.tiempo_mesa || '', domicilio: e.tiempo_domicilio || '' },
@@ -15953,7 +16030,11 @@ NASCAR.Remoto = (function () {
       }
       if (cambios.metodosPago) {
         rpc('guardar_metodos_pago', {
-          p_metodos: cambios.metodosPago.map((m) => ({ codigo: m.id, activo: !!m.activo, descripcion: m.descripcion || null })),
+          p_metodos: cambios.metodosPago.map((m) => ({
+            codigo: m.id, activo: !!m.activo, descripcion: m.descripcion || null,
+            recargo: Number(m.recargo) || 0,
+            recargo_tipo: m.recargoTipo === 'porcentaje' ? 'porcentaje' : 'fijo',
+          })),
         });
       }
       cargarCatalogo();
@@ -20860,9 +20941,32 @@ NASCAR.Gestion = (function () {
     });
 
     $('#listaMetodosPago').addEventListener('change', function (e) {
+      if (!A.exigir('config_pagos')) return pintarMetodosPago();
+
+      /* El recargo: cuánto y de qué forma. No pasa por la comprobación de
+         «al menos uno activo» de abajo porque no activa ni desactiva
+         nada. */
+      const val = e.target.closest('[data-recargo]');
+      const tipo = e.target.closest('[data-recargo-tipo]');
+      if (val || tipo) {
+        const id = (val || tipo).dataset.recargo || (val || tipo).dataset.recargoTipo;
+        const n = Number(U.$('[data-recargo="' + id + '"]', ctx.raiz).value);
+        S.guardarConfig({
+          metodosPago: S.getConfig().metodosPago.map((m) =>
+            m.id === id
+              ? Object.assign({}, m, {
+                  recargo: n > 0 ? n : 0,
+                  recargoTipo: U.$('[data-recargo-tipo="' + id + '"]', ctx.raiz).value,
+                })
+              : m
+          ),
+        });
+        U.toast('Recargo actualizado.');
+        return avisarCambio();
+      }
+
       const chk = e.target.closest('[data-metodo]');
       if (!chk) return;
-      if (!A.exigir('config_pagos')) return pintarMetodosPago();
 
       const metodos = S.getConfig().metodosPago.map(function (m) {
         return m.id === chk.dataset.metodo ? Object.assign({}, m, { activo: chk.checked }) : m;
@@ -20976,16 +21080,36 @@ NASCAR.Gestion = (function () {
 
     $('#listaMetodosPago').innerHTML =
       (c.metodosPago || [])
-        .map(
-          (m) =>
+        .map(function (m) {
+          const valor = Number(m.recargo) || 0;
+          const esPct = m.recargoTipo === 'porcentaje';
+          return (
             '<label class="op" style="cursor:' + (puedeEditar ? 'pointer' : 'default') + '">' +
             '<input type="checkbox" data-metodo="' + m.id + '"' + (m.activo ? ' checked' : '') +
             (puedeEditar ? '' : ' disabled') + '>' +
-            '<div><b>' + U.esc(m.nombre) + '</b><span>' + U.esc(m.descripcion || '') + '</span></div></label>'
-        )
+            '<div><b>' + U.esc(m.nombre) + '</b><span>' + U.esc(m.descripcion || '') + '</span>' +
+
+            /* El recargo: lo que se le cobra al cliente POR PAGAR ASÍ.
+               Va dentro de la misma fila del método porque es una
+               propiedad suya, no una configuración aparte. */
+            '<span class="metodo-recargo' + (puedeEditar ? '' : ' oculto') + '">' +
+            'Recargo al cliente' +
+            '<input class="input input--xs" type="number" min="0" step="any" ' +
+            'data-recargo="' + U.esc(m.id) + '" value="' + valor + '">' +
+            '<select class="select select--xs" data-recargo-tipo="' + U.esc(m.id) + '">' +
+            '<option value="fijo"' + (esPct ? '' : ' selected') + '>$ fijos</option>' +
+            '<option value="porcentaje"' + (esPct ? ' selected' : '') + '>% del total</option>' +
+            '</select></span>' +
+
+            '</div></label>'
+          );
+        })
         .join('') +
       (puedeEditar
-        ? '<p class="mini tenue">Lo que desactives aquí deja de ofrecerse al cliente en el pedido a domicilio.</p>'
+        ? '<p class="mini tenue">Lo que desactives aquí deja de ofrecerse al cliente en el pedido a domicilio.<br>' +
+          'El <b>recargo</b> se le suma al total del pedido, como el domicilio, y el cliente lo ve ' +
+          'antes de confirmar. En <b>0</b> no se cobra nada. El porcentaje se calcula sobre ' +
+          'subtotal + domicilio, que es todo lo que pasa por ese método.</p>'
         : '<p class="mini ambar">Sólo el rol Admin puede cambiar los métodos de pago.</p>');
   }
 
@@ -22538,7 +22662,7 @@ NASCAR.Caja = (function () {
       '<div><span>Quién</span><b>' + quienEs(p) + '</b></div>' +
       '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
       '<div><span>' + (p.estadoPago === 'confirmado' ? 'Pagó con' : 'Dice pagar con') +
-      '</span><b>' + U.esc(p.metodoPago) + '</b></div>' +
+      '</span><b>' + U.esc(S.nombreDeMetodo(p.metodoPago)) + '</b></div>' +
       '<div><span>' + (enCola ? 'Esperando' : 'Cuándo') + '</span><b>' +
       (enCola ? U.haceCuanto(p.creado) : U.esc(p.fecha) + ' · ' + U.hora(p.creado)) +
       '</b></div>' +
@@ -25451,18 +25575,35 @@ NASCAR.Avisos = (function () {
     return z ? z.costo : 0;
   }
 
+  /* Lo que cobra el método de pago elegido. Lo calcula el store, no esta
+     pantalla: la factura y el panel tienen que decir el mismo número. */
+  function recargoPago() {
+    return S.recargoDeMetodo(borrador.metodoPago, carrito.subtotal() + costoDomicilio());
+  }
+
   function pintarTotales(sel) {
     const cont = $(sel);
     if (!cont) return;
     const sub = carrito.subtotal();
     const dom = costoDomicilio();
+    const rec = recargoPago();
+
+    /* El recargo sólo se nombra si lo hay. Una línea en cero no informa,
+       y plantea una pregunta —«¿me van a cobrar algo?»— justo cuando el
+       cliente está decidiendo si confirma. */
+    const metodo = (S.getConfig().metodosPago || []).find((m) => m.id === borrador.metodoPago);
+
     cont.innerHTML =
       '<div><span>Subtotal</span><span class="num">' + U.money(sub) + '</span></div>' +
       '<div><span>Domicilio' + (borrador.zona ? ' · ' + U.esc(borrador.zona) : '') + '</span>' +
       '<span class="num">' +
       (borrador.zona ? U.money(dom) : hayZonas(U.sucursal(borrador.sucursalId)) ? '—' : 'Sin costo') +
       '</span></div>' +
-      '<div class="total"><span>Total</span><span class="num">' + U.money(sub + dom) + '</span></div>';
+      (rec > 0
+        ? '<div><span>Recargo' + (metodo ? ' · ' + U.esc(metodo.nombre) : '') + '</span>' +
+          '<span class="num">' + U.money(rec) + '</span></div>'
+        : '') +
+      '<div class="total"><span>Total</span><span class="num">' + U.money(sub + dom + rec) + '</span></div>';
   }
 
   function revisarMinimo() {
@@ -25588,6 +25729,10 @@ NASCAR.Avisos = (function () {
       r.addEventListener('change', function () {
         borrador.metodoPago = this.value;
         pintarDetalle();
+        /* El total cambia con el método: cada uno puede traer su recargo,
+           y el cliente tiene que verlo en el momento de elegir, no al
+           final. */
+        pintarTotales('#totalesPago');
       })
     );
 
@@ -25689,12 +25834,17 @@ NASCAR.Avisos = (function () {
   }
 
   function etiquetaPago(m) {
-    return { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[m] || m;
+    /* El nombre que la empresa le puso al método. La lista de abajo es
+       sólo el respaldo de los tres de siempre: desde que hay Nequi,
+       Daviplata y Bre-B, lo que no esté en ella salía como su id en
+       crudo —«nequi»— en el mensaje de WhatsApp del cliente. */
+    return S.nombreDeMetodo(m);
   }
 
   function enlaceWhatsApp(p, suc) {
     const lineas = [
-      '*Pedido ' + p.codigo + '* — NASCAR ' + suc.corto,
+      // La marca es la de la empresa que atiende, no una escrita a mano
+      '*Pedido ' + p.codigo + '* — ' + (S.getConfig().marca || '') + ' ' + suc.corto,
       '',
       'Cliente: ' + p.cliente.nombre,
       'Tel: ' + p.cliente.telefono,
@@ -25704,6 +25854,8 @@ NASCAR.Avisos = (function () {
       '',
       'Subtotal: ' + U.money(p.subtotal),
       'Domicilio: ' + U.money(p.domicilio),
+      // Sólo si lo hay: una línea en cero no dice nada
+      ...(p.recargo ? ['Recargo: ' + U.money(p.recargo)] : []),
       '*Total: ' + U.money(p.total) + '*',
       'Pago: ' + etiquetaPago(p.metodoPago),
     ];
@@ -27482,6 +27634,7 @@ NASCAR.Avisos = (function () {
         '<div class="totales">' +
         '<div><span>Subtotal</span><span class="num">' + U.money(p.subtotal) + '</span></div>' +
         (p.domicilio ? '<div><span>Domicilio</span><span class="num">' + U.money(p.domicilio) + '</span></div>' : '') +
+        (p.recargo ? '<div><span>Recargo del pago</span><span class="num">' + U.money(p.recargo) + '</span></div>' : '') +
         '<div class="total"><span>Total</span><span class="num">' + U.money(p.total) + '</span></div>' +
         '</div>' +
 
@@ -27749,6 +27902,7 @@ NASCAR.Avisos = (function () {
       '<hr>' +
       '<div class="f"><span>Subtotal</span><span>' + U.money(p.subtotal) + '</span></div>' +
       (p.domicilio ? '<div class="f"><span>Domicilio</span><span>' + U.money(p.domicilio) + '</span></div>' : '') +
+      (p.recargo ? '<div class="f"><span>Recargo del pago</span><span>' + U.money(p.recargo) + '</span></div>' : '') +
       '<div class="f tot"><span>TOTAL</span><span>' + U.money(p.total) + '</span></div>' +
       '<hr>' +
       '<div>Pago: ' + p.metodoPago.toUpperCase() + ' (' + p.estadoPago + ')</div>' +

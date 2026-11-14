@@ -853,6 +853,7 @@
         '<div class="totales">' +
         '<div><span>Subtotal</span><span class="num">' + U.money(p.subtotal) + '</span></div>' +
         (p.domicilio ? '<div><span>Domicilio</span><span class="num">' + U.money(p.domicilio) + '</span></div>' : '') +
+        (p.recargo ? '<div><span>Recargo del pago</span><span class="num">' + U.money(p.recargo) + '</span></div>' : '') +
         '<div class="total"><span>Total</span><span class="num">' + U.money(p.total) + '</span></div>' +
         '</div>' +
 
@@ -1120,6 +1121,7 @@
       '<hr>' +
       '<div class="f"><span>Subtotal</span><span>' + U.money(p.subtotal) + '</span></div>' +
       (p.domicilio ? '<div class="f"><span>Domicilio</span><span>' + U.money(p.domicilio) + '</span></div>' : '') +
+      (p.recargo ? '<div class="f"><span>Recargo del pago</span><span>' + U.money(p.recargo) + '</span></div>' : '') +
       '<div class="f tot"><span>TOTAL</span><span>' + U.money(p.total) + '</span></div>' +
       '<hr>' +
       '<div>Pago: ' + p.metodoPago.toUpperCase() + ' (' + p.estadoPago + ')</div>' +

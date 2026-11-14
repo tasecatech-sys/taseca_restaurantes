@@ -742,18 +742,35 @@
     return z ? z.costo : 0;
   }
 
+  /* Lo que cobra el método de pago elegido. Lo calcula el store, no esta
+     pantalla: la factura y el panel tienen que decir el mismo número. */
+  function recargoPago() {
+    return S.recargoDeMetodo(borrador.metodoPago, carrito.subtotal() + costoDomicilio());
+  }
+
   function pintarTotales(sel) {
     const cont = $(sel);
     if (!cont) return;
     const sub = carrito.subtotal();
     const dom = costoDomicilio();
+    const rec = recargoPago();
+
+    /* El recargo sólo se nombra si lo hay. Una línea en cero no informa,
+       y plantea una pregunta —«¿me van a cobrar algo?»— justo cuando el
+       cliente está decidiendo si confirma. */
+    const metodo = (S.getConfig().metodosPago || []).find((m) => m.id === borrador.metodoPago);
+
     cont.innerHTML =
       '<div><span>Subtotal</span><span class="num">' + U.money(sub) + '</span></div>' +
       '<div><span>Domicilio' + (borrador.zona ? ' · ' + U.esc(borrador.zona) : '') + '</span>' +
       '<span class="num">' +
       (borrador.zona ? U.money(dom) : hayZonas(U.sucursal(borrador.sucursalId)) ? '—' : 'Sin costo') +
       '</span></div>' +
-      '<div class="total"><span>Total</span><span class="num">' + U.money(sub + dom) + '</span></div>';
+      (rec > 0
+        ? '<div><span>Recargo' + (metodo ? ' · ' + U.esc(metodo.nombre) : '') + '</span>' +
+          '<span class="num">' + U.money(rec) + '</span></div>'
+        : '') +
+      '<div class="total"><span>Total</span><span class="num">' + U.money(sub + dom + rec) + '</span></div>';
   }
 
   function revisarMinimo() {
@@ -879,6 +896,10 @@
       r.addEventListener('change', function () {
         borrador.metodoPago = this.value;
         pintarDetalle();
+        /* El total cambia con el método: cada uno puede traer su recargo,
+           y el cliente tiene que verlo en el momento de elegir, no al
+           final. */
+        pintarTotales('#totalesPago');
       })
     );
 
@@ -980,12 +1001,17 @@
   }
 
   function etiquetaPago(m) {
-    return { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[m] || m;
+    /* El nombre que la empresa le puso al método. La lista de abajo es
+       sólo el respaldo de los tres de siempre: desde que hay Nequi,
+       Daviplata y Bre-B, lo que no esté en ella salía como su id en
+       crudo —«nequi»— en el mensaje de WhatsApp del cliente. */
+    return S.nombreDeMetodo(m);
   }
 
   function enlaceWhatsApp(p, suc) {
     const lineas = [
-      '*Pedido ' + p.codigo + '* — NASCAR ' + suc.corto,
+      // La marca es la de la empresa que atiende, no una escrita a mano
+      '*Pedido ' + p.codigo + '* — ' + (S.getConfig().marca || '') + ' ' + suc.corto,
       '',
       'Cliente: ' + p.cliente.nombre,
       'Tel: ' + p.cliente.telefono,
@@ -995,6 +1021,8 @@
       '',
       'Subtotal: ' + U.money(p.subtotal),
       'Domicilio: ' + U.money(p.domicilio),
+      // Sólo si lo hay: una línea en cero no dice nada
+      ...(p.recargo ? ['Recargo: ' + U.money(p.recargo)] : []),
       '*Total: ' + U.money(p.total) + '*',
       'Pago: ' + etiquetaPago(p.metodoPago),
     ];

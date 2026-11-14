@@ -1647,6 +1647,25 @@ textarea {
   font-size: 13px;
   text-align: right;
 }
+.select--xs {
+  padding: 5px 8px;
+  font-size: 13px;
+  width: auto;
+}
+
+/* El recargo de un método de pago, dentro de su propia fila: es una
+   propiedad del método, no una configuración aparte. */
+.metodo-recargo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-family: var(--f-cond);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-osc);
+}
 .input--xs:disabled {
   opacity: 0.35;
   cursor: not-allowed;

@@ -359,6 +359,7 @@ NASCAR.Remoto = (function () {
       })),
       subtotal: n(p.subtotal),
       domicilio: n(p.costo_domicilio),
+      recargo: n(p.recargo_pago),
       total: n(p.total),
       metodoPago: p.metodo_pago,
       estadoPago: p.estado_pago,
@@ -500,6 +501,9 @@ NASCAR.Remoto = (function () {
       },
       metodosPago: (e.metodos_pago || []).map((m) => ({
         id: m.codigo, nombre: m.nombre, descripcion: m.descripcion || '', activo: m.activo,
+        // Lo que se le cobra al cliente por pagar así (30_recargo_por_metodo.sql)
+        recargo: Number(m.recargo) || 0,
+        recargoTipo: m.recargo_tipo === 'porcentaje' ? 'porcentaje' : 'fijo',
       })),
       redes: { instagram: e.instagram_url || '', facebook: e.facebook_url || '' },
       tiempos: { mesa: e.tiempo_mesa || '', domicilio: e.tiempo_domicilio || '' },
@@ -2041,7 +2045,11 @@ NASCAR.Remoto = (function () {
       }
       if (cambios.metodosPago) {
         rpc('guardar_metodos_pago', {
-          p_metodos: cambios.metodosPago.map((m) => ({ codigo: m.id, activo: !!m.activo, descripcion: m.descripcion || null })),
+          p_metodos: cambios.metodosPago.map((m) => ({
+            codigo: m.id, activo: !!m.activo, descripcion: m.descripcion || null,
+            recargo: Number(m.recargo) || 0,
+            recargo_tipo: m.recargoTipo === 'porcentaje' ? 'porcentaje' : 'fijo',
+          })),
         });
       }
       cargarCatalogo();
