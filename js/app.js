@@ -771,6 +771,34 @@
   }
 
   /* --- Paso 3: pago --------------------------------------------- */
+  /* ¿Este método es una transferencia? Se pregunta por el GRUPO de caja,
+     no por el id: desde que Nequi, Daviplata y Bre-B son métodos aparte,
+     comparar con 'transferencia' dejaba fuera a los tres — ni pedían
+     comprobante ni enseñaban a qué cuenta pagar. */
+  function esTransferencia(metodoId) {
+    return S.grupoDeMetodo(metodoId) === 'transferencia';
+  }
+
+  /* A qué cuenta transfiere el cliente. Se enseña la del método que
+     ELIGIÓ, no las tres: antes había que leer la lista entera para
+     encontrar la suya, y era fácil pagar a la que no era. */
+  function cuentasDe(metodoId, P) {
+    const linea = (nombre, valor) =>
+      valor ? '<div class="linea"><span class="tenue">' + U.esc(nombre) + '</span><b>' +
+              U.esc(valor) + '</b></div>' : '';
+
+    const propia = { nequi: ['Nequi', P.nequi],
+                     daviplata: ['Daviplata', P.daviplata],
+                     breb: ['Llave Bre-B', P.breb] }[metodoId];
+    if (propia && propia[1]) return linea(propia[0], propia[1]);
+
+    /* El genérico —o uno cuya cuenta no esté configurada— enseña todas
+       las que haya: más vale de más que dejar al cliente sin a dónde
+       pagar. */
+    return linea('Nequi', P.nequi) + linea('Daviplata', P.daviplata) +
+           linea('Llave Bre-B', P.breb) + linea('Bancolombia', P.bancolombia);
+  }
+
   function pintarPasoPago() {
     const cfg = S.getConfig();
     const P = cfg.pago;
@@ -809,12 +837,10 @@
 
     function pintarDetalle() {
       const d = $('#detallePago');
-      if (borrador.metodoPago === 'transferencia') {
+      if (esTransferencia(borrador.metodoPago)) {
         d.innerHTML =
           '<div class="caja-datos">' +
-          '<div class="linea"><span class="tenue">Nequi</span><b>' + U.esc(P.nequi) + '</b></div>' +
-          '<div class="linea"><span class="tenue">Daviplata</span><b>' + U.esc(P.daviplata) + '</b></div>' +
-          '<div class="linea"><span class="tenue">Bancolombia</span><b>' + U.esc(P.bancolombia) + '</b></div>' +
+          cuentasDe(borrador.metodoPago, P) +
           '<div class="linea"><span class="tenue">Titular</span><b>' + U.esc(P.titular) + '</b></div>' +
           '</div>' +
           '<label class="campo"><span>Número de referencia o comprobante</span>' +
@@ -937,7 +963,7 @@
       '<div class="linea"><span class="tenue">Pago</span><b>' + etiquetaPago(p.metodoPago) + '</b></div>' +
       '</div>' +
 
-      (p.metodoPago === 'transferencia'
+      (esTransferencia(p.metodoPago)
         ? '<div class="caja-datos" style="border-color:var(--ambar)">' +
           '<b class="ambar">Pago por confirmar</b>' +
           '<p class="mini tenue" style="margin:4px 0 0">Tu pedido se despacha apenas verifiquemos la transferencia en caja. ' +
@@ -1036,7 +1062,7 @@
 
     borrador.clave = ''; // el pedido entró: el siguiente es otro intento
 
-    if (borrador.metodoPago === 'transferencia') {
+    if (esTransferencia(borrador.metodoPago)) {
       if (borrador.comprobante) {
         S.guardarComprobante(pedido.id, borrador.comprobante);
       }

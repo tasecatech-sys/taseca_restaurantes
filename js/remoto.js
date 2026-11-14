@@ -494,6 +494,7 @@ NASCAR.Remoto = (function () {
         nit: e.nit || '',
         nequi: numero('nequi'),
         daviplata: numero('daviplata'),
+        breb: numero('bre-b'),
         bancolombia: numero('bancolombia'),
         titular: cuentas.length ? cuentas[0].titular || '' : '',
       },
@@ -2014,7 +2015,8 @@ NASCAR.Remoto = (function () {
         const pago = Object.assign({}, c.pago, cambios.pago || {});
         const tiempos = Object.assign({}, c.tiempos, cambios.tiempos || {});
         const redes = Object.assign({}, c.redes, cambios.redes || {});
-        const cuentas = [['Nequi', pago.nequi], ['Daviplata', pago.daviplata], ['Bancolombia', pago.bancolombia]]
+        const cuentas = [['Nequi', pago.nequi], ['Daviplata', pago.daviplata],
+                         ['Bre-B', pago.breb], ['Bancolombia', pago.bancolombia]]
           .filter((x) => x[1] && String(x[1]).trim())
           .map((x) => ({ entidad: x[0], numero: String(x[1]).trim(), titular: pago.titular || '' }));
         rpc('guardar_configuracion', {

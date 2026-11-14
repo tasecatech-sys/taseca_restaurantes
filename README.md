@@ -1643,10 +1643,24 @@ La columna a la que va cada método se declara en `NASCAR.GRUPO_DE_METODO`:
 ```javascript
 NASCAR.GRUPO_DE_METODO = {
   efectivo: 'efectivo',
-  transferencia: 'transferencia',
+  transferencia: 'transferencia',   // el genérico, hoy apagado
+  nequi: 'transferencia',
+  daviplata: 'transferencia',
+  breb: 'transferencia',
   // datafono -> otros
 };
 ```
+
+**Las billeteras van separadas, pero cuadran juntas.** Nequi, Daviplata y
+Bre-B son métodos distintos —el informe dice cuánto entró por cada uno, que
+antes no se podía saber sin abrir los pedidos— y las tres comparten grupo,
+así que el cruce sigue mostrando **una sola columna de transferencias**. Para
+el arqueo las tres son lo mismo: dinero que no está en el cajón.
+
+El método genérico de antes se quedó como **«Otra transferencia»**, apagado.
+No se borró porque los pedidos que se pagaron así tienen que seguir diciendo
+con qué se pagaron; se vuelve a encender con un clic si alguien cobra por un
+banco que no sea de los tres.
 
 Se declara en vez de adivinarse por el nombre, que el administrador puede
 cambiar cuando quiera. **Lo que no esté en la lista cuenta como «otros»**, que

@@ -36,6 +36,9 @@ NASCAR.CONFIG = {
   pago: {
     nequi: '300 415 8890',
     daviplata: '301 227 6644',
+    /* La llave Bre-B: puede ser el celular, el correo o un alias. Vacía
+       hasta que el negocio la registre en su banco. */
+    breb: '',
     bancolombia: 'Ahorros 512-000998-77 · NASCAR S.A.S.',
     titular: 'NASCAR Restaurante S.A.S.',
     nit: '901.554.221-3',
@@ -48,8 +51,26 @@ NASCAR.CONFIG = {
       descripcion: 'Le pagas al domiciliario cuando recibas.' },
     { id: 'datafono', nombre: 'Datáfono en la puerta', activo: true,
       descripcion: 'El domiciliario lleva datáfono. Tarjeta débito o crédito.' },
-    { id: 'transferencia', nombre: 'Transferencia · Nequi, Daviplata o Bancolombia', activo: true,
-      descripcion: 'Transfieres ahora y despachamos apenas confirmemos el pago.' },
+    /* Cada billetera va por separado, no en un «transferencia» que las
+       mete a todas en el mismo saco: al cuadrar la caja hay que saber
+       cuánto entró por cada una, y con un solo método eso se pierde.
+
+       Las tres van al mismo GRUPO de caja (ver NASCAR.GRUPO_DE_METODO),
+       así que el cruce sigue mostrando una sola columna «Transferencia».
+       Separadas para el control, juntas para el arqueo. */
+    { id: 'nequi', nombre: 'Nequi', activo: true,
+      descripcion: 'Transfieres por Nequi y despachamos apenas confirmemos el pago.' },
+    { id: 'daviplata', nombre: 'Daviplata', activo: true,
+      descripcion: 'Transfieres por Daviplata y despachamos apenas confirmemos el pago.' },
+    { id: 'breb', nombre: 'Bre-B', activo: true,
+      descripcion: 'Pagas con tu llave Bre-B desde cualquier banco.' },
+
+    /* El genérico de antes. Se queda APAGADO y no se borra: los pedidos
+       que ya se pagaron así siguen diciendo con qué se pagaron, y quien
+       reciba por un banco que no sea de los de arriba lo enciende desde
+       ⚙️ Configuración → 💳 Métodos de pago. */
+    { id: 'transferencia', nombre: 'Otra transferencia', activo: false,
+      descripcion: 'Transferencia o consignación desde otro banco.' },
   ],
 
   /* Comprobantes de pago que el cliente adjunta (MVP local).
@@ -642,7 +663,14 @@ NASCAR.ESTADOS_GASTO = [
    ========================================================================= */
 NASCAR.GRUPO_DE_METODO = {
   efectivo: 'efectivo',
+
+  /* Las billeteras son métodos distintos —hay que saber cuánto entró por
+     cada una— pero para el arqueo son lo mismo: dinero que NO está en el
+     cajón. Por eso comparten columna. */
   transferencia: 'transferencia',
+  nequi: 'transferencia',
+  daviplata: 'transferencia',
+  breb: 'transferencia',
   // datafono -> otros (es dinero electrónico, pero no llega por transferencia)
 };
 

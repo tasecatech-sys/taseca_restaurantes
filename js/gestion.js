@@ -1386,6 +1386,7 @@ NASCAR.Gestion = (function () {
       '<div class="rejilla-2">' +
       campo('cfgNequi', 'Nequi', c.pago.nequi) +
       campo('cfgDaviplata', 'Daviplata', c.pago.daviplata) +
+      campo('cfgBreB', 'Llave Bre-B', c.pago.breb) +
       campo('cfgBancolombia', 'Bancolombia', c.pago.bancolombia) +
       campo('cfgTitular', 'Titular de la cuenta', c.pago.titular) +
       '</div>' +
@@ -1436,6 +1437,7 @@ NASCAR.Gestion = (function () {
         nit: v('cfgNit'),
         nequi: v('cfgNequi'),
         daviplata: v('cfgDaviplata'),
+        breb: v('cfgBreB'),
         bancolombia: v('cfgBancolombia'),
         titular: v('cfgTitular'),
       },

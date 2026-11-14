@@ -6760,6 +6760,9 @@ NASCAR.CONFIG = {
   pago: {
     nequi: '300 415 8890',
     daviplata: '301 227 6644',
+    /* La llave Bre-B: puede ser el celular, el correo o un alias. Vacía
+       hasta que el negocio la registre en su banco. */
+    breb: '',
     bancolombia: 'Ahorros 512-000998-77 · NASCAR S.A.S.',
     titular: 'NASCAR Restaurante S.A.S.',
     nit: '901.554.221-3',
@@ -6772,8 +6775,26 @@ NASCAR.CONFIG = {
       descripcion: 'Le pagas al domiciliario cuando recibas.' },
     { id: 'datafono', nombre: 'Datáfono en la puerta', activo: true,
       descripcion: 'El domiciliario lleva datáfono. Tarjeta débito o crédito.' },
-    { id: 'transferencia', nombre: 'Transferencia · Nequi, Daviplata o Bancolombia', activo: true,
-      descripcion: 'Transfieres ahora y despachamos apenas confirmemos el pago.' },
+    /* Cada billetera va por separado, no en un «transferencia» que las
+       mete a todas en el mismo saco: al cuadrar la caja hay que saber
+       cuánto entró por cada una, y con un solo método eso se pierde.
+
+       Las tres van al mismo GRUPO de caja (ver NASCAR.GRUPO_DE_METODO),
+       así que el cruce sigue mostrando una sola columna «Transferencia».
+       Separadas para el control, juntas para el arqueo. */
+    { id: 'nequi', nombre: 'Nequi', activo: true,
+      descripcion: 'Transfieres por Nequi y despachamos apenas confirmemos el pago.' },
+    { id: 'daviplata', nombre: 'Daviplata', activo: true,
+      descripcion: 'Transfieres por Daviplata y despachamos apenas confirmemos el pago.' },
+    { id: 'breb', nombre: 'Bre-B', activo: true,
+      descripcion: 'Pagas con tu llave Bre-B desde cualquier banco.' },
+
+    /* El genérico de antes. Se queda APAGADO y no se borra: los pedidos
+       que ya se pagaron así siguen diciendo con qué se pagaron, y quien
+       reciba por un banco que no sea de los de arriba lo enciende desde
+       ⚙️ Configuración → 💳 Métodos de pago. */
+    { id: 'transferencia', nombre: 'Otra transferencia', activo: false,
+      descripcion: 'Transferencia o consignación desde otro banco.' },
   ],
 
   /* Comprobantes de pago que el cliente adjunta (MVP local).
@@ -7366,7 +7387,14 @@ NASCAR.ESTADOS_GASTO = [
    ========================================================================= */
 NASCAR.GRUPO_DE_METODO = {
   efectivo: 'efectivo',
+
+  /* Las billeteras son métodos distintos —hay que saber cuánto entró por
+     cada una— pero para el arqueo son lo mismo: dinero que NO está en el
+     cajón. Por eso comparten columna. */
   transferencia: 'transferencia',
+  nequi: 'transferencia',
+  daviplata: 'transferencia',
+  breb: 'transferencia',
   // datafono -> otros (es dinero electrónico, pero no llega por transferencia)
 };
 
@@ -14378,6 +14406,7 @@ NASCAR.Remoto = (function () {
         nit: e.nit || '',
         nequi: numero('nequi'),
         daviplata: numero('daviplata'),
+        breb: numero('bre-b'),
         bancolombia: numero('bancolombia'),
         titular: cuentas.length ? cuentas[0].titular || '' : '',
       },
@@ -15898,7 +15927,8 @@ NASCAR.Remoto = (function () {
         const pago = Object.assign({}, c.pago, cambios.pago || {});
         const tiempos = Object.assign({}, c.tiempos, cambios.tiempos || {});
         const redes = Object.assign({}, c.redes, cambios.redes || {});
-        const cuentas = [['Nequi', pago.nequi], ['Daviplata', pago.daviplata], ['Bancolombia', pago.bancolombia]]
+        const cuentas = [['Nequi', pago.nequi], ['Daviplata', pago.daviplata],
+                         ['Bre-B', pago.breb], ['Bancolombia', pago.bancolombia]]
           .filter((x) => x[1] && String(x[1]).trim())
           .map((x) => ({ entidad: x[0], numero: String(x[1]).trim(), titular: pago.titular || '' }));
         rpc('guardar_configuracion', {
@@ -20878,6 +20908,7 @@ NASCAR.Gestion = (function () {
       '<div class="rejilla-2">' +
       campo('cfgNequi', 'Nequi', c.pago.nequi) +
       campo('cfgDaviplata', 'Daviplata', c.pago.daviplata) +
+      campo('cfgBreB', 'Llave Bre-B', c.pago.breb) +
       campo('cfgBancolombia', 'Bancolombia', c.pago.bancolombia) +
       campo('cfgTitular', 'Titular de la cuenta', c.pago.titular) +
       '</div>' +
@@ -20928,6 +20959,7 @@ NASCAR.Gestion = (function () {
         nit: v('cfgNit'),
         nequi: v('cfgNequi'),
         daviplata: v('cfgDaviplata'),
+        breb: v('cfgBreB'),
         bancolombia: v('cfgBancolombia'),
         titular: v('cfgTitular'),
       },
@@ -25448,6 +25480,34 @@ NASCAR.Avisos = (function () {
   }
 
   /* --- Paso 3: pago --------------------------------------------- */
+  /* ¿Este método es una transferencia? Se pregunta por el GRUPO de caja,
+     no por el id: desde que Nequi, Daviplata y Bre-B son métodos aparte,
+     comparar con 'transferencia' dejaba fuera a los tres — ni pedían
+     comprobante ni enseñaban a qué cuenta pagar. */
+  function esTransferencia(metodoId) {
+    return S.grupoDeMetodo(metodoId) === 'transferencia';
+  }
+
+  /* A qué cuenta transfiere el cliente. Se enseña la del método que
+     ELIGIÓ, no las tres: antes había que leer la lista entera para
+     encontrar la suya, y era fácil pagar a la que no era. */
+  function cuentasDe(metodoId, P) {
+    const linea = (nombre, valor) =>
+      valor ? '<div class="linea"><span class="tenue">' + U.esc(nombre) + '</span><b>' +
+              U.esc(valor) + '</b></div>' : '';
+
+    const propia = { nequi: ['Nequi', P.nequi],
+                     daviplata: ['Daviplata', P.daviplata],
+                     breb: ['Llave Bre-B', P.breb] }[metodoId];
+    if (propia && propia[1]) return linea(propia[0], propia[1]);
+
+    /* El genérico —o uno cuya cuenta no esté configurada— enseña todas
+       las que haya: más vale de más que dejar al cliente sin a dónde
+       pagar. */
+    return linea('Nequi', P.nequi) + linea('Daviplata', P.daviplata) +
+           linea('Llave Bre-B', P.breb) + linea('Bancolombia', P.bancolombia);
+  }
+
   function pintarPasoPago() {
     const cfg = S.getConfig();
     const P = cfg.pago;
@@ -25486,12 +25546,10 @@ NASCAR.Avisos = (function () {
 
     function pintarDetalle() {
       const d = $('#detallePago');
-      if (borrador.metodoPago === 'transferencia') {
+      if (esTransferencia(borrador.metodoPago)) {
         d.innerHTML =
           '<div class="caja-datos">' +
-          '<div class="linea"><span class="tenue">Nequi</span><b>' + U.esc(P.nequi) + '</b></div>' +
-          '<div class="linea"><span class="tenue">Daviplata</span><b>' + U.esc(P.daviplata) + '</b></div>' +
-          '<div class="linea"><span class="tenue">Bancolombia</span><b>' + U.esc(P.bancolombia) + '</b></div>' +
+          cuentasDe(borrador.metodoPago, P) +
           '<div class="linea"><span class="tenue">Titular</span><b>' + U.esc(P.titular) + '</b></div>' +
           '</div>' +
           '<label class="campo"><span>Número de referencia o comprobante</span>' +
@@ -25614,7 +25672,7 @@ NASCAR.Avisos = (function () {
       '<div class="linea"><span class="tenue">Pago</span><b>' + etiquetaPago(p.metodoPago) + '</b></div>' +
       '</div>' +
 
-      (p.metodoPago === 'transferencia'
+      (esTransferencia(p.metodoPago)
         ? '<div class="caja-datos" style="border-color:var(--ambar)">' +
           '<b class="ambar">Pago por confirmar</b>' +
           '<p class="mini tenue" style="margin:4px 0 0">Tu pedido se despacha apenas verifiquemos la transferencia en caja. ' +
@@ -25713,7 +25771,7 @@ NASCAR.Avisos = (function () {
 
     borrador.clave = ''; // el pedido entró: el siguiente es otro intento
 
-    if (borrador.metodoPago === 'transferencia') {
+    if (esTransferencia(borrador.metodoPago)) {
       if (borrador.comprobante) {
         S.guardarComprobante(pedido.id, borrador.comprobante);
       }
