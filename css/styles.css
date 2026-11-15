@@ -2095,7 +2095,17 @@ textarea {
 .op:hover {
   border-color: var(--azul-claro);
 }
-.op input {
+/* LA CASILLA de una opcion, no cualquier campo que haya dentro.
+
+   Decia `.op input`, a secas. Una opcion que ademas lleva un campo para
+   escribir -el recargo de un metodo de pago- se encontraba con que ese
+   campo tambien media 18x18: un circulo diminuto imposible de usar, y
+   con mas peso en la cascada (0,1,1) que la clase del propio campo.
+
+   Acotarlo al checkbox hace que cualquier control que se meta manana en
+   una opcion se dimensione solo. */
+.op > input[type='checkbox'],
+.op > input[type='radio'] {
   margin-top: 4px;
   accent-color: var(--rojo);
   width: 18px;
@@ -2166,30 +2176,56 @@ textarea {
 .lista-check__cant i {
   margin-left: 0; /* el auto es de la caja, no del texto de dentro */
 }
+/* Campos pequeños para meter una cifra en una fila de lista: la cantidad
+   de un insumo en una receta, el recargo de un método de pago.
+
+   PEQUEÑOS NO ES DIMINUTOS. Estaban en 68px de ancho, 13px de letra y
+   5px de relleno: unos 27px de alto, por debajo de lo que un dedo
+   acierta. Ahora van a 40px, que es lo mínimo razonable, y con la
+   tipografía del texto —no la condensada— porque aquí se escriben
+   NÚMEROS y la condensada los junta. */
 .input--xs {
-  width: 68px;
-  padding: 5px 8px;
-  font-size: 13px;
+  width: 96px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-family: var(--f-body);
+  font-size: 15px;
   text-align: right;
 }
 .select--xs {
-  padding: 5px 8px;
-  font-size: 13px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-family: var(--f-body);
+  font-size: 14px;
   width: auto;
 }
 
 /* El recargo de un método de pago, dentro de su propia fila: es una
-   propiedad del método, no una configuración aparte. */
+   propiedad del método, no una configuración aparte.
+
+   La etiqueta ocupa la línea ENTERA y los campos van debajo. Con el
+   texto y los dos campos en una sola fila no cabía nada: el campo del
+   número es un elemento flexible, se encogía hasta quedar en un círculo
+   de 20px y no había forma de escribir en él. */
 .metodo-recargo {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  gap: var(--e-2);
+  margin-top: var(--e-3);
   font-family: var(--f-cond);
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--gris-osc);
+}
+.metodo-recargo__et {
+  flex: 1 0 100%;
+}
+/* Y que no se vuelvan a encoger: esto es lo que faltaba. */
+.metodo-recargo .input--xs,
+.metodo-recargo .select--xs {
+  flex: 0 0 auto;
 }
 .input--xs:disabled {
   opacity: 0.35;

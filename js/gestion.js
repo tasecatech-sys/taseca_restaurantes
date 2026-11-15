@@ -1490,7 +1490,7 @@ NASCAR.Gestion = (function () {
                Va dentro de la misma fila del método porque es una
                propiedad suya, no una configuración aparte. */
             '<span class="metodo-recargo' + (puedeEditar ? '' : ' oculto') + '">' +
-            'Recargo al cliente' +
+            '<span class="metodo-recargo__et">Recargo al cliente</span>' +
             '<input class="input input--xs" type="number" min="0" step="any" ' +
             'data-recargo="' + U.esc(m.id) + '" value="' + valor + '">' +
             '<select class="select select--xs" data-recargo-tipo="' + U.esc(m.id) + '">' +
