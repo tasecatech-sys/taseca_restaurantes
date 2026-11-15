@@ -481,6 +481,9 @@ NASCAR.TEMA_BASE = {
   secondary: '#64748b',
   accent: '#38bdf8',
   background: '#0b0f16',
+  /* Oscuro de salida, que es como se ve el sistema desde siempre. Se
+     cambia a claro desde el tema, sin tocar una línea de CSS. */
+  modo: 'oscuro',
   fontFamily: 'inter',
   /* Neutro a propósito: una empresa nueva NO nace con la bandera a
      cuadros de NASCAR. El motivo se elige después, en el panel. */

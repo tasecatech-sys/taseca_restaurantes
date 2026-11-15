@@ -467,6 +467,8 @@ NASCAR.Remoto = (function () {
         background: e.color_fondo || '',
         fontFamily: e.tipografia || '',
         patron: e.patron || '',
+        // Claro u oscuro (31_modo_claro.sql); sin dato, oscuro
+        modo: e.modo === 'claro' ? 'claro' : 'oscuro',
         iniciales: e.iniciales || '',
         lema: e.lema || '',
       },
@@ -1975,6 +1977,7 @@ NASCAR.Remoto = (function () {
       background: colorLargo(t.background),
       fontFamily: t.fontFamily || '',
       patron: t.patron || '',
+      modo: t.modo === 'claro' ? 'claro' : 'oscuro',
       logoTexto: t.logoTexto || '',
       logoAcento: t.logoAcento || '',
       iniciales: t.iniciales || '',

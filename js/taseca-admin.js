@@ -802,6 +802,15 @@
         colorCampo('wBg', 'Color de fondo', t.background) +
         '</div>' +
 
+        /* Claro u oscuro. Va antes de los colores de marca porque es lo
+           que más cambia la cara de todo: elegir rojo sobre negro no es lo
+           mismo que elegir rojo sobre blanco. */
+        '<label class="campo"><span>Modo</span><select class="select" id="wModo">' +
+        '<option value="oscuro"' + (t.modo === 'claro' ? '' : ' selected') + '>🌙 Oscuro</option>' +
+        '<option value="claro"' + (t.modo === 'claro' ? ' selected' : '') + '>☀️ Claro</option>' +
+        '</select><span class="mini tenue">Lo ven así todos los clientes de esta empresa. ' +
+        'El color de fondo de arriba sólo se usa en el modo oscuro.</span></label>' +
+
         '<label class="campo"><span>Tipografía</span><select class="select" id="wFuente">' +
         (NASCAR.TIPOGRAFIAS || [])
           .map(
@@ -975,7 +984,7 @@
           };
         });
 
-        ['#wPrim', '#wSec', '#wAcc', '#wBg', '#wFuente', '#wPatron', '#wLogoTexto', '#wLogoAcento', '#wLema'].forEach(
+        ['#wPrim', '#wSec', '#wAcc', '#wBg', '#wModo', '#wFuente', '#wPatron', '#wLogoTexto', '#wLogoAcento', '#wLema'].forEach(
           function (sel) {
             const el = U.$(sel, raiz);
             if (el) el.addEventListener('input', () => { leerTema(); pintarPreview(); });
@@ -1032,6 +1041,7 @@
       b.theme.secondary = v('wSec');
       b.theme.accent = v('wAcc');
       b.theme.background = v('wBg');
+      b.theme.modo = v('wModo');
       b.theme.fontFamily = v('wFuente');
       b.theme.patron = v('wPatron');
       b.theme.logoTexto = v('wLogoTexto');

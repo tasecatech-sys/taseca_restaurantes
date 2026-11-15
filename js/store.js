@@ -850,6 +850,11 @@ NASCAR.Store = (function () {
       accent: color(t.accent, base.accent || '#38bdf8'),
       background: color(t.background, base.background || '#0b0f16'),
 
+      /* Claro u oscuro. Lo elige la empresa junto a sus colores, y lo ven
+         igual todos sus clientes: no es una preferencia de quien mira.
+         Lo que no sea 'claro' es oscuro, que es como nació todo. */
+      modo: t.modo === 'claro' ? 'claro' : 'oscuro',
+
       fontFamily: fuente ? fuente.id : 'inter',
       /* Sin motivo elegido se queda el de siempre, no el del tema base:
          una empresa ya publicada no cambia de aspecto sola. */

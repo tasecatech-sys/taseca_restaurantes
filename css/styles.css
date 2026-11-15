@@ -24,13 +24,51 @@
    ========================================================================== */
 
 /* ============================ 01. TOKENS ================================= */
+/* ─────────────────────────────────────────────────────────────────────────
+   DOS MODOS: OSCURO Y CLARO
+
+   El modo lo elige cada empresa junto a sus colores, y js/tema.js lo
+   escribe en <html data-tema="claro|oscuro">. Aquí abajo está el oscuro,
+   que es el de siempre; el bloque [data-tema='claro'] sólo cambia los
+   VALORES de estos mismos tokens.
+
+   OJO CON LOS NOMBRES. Se llaman `negro-*` y `blanco` porque nacieron en
+   un tema que sólo era oscuro, y se usan 674 veces entre el CSS, el JS y
+   el HTML: renombrarlos ahora sería mover mucho para no cambiar nada.
+   Hoy léelos por su PAPEL, no por su color:
+
+     --negro-900  el fondo de la página        --blanco    el texto principal
+     --negro-800  fondos alternos              --humo      texto secundario
+     --negro-700  tarjetas                     --gris      texto apagado
+     --negro-600  tarjeta al pasar por encima  --gris-osc  texto muy apagado
+     --negro-500  superficies fuertes
+
+   En claro, `--blanco` vale casi negro. Suena raro y lo es; por eso está
+   escrito aquí. Lo nuevo puede usar los alias semánticos del final.
+
+   Lo que NO cambia entre modos: los colores de marca (azul, rojo, verde,
+   ámbar) y `--blanco-puro`, que es blanco de verdad y existe justo para
+   los sitios donde hacía falta un blanco literal y no un color de texto.
+   ───────────────────────────────────────────────────────────────────── */
 :root {
+  color-scheme: dark;
+
   /* Paleta */
   --negro-900: #06080c;
   --negro-800: #0b0f16;
   --negro-700: #121824;
   --negro-600: #1a2130;
   --negro-500: #242d3f;
+
+  /* Blanco literal: texto sobre un color de marca, la franja, y poco más.
+     Nunca cambia con el modo. */
+  --blanco-puro: #ffffff;
+
+  /* Veladura para los estados de encima. En oscuro aclara, en claro
+     oscurece; antes era `rgba(255,255,255,.04)` repetido a mano en
+     catorce sitios, que en claro habrían sido invisibles. */
+  --velo: rgba(255, 255, 255, 0.04);
+  --velo-fuerte: rgba(255, 255, 255, 0.09);
 
   --azul: #0b5fff;
   --azul-claro: #4d8cff;
@@ -66,6 +104,75 @@
   --sombra: 0 10px 30px rgba(0, 0, 0, 0.45);
   --sombra-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
   --t: 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* El velo que oscurece el fondo detrás de un cuadro emergente. */
+  --fondo-modal: rgba(0, 0, 0, 0.66);
+  /* La barra de arriba va translúcida con desenfoque, así que no puede
+     usar --negro-900 a secas: necesita su propio color con alfa. */
+  --fondo-barra: rgba(6, 8, 12, 0.86);
+
+  /* ---- Alias semánticos ----
+     El mismo valor con el nombre que debería haber tenido siempre. Lo que
+     se escriba de ahora en adelante puede usar estos; los de arriba se
+     quedan por las 674 veces que ya están puestos. */
+  --fondo: var(--negro-900);
+  --fondo-2: var(--negro-800);
+  --superficie: var(--negro-700);
+  --superficie-2: var(--negro-600);
+  --superficie-3: var(--negro-500);
+  --texto: var(--blanco);
+  --texto-2: var(--humo);
+  --texto-3: var(--gris);
+  --texto-4: var(--gris-osc);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MODO CLARO
+
+   Sólo valores: ni un selector nuevo, ni una regla de componente. Todo lo
+   que ya está pintado con tokens cambia solo.
+
+   El fondo no es blanco puro a propósito: con la página blanca y las
+   tarjetas blancas no se distingue dónde empieza una cosa y acaba otra.
+   La página va gris muy claro y las tarjetas blancas, que es lo que las
+   hace flotar.
+
+   Las sombras bajan mucho de opacidad: sobre fondo oscuro una sombra al
+   45 % se ve bien, sobre fondo claro es una mancha sucia.
+   ═══════════════════════════════════════════════════════════════════════ */
+[data-tema='claro'] {
+  color-scheme: light;
+
+  --negro-900: #f4f6f9; /* fondo de la página */
+  --negro-800: #eceff4; /* fondos alternos */
+  --negro-700: #ffffff; /* tarjetas */
+  --negro-600: #f2f5f9; /* tarjeta al pasar por encima */
+  --negro-500: #dfe4ec; /* superficies fuertes */
+
+  --blanco: #0e1420; /* el TEXTO principal, no un blanco */
+  --humo: #1e2735;
+  --gris: #5a6678;
+  /* Más oscuro que su equivalente del tema oscuro: sobre fondo claro, el
+     mismo gris daba 2,66 de contraste y no se leía. */
+  --gris-osc: #727d8f;
+
+  --borde: rgba(14, 20, 32, 0.1);
+  --borde-fuerte: rgba(14, 20, 32, 0.18);
+
+  --velo: rgba(14, 20, 32, 0.04);
+  --velo-fuerte: rgba(14, 20, 32, 0.08);
+
+  --sombra: 0 6px 20px rgba(14, 20, 32, 0.1);
+  --sombra-lg: 0 18px 44px rgba(14, 20, 32, 0.16);
+  --fondo-modal: rgba(14, 20, 32, 0.45);
+  --fondo-barra: rgba(248, 250, 252, 0.88);
+
+  /* Los colores de marca se oscurecen un punto: el mismo azul que luce
+     sobre negro queda lavado sobre blanco y no cumple contraste. */
+  --azul-claro: #0b4fd6;
+  --rojo-claro: #c4001f;
+  --verde: #0e9355;
+  --ambar: #a86100;
 }
 
 /* ========================= 02. RESET Y BASE ============================== */
@@ -366,7 +473,7 @@ textarea {
 /* Franja de velocidad azul/rojo */
 .franja {
   height: 5px;
-  background: linear-gradient(90deg, var(--azul) 0 33%, var(--blanco) 33% 66%, var(--rojo) 66% 100%);
+  background: linear-gradient(90deg, var(--azul) 0 33%, var(--blanco-puro) 33% 66%, var(--rojo) 66% 100%);
 }
 
 .reveal {
@@ -417,7 +524,9 @@ textarea {
 }
 .btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  color: var(--blanco);
+  /* El color se queda en el suyo. Poner --blanco aquí volvía el texto
+     oscuro al pasar por encima de un botón rojo en modo claro. */
+  color: var(--fg);
 }
 .btn:active:not(:disabled) {
   transform: translateY(0);
@@ -429,6 +538,9 @@ textarea {
 
 .btn--rojo {
   --bg: var(--rojo);
+  /* Sobre un rojo saturado el texto es blanco en los dos modos: si
+     heredara --blanco, en claro saldría casi negro sobre rojo. */
+  --fg: var(--blanco-puro);
   border-color: var(--rojo);
 }
 .btn--rojo:hover:not(:disabled) {
@@ -438,6 +550,7 @@ textarea {
 
 .btn--azul {
   --bg: var(--azul);
+  --fg: var(--blanco-puro);
   border-color: var(--azul);
 }
 .btn--azul:hover:not(:disabled) {
@@ -452,7 +565,9 @@ textarea {
 }
 .btn--blanco:hover:not(:disabled) {
   color: var(--negro-900);
-  box-shadow: 0 8px 26px rgba(255, 255, 255, 0.22);
+  /* El resplandor es del color del propio botón, que se invierte con el
+     modo: blanco sobre oscuro, oscuro sobre claro. */
+  box-shadow: 0 8px 26px var(--velo-fuerte);
 }
 
 .btn--fantasma {
@@ -461,7 +576,7 @@ textarea {
 }
 .btn--fantasma:hover:not(:disabled) {
   border-color: var(--blanco);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--velo-fuerte);
 }
 
 .btn--sm {
@@ -617,7 +732,7 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 60;
-  background: rgba(6, 8, 12, 0.86);
+  background: var(--fondo-barra);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--borde);
@@ -779,7 +894,7 @@ textarea {
   background: repeating-linear-gradient(
     -68deg,
     transparent 0 60px,
-    rgba(255, 255, 255, 0.028) 60px 61px
+    var(--velo) 60px 61px
   );
   pointer-events: none;
 }
@@ -820,7 +935,7 @@ textarea {
   text-transform: uppercase;
   color: var(--humo);
   margin-bottom: 26px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--velo);
 }
 .hero__etiqueta i {
   width: 20px;
@@ -1034,7 +1149,9 @@ textarea {
   font-family: var(--f-display);
   font-size: 84px;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.045);
+  /* Marca de agua: casi invisible a propósito, pero tiene que serlo en
+     los dos modos. En blanco fijo desaparecía del todo sobre claro. */
+  color: var(--velo-fuerte);
   pointer-events: none;
 }
 .sucursal h3 {
@@ -1077,7 +1194,7 @@ textarea {
   gap: 12px;
   padding: 5px 0;
   font-size: 14px;
-  border-bottom: 1px dotted rgba(255, 255, 255, 0.07);
+  border-bottom: 1px dotted var(--borde);
 }
 .zona:last-child {
   border-bottom: 0;
@@ -1366,7 +1483,7 @@ textarea {
 .carrito-fondo {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.66);
+  background: var(--fondo-modal);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   z-index: 90;
@@ -1618,7 +1735,7 @@ textarea {
   border-bottom: 0;
 }
 .lista-check__fila:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--velo);
 }
 /* La casilla, y sólo la casilla: la fila lleva también un campo de
    cantidad —cuánto gasta ese plato— y con `input` a secas se quedaba
@@ -2308,7 +2425,7 @@ summary {
   position: fixed;
   inset: 0;
   z-index: 150;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--fondo-modal);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: grid;
@@ -2462,7 +2579,7 @@ body.mesa {
   padding: 14px 0;
   background: var(--negro-700);
   border-top: 2px solid var(--rojo);
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--sombra-lg);
   transform: translateY(110%);
   transition: transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
@@ -3152,7 +3269,7 @@ body.cierre {
   padding: 12px 0;
   background: var(--negro-700);
   border-top: 2px solid var(--rojo);
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--sombra-lg);
 }
 .inv-guardar__inner {
   display: flex;
@@ -3180,7 +3297,8 @@ body.cierre {
 }
 .df--ok {
   background: rgba(18, 183, 106, 0.16);
-  color: #35d492;
+  /* Token y no un verde claro fijo: sobre fondo blanco no se leía. */
+  color: var(--verde);
 }
 .df--sobrante {
   background: rgba(245, 165, 36, 0.16);
@@ -3422,7 +3540,8 @@ tr.fila--sin td {
   animation: pulso-listo 1.8s ease-in-out infinite;
 }
 .mesa-btn--listo span {
-  color: #35d492;
+  /* Token y no un verde claro fijo: sobre fondo blanco no se leía. */
+  color: var(--verde);
 }
 @keyframes pulso-listo {
   0%, 100% { box-shadow: 0 0 0 0 rgba(18, 183, 106, 0.4); }
@@ -3957,11 +4076,11 @@ tr.fila--sin td {
   opacity: 0.85;
 }
 .barra-plataforma .btn {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: var(--borde-fuerte);
   color: var(--blanco);
 }
 .barra-plataforma .btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--velo-fuerte);
 }
 
 
@@ -3978,7 +4097,7 @@ tr.fila--sin td {
   --side-borde: var(--borde);
   --side-texto: var(--gris);
   --side-texto-activo: var(--blanco);
-  --side-activo: rgba(255, 255, 255, 0.06);
+  --side-activo: var(--velo-fuerte);
   --side-activo-borde: var(--rojo);
   --side-radio: var(--r);
 }
@@ -4083,7 +4202,7 @@ tr.fila--sin td {
   padding: 12px 14px 14px;
   border: 1px solid var(--borde);
   border-radius: var(--r);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--velo);
   transition: border-color var(--t), background var(--t);
 }
 /* La leyenda flota para comportarse como un bloque normal del fieldset. */
@@ -4302,8 +4421,11 @@ tr.fila--sin td {
 }
 .md-tipo.is-activo {
   border-color: var(--rojo);
+  /* El rgba es el respaldo para Safari < 16.2, que no conoce color-mix:
+     se compone sobre el fondo que haya, así que sirve en claro y en
+     oscuro. Antes aquí había un granate fijo que en modo claro dejaba
+     texto oscuro sobre fondo oscuro. */
   background: rgba(228, 0, 43, 0.08);
-  background: #2a0a12; /* Safari < 16.2 no conoce color-mix */
   background: color-mix(in srgb, var(--rojo) 9%, var(--negro-800));
   box-shadow: inset 3px 0 0 var(--rojo);
 }
@@ -4567,7 +4689,7 @@ tr.fila--sin td {
   height: 46px;
   border-radius: var(--r-sm);
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--velo);
 }
 .unidad__logo--icono {
   display: grid;

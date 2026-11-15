@@ -39,10 +39,21 @@ NASCAR.Tema = (function () {
     const raiz = document.documentElement;
 
     // --- Colores
+    const claro = t.modo === 'claro';
+
     raiz.style.setProperty('--azul', t.primary);
     raiz.style.setProperty('--rojo', t.secondary);
-    raiz.style.setProperty('--azul-claro', t.accent);
-    raiz.style.setProperty('--negro-900', t.background);
+    /* El acento se usa como texto —el precio de un plato, los estados— y
+       el que luce sobre negro no se lee sobre blanco. En claro se
+       oscurece conservando el tono. */
+    raiz.style.setProperty('--azul-claro', claro ? paraFondoClaro(t.accent) : t.accent);
+    /* El color de fondo de la empresa es una elección DEL MODO OSCURO: un
+       azul casi negro precioso sobre el que se lee en blanco. En claro no
+       sirve, y además se mete por estilo en línea, que le gana a
+       [data-tema='claro'] y dejaría la página negra con el texto negro.
+       En claro se quita y manda la rampa clara. */
+    if (claro) raiz.style.removeProperty('--negro-900');
+    else raiz.style.setProperty('--negro-900', t.background);
 
     /* Los resplandores se derivan del color, para que no queden de otro
        tono cuando la empresa cambia de paleta. */
@@ -52,6 +63,12 @@ NASCAR.Tema = (function () {
     // --- Tipografía
     cargarFuente(t.fontFamily);
     raiz.style.setProperty('--f-body', S.familiaTipografica(t.fontFamily));
+
+    /* Claro u oscuro. Es un atributo en <html> y nada más: el bloque
+       [data-tema='claro'] de css/styles.css cambia los VALORES de los
+       tokens y todo lo pintado con ellos se adapta solo. Ninguna pantalla
+       tiene que saber en qué modo está. */
+    raiz.setAttribute('data-tema', t.modo === 'claro' ? 'claro' : 'oscuro');
 
     // --- Motivo de marca (la banda de la portada y las fichas)
     aplicarPatron(t);
@@ -90,6 +107,48 @@ NASCAR.Tema = (function () {
       nodo.textContent = emblema;
       nodo.classList.toggle('oculto', !emblema);
     });
+  }
+
+  /**
+   * El color de acento, pero legible sobre fondo claro.
+   *
+   * El acento se elige mirando el tema oscuro: un azul luminoso que
+   * brilla sobre negro. Ese mismo azul sobre blanco da un contraste de
+   * 2,8 — por debajo de lo que se lee. Y el acento se usa como TEXTO en
+   * bastantes sitios (el precio de un plato, los estados).
+   *
+   * Se oscurece hasta que contrasta, conservando el tono: sigue siendo
+   * su azul, sólo que el que se puede leer. No se toca el color
+   * guardado; esto es sólo cómo se pinta en modo claro.
+   */
+  function paraFondoClaro(hex) {
+    const v = String(hex || '').replace('#', '');
+    if (v.length !== 6) return hex;
+
+    let r = parseInt(v.slice(0, 2), 16),
+        g = parseInt(v.slice(2, 4), 16),
+        b = parseInt(v.slice(4, 6), 16);
+
+    /* Luminancia relativa, que es como se mide el contraste de verdad.
+       Se baja en pasos hasta llegar al objetivo; 0.18 deja alrededor de
+       4,5 contra blanco, que es el mínimo para texto normal. */
+    const luz = () => {
+      const f = (c) => {
+        c /= 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+
+    let vueltas = 0;
+    while (luz() > 0.18 && vueltas++ < 24) {
+      r = Math.round(r * 0.9);
+      g = Math.round(g * 0.9);
+      b = Math.round(b * 0.9);
+    }
+
+    const dos = (n) => ('0' + n.toString(16)).slice(-2);
+    return '#' + dos(r) + dos(g) + dos(b);
   }
 
   /* #rrggbb -> rgba(r,g,b,a). Si el color no es hexadecimal se devuelve
