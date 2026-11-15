@@ -101,6 +101,7 @@ COMMENT ON COLUMN core.pedidos.recargo_pago IS
 CREATE OR REPLACE FUNCTION core.fn_recargo_pago(p_empresa_id INTEGER, p_metodo_pago_id INTEGER, p_base NUMERIC)
 RETURNS NUMERIC
 LANGUAGE sql STABLE
+SET search_path = core, public
 AS $$
     SELECT COALESCE(
         GREATEST(round(
@@ -135,10 +136,9 @@ SELECT p.id AS pedido_id, p.empresa_id, p.unidad_id, u.nombre AS unidad, p.codig
        me.numero AS mesa,
        cl.nombre AS cliente, cl.telefono AS cliente_telefono,
        p.direccion_entrega, p.indicaciones, z.nombre AS zona,
-       COALESCE(it.subtotal, 0)                                        AS subtotal,
+       COALESCE(it.subtotal, 0)                                      AS subtotal,
        p.costo_domicilio,
-       p.recargo_pago,
-       COALESCE(it.subtotal, 0) + p.costo_domicilio + p.recargo_pago   AS total,
+       COALESCE(it.subtotal, 0) + p.costo_domicilio + p.recargo_pago AS total,
        COALESCE(it.unidades, 0)                                        AS productos,
        p.paga_con,
        /* El cambio se calcula contra lo que de verdad hay que pagar: con el
@@ -148,7 +148,11 @@ SELECT p.id AS pedido_id, p.empresa_id, p.unidad_id, u.nombre AS unidad, p.codig
        END AS cambio,
        p.fecha_operativa, p.motivo_cancelacion,
        us.nombre AS tomado_por,
-       p.creado_en, p.actualizado_en
+       p.creado_en, p.actualizado_en,
+       /* AL FINAL a la fuerza: CREATE OR REPLACE VIEW no deja meter una
+          columna en medio ni renombrar las que hay. Su sitio natural
+          sería al lado de costo_domicilio, pero no se puede. */
+       p.recargo_pago
   FROM core.pedidos p
   JOIN core.unidades u        ON u.id = p.unidad_id
   JOIN core.tipos_pedido tp   ON tp.id = p.tipo_pedido_id
@@ -168,15 +172,45 @@ SELECT p.id AS pedido_id, p.empresa_id, p.unidad_id, u.nombre AS unidad, p.codig
 /* ============================================================================
    4. EL PANEL VE LA CONFIGURACIÓN
 
-   Mismo texto que 15_fase2_configuracion_plataforma.sql salvo los dos
-   campos nuevos dentro de `metodos_pago`.
+   OJO: NO es el texto de 15_fase2_configuracion_plataforma.sql. Esa vista
+   creció después —migraciones posteriores le añadieron n_unidades,
+   n_usuarios y patron, y le cambiaron el orden— y CREATE OR REPLACE VIEW
+   no deja quitar columnas ni reordenarlas. Esto es la vista TAL COMO ESTÁ
+   instalada, cambiando sólo los dos campos nuevos de `metodos_pago`.
+
+   Si vuelve a crecer, hay que traer otra vez su definición real:
+     SELECT pg_get_viewdef('api.v_empresa_ficha'::regclass, true);
    ============================================================================ */
 CREATE OR REPLACE VIEW api.v_empresa_ficha AS
-SELECT e.id AS empresa_id, e.codigo, e.nombre_comercial, e.razon_social, e.nit, e.eslogan, e.descripcion,
-       e.telefono, e.whatsapp, e.email, e.direccion, e.horario_general, e.instagram_url, e.facebook_url,
-       e.tiempo_mesa, e.tiempo_domicilio, e.hora_corte_operativa, e.estado,
-       e.color_primario, e.color_secundario, e.color_acento, e.color_fondo,
-       e.tipografia, e.logo_texto, e.logo_acento, e.iniciales, e.lema, e.plantilla, e.creado_en,
+SELECT e.id AS empresa_id,
+       e.codigo,
+       e.nombre_comercial,
+       e.razon_social,
+       e.nit,
+       e.eslogan,
+       e.descripcion,
+       e.estado,
+       e.hora_corte_operativa,
+       e.telefono,
+       e.whatsapp,
+       e.email,
+       e.direccion,
+       e.horario_general,
+       e.instagram_url,
+       e.facebook_url,
+       e.tiempo_mesa,
+       e.tiempo_domicilio,
+       e.color_primario,
+       e.color_secundario,
+       e.color_acento,
+       e.color_fondo,
+       e.tipografia,
+       e.logo_texto,
+       e.logo_acento,
+       e.iniciales,
+       e.lema,
+       e.plantilla,
+       e.creado_en,
        core.fn_fecha_operativa(e.id, now()) AS jornada_actual,
        (SELECT i.actualizado_en FROM core.empresa_imagenes i WHERE i.empresa_id = e.id) AS imagenes_version,
        (SELECT jsonb_object_agg(m.modulo, m.activo) FROM api.v_empresa_modulos m WHERE m.empresa_id = e.id) AS modulos,
@@ -186,11 +220,14 @@ SELECT e.id AS empresa_id, e.codigo, e.nombre_comercial, e.razon_social, e.nit, 
                                   ORDER BY emp.orden, mp.id)
                    FROM core.empresa_metodos_pago emp
                    JOIN core.metodos_pago mp ON mp.id = emp.metodo_pago_id
-                  WHERE emp.empresa_id = e.id), '[]') AS metodos_pago,
+                  WHERE emp.empresa_id = e.id), '[]'::jsonb) AS metodos_pago,
        COALESCE((SELECT jsonb_agg(jsonb_build_object('entidad', c.entidad, 'numero', c.numero, 'titular', c.titular)
                                   ORDER BY c.id)
                    FROM core.cuentas_recaudo c
-                  WHERE c.empresa_id = e.id AND c.activa), '[]') AS cuentas
+                  WHERE c.empresa_id = e.id AND c.activa), '[]'::jsonb) AS cuentas,
+       (SELECT count(*) FROM core.unidades u  WHERE u.empresa_id  = e.id) AS n_unidades,
+       (SELECT count(*) FROM core.usuarios us WHERE us.empresa_id = e.id) AS n_usuarios,
+       e.patron
   FROM core.empresas e;
 
 
@@ -245,6 +282,13 @@ $$;
    5. AL CREAR EL PEDIDO
 
    Después del CALL, que es cuando ya existen los ítems y hay subtotal.
+
+   HAY DOS VERSIONES de rest.crear_pedido y se parchean LAS DOS: la de 11
+   parámetros y la de 12 con `p_clave`, que añadió
+   23_pedidos_sin_duplicados.sql. La aplicación manda p_clave, así que usa
+   la de 12 — parchear sólo la de 11 deja el recargo en una función que
+   nadie llama, y eso no se nota hasta que alguien pregunta por qué los
+   totales no traen el recargo.
    ============================================================================ */
 CREATE OR REPLACE FUNCTION rest.crear_pedido(
     p_unidad_id         INTEGER,
@@ -294,6 +338,63 @@ GRANT EXECUTE ON FUNCTION rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TE
       TO taseca_anon, taseca_app;
 
 
+/* La versión de 12 parámetros, que es la que llama la aplicación. */
+CREATE OR REPLACE FUNCTION rest.crear_pedido(
+    p_unidad_id         INTEGER,
+    p_tipo              TEXT,
+    p_metodo_pago       TEXT,
+    p_items             JSONB,
+    p_mesa              TEXT    DEFAULT NULL,
+    p_cliente_nombre    TEXT    DEFAULT NULL,
+    p_cliente_telefono  TEXT    DEFAULT NULL,
+    p_direccion         TEXT    DEFAULT NULL,
+    p_indicaciones      TEXT    DEFAULT NULL,
+    p_zona_id           INTEGER DEFAULT NULL,
+    p_paga_con          NUMERIC DEFAULT NULL,
+    p_clave             TEXT    DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_id     BIGINT;
+    v_codigo VARCHAR;
+BEGIN
+    CALL api.sp_crear_pedido(
+        p_unidad_id => p_unidad_id, p_tipo => p_tipo, p_metodo_pago => p_metodo_pago, p_items => p_items,
+        p_usuario_id => core.fn_jwt_usuario(), p_mesa => p_mesa,
+        p_cliente_nombre => p_cliente_nombre, p_cliente_telefono => p_cliente_telefono,
+        p_direccion => p_direccion, p_indicaciones => p_indicaciones, p_zona_id => p_zona_id,
+        p_paga_con => p_paga_con, p_clave => NULLIF(trim(p_clave), ''),
+        p_pedido_id => v_id, p_codigo => v_codigo);
+
+    /* Con `clave` repetida sp_crear_pedido devuelve el pedido que YA
+       existía en vez de crear otro; el recargo que saldría es el mismo, y
+       el IS DISTINCT FROM evita reescribirlo. Reintentar no mueve una
+       factura. */
+    UPDATE core.pedidos p
+       SET recargo_pago = core.fn_recargo_pago(
+               p.empresa_id, p.metodo_pago_id,
+               COALESCE((SELECT SUM(i.precio_unitario * i.cantidad)
+                           FROM core.pedido_items i WHERE i.pedido_id = p.id), 0)
+               + p.costo_domicilio)
+     WHERE p.id = v_id
+       AND p.recargo_pago IS DISTINCT FROM core.fn_recargo_pago(
+               p.empresa_id, p.metodo_pago_id,
+               COALESCE((SELECT SUM(i.precio_unitario * i.cantidad)
+                           FROM core.pedido_items i WHERE i.pedido_id = p.id), 0)
+               + p.costo_domicilio);
+
+    RETURN core.fn_pedido_json(v_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC, TEXT)
+      TO taseca_anon, taseca_app;
+
+
 /* ============================================================================
    6. COMPROBACIÓN
    ============================================================================ */
@@ -318,6 +419,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'fn_recargo_pago'
                      AND pronamespace = 'core'::regnamespace) THEN
         RAISE EXCEPTION 'Falta core.fn_recargo_pago: revisa el paso 2.';
+    END IF;
+
+    IF pg_get_viewdef('api.v_pedidos'::regclass) NOT LIKE '%recargo_pago%' THEN
+        RAISE EXCEPTION 'api.v_pedidos no incluye el recargo en el total.';
+    END IF;
+
+    /* Las DOS versiones de rest.crear_pedido, o el recargo se queda en la
+       que no se usa. */
+    IF (SELECT count(*) FROM pg_proc p
+         WHERE p.proname = 'crear_pedido' AND p.pronamespace = 'rest'::regnamespace
+           AND pg_get_functiondef(p.oid) LIKE '%fn_recargo_pago%') <> 2 THEN
+        RAISE EXCEPTION 'Alguna versión de rest.crear_pedido se quedó sin calcular el recargo.';
     END IF;
 
     RAISE NOTICE '✔ El recargo por método queda configurable, y en 0 para todos.';
