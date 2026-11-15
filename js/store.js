@@ -1610,6 +1610,27 @@ NASCAR.Store = (function () {
    * Acepta las dos formas de entrada: la lista de ids de siempre y una
    * de pares {refId, cantidad}, que es como viene de la base.
    */
+  /* Un texto, recortado al tope que aguanta su columna en la base.
+
+     No es cosmética: core.pedido_items.notas es VARCHAR(200),
+     core.pedidos.direccion_entrega VARCHAR(200) e indicaciones
+     VARCHAR(300). Lo que se pase de ahí no se recorta solo, hace fallar
+     el INSERT entero y el pedido no entra. */
+  function recortar(valor, tope) {
+    return String(valor == null ? '' : valor).slice(0, tope);
+  }
+
+  /* Los datos del cliente con los mismos topes que la base. */
+  function clienteConTopes(c) {
+    const x = Object.assign({}, c || {});
+    x.nombre = recortar(x.nombre, 80);
+    x.telefono = recortar(x.telefono, 20);
+    x.direccion = recortar(x.direccion, 200);
+    x.zona = recortar(x.zona, 80);
+    x.notas = recortar(x.notas, 300);
+    return x;
+  }
+
   function normalizarConsumo(p) {
     const ids = [];
     const cantidades = {};
@@ -3422,12 +3443,29 @@ NASCAR.Store = (function () {
     }
 
     const items = datos.items.map(function (it) {
+      /* El precio TIENE que ser un número. Si llega cualquier otra cosa
+         -texto, undefined- el subtotal salía NaN y el pedido se guardaba
+         con un total que no es un número. Más vale romper aquí, donde se
+         ve, que guardar una factura rota o cobrar cero. */
+      const precio = Number(it.precio);
+      if (!Number.isFinite(precio) || precio < 0)
+        throw new Error('"' + (it.nombre || 'Un producto') + '" llegó sin un precio válido.');
+
+      /* La cantidad, entre 1 y 99. Venía `Number(x) || 1`, que deja pasar
+         los NEGATIVOS -son «verdaderos» para JavaScript- y con ellos un
+         subtotal negativo. El tope de arriba es para que un dedo torpe no
+         mande a la cocina una comanda de 99.999 porciones. */
+      const cantidad = Math.min(99, Math.max(1, Math.round(Number(it.cantidad) || 1)));
+
       const item = {
         refId: it.refId,
         nombre: it.nombre,
-        precio: Number(it.precio),
-        cantidad: Number(it.cantidad) || 1,
-        notas: it.notas || '',
+        precio: precio,
+        cantidad: cantidad,
+        /* 200 es lo que aguanta core.pedido_items.notas. Sin recortarlo
+           aquí la nota no «se corta»: hace FALLAR el pedido entero en la
+           base, con un mensaje que el cliente no entiende. */
+        notas: recortar(it.notas, 200),
         origen: it.origen || 'carta', // 'carta' | 'dia' | 'armado'
       };
       // Menú armado: lo que eligió el cliente ("Sopa: Sancocho · Proteína: Pollo").
@@ -3472,7 +3510,7 @@ NASCAR.Store = (function () {
       // Quién lo tomó (mesero) — null si lo hizo el cliente.
       usuarioId: datos.usuarioId || null,
       usuarioNombre: datos.usuarioNombre || null,
-      cliente: datos.cliente || {},
+      cliente: clienteConTopes(datos.cliente),
       items: items,
       subtotal: subtotal,
       domicilio: domicilio,
@@ -3581,9 +3619,26 @@ NASCAR.Store = (function () {
     });
   }
 
-  function avanzarEstado(pedidoId) {
+  /**
+   * Avanza un pedido al siguiente estado de su flujo.
+   *
+   * `estadoEsperado` es desde dónde creía el usuario que lo estaba
+   * moviendo. Si el pedido ya no está ahí, no se mueve y se avisa.
+   *
+   * Hace falta por dos cosas que pasan a diario:
+   *   · el doble clic: el botón se repinta entre un clic y el siguiente,
+   *     así que deshabilitarlo no basta y el pedido saltaba DOS estados;
+   *   · dos personas a la vez: el mesero y la cocina tocando el mismo
+   *     pedido desde dos pantallas.
+   *
+   * Sin el dato se comporta como siempre, para no romper a quien llame
+   * sin él.
+   */
+  function avanzarEstado(pedidoId, estadoEsperado) {
     const p = getPedido(pedidoId);
     if (!p) return null;
+    if (estadoEsperado && p.estado !== estadoEsperado)
+      throw new Error('Ese pedido ya está en «' + (ETIQUETA_ESTADO[p.estado] || p.estado) + '». Alguien se te adelantó.');
     const siguiente = siguienteEstado(p);
     return siguiente ? cambiarEstado(pedidoId, siguiente) : p;
   }

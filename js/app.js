@@ -42,6 +42,8 @@
     comprobante: null, // { dataUrl, nombreArchivo, pesoKB }
   };
   let ultimoPedido = null;
+  /* Por qué no se pudo reportar el pago del último pedido, si pasó. */
+  let avisoPago = '';
 
   /* Unidad / local en la que pide el cliente. Cada unidad tiene su carta y
      su menú del día: el portal muestra UNA a la vez, nunca mezcladas. Se
@@ -1066,17 +1068,32 @@
 
       '<div class="caja-datos">' +
       '<div class="linea"><span class="tenue">Local</span><b>' + U.esc(suc.nombre) + '</b></div>' +
-      '<div class="linea"><span class="tenue">Entrega en</span><b>' + U.esc(p.cliente.direccion) + '</b></div>' +
-      '<div class="linea"><span class="tenue">Tiempo estimado</span><b>' + NASCAR.CONFIG.tiempos.domicilio + '</b></div>' +
+      /* Un pedido para recoger no tiene dirección de entrega: la línea
+         salía vacía. Y el tiempo que le importa no es el del domicilio
+         sino el de que esté listo. */
+      (p.tipo === 'recoger'
+        ? '<div class="linea"><span class="tenue">Recoges en</span><b>' +
+          U.esc(suc.direccion || suc.nombre) + '</b></div>' +
+          '<div class="linea"><span class="tenue">Listo en</span><b>' +
+          NASCAR.CONFIG.tiempos.mesa + '</b></div>'
+        : '<div class="linea"><span class="tenue">Entrega en</span><b>' +
+          U.esc(p.cliente.direccion) + '</b></div>' +
+          '<div class="linea"><span class="tenue">Tiempo estimado</span><b>' +
+          NASCAR.CONFIG.tiempos.domicilio + '</b></div>') +
       '<div class="linea"><span class="tenue">Total</span><b>' + U.money(p.total) + '</b></div>' +
       '<div class="linea"><span class="tenue">Pago</span><b>' + etiquetaPago(p.metodoPago) + '</b></div>' +
       '</div>' +
 
       (esTransferencia(p.metodoPago)
-        ? '<div class="caja-datos" style="border-color:var(--ambar)">' +
-          '<b class="ambar">Pago por confirmar</b>' +
-          '<p class="mini tenue" style="margin:4px 0 0">Tu pedido se despacha apenas verifiquemos la transferencia en caja. ' +
-          'Enviar el soporte por WhatsApp acelera el proceso.</p></div>'
+        ? '<div class="caja-datos" style="border-color:var(--' + (avisoPago ? 'rojo' : 'ambar') + ')">' +
+          (avisoPago
+            ? '<b class="rojo">No quedó registrada tu referencia</b>' +
+              '<p class="mini tenue" style="margin:4px 0 0">' + U.esc(avisoPago) + '<br>' +
+              'Tu pedido <b>' + U.esc(p.codigo) + '</b> sí entró. Manda el soporte por WhatsApp y en caja lo confirman.</p>'
+            : '<b class="ambar">Pago por confirmar</b>' +
+              '<p class="mini tenue" style="margin:4px 0 0">Tu pedido se despacha apenas verifiquemos la transferencia en caja. ' +
+              'Enviar el soporte por WhatsApp acelera el proceso.</p>') +
+          '</div>'
         : '') +
 
       '<a class="btn btn--verde btn--bloque mt-16" style="background:#12b76a;border-color:#12b76a;color:#04220f" ' +
@@ -1188,23 +1205,47 @@
       return false; // el botón vuelve: se puede reintentar con la misma clave
     }
 
-    borrador.clave = ''; // el pedido entró: el siguiente es otro intento
+    /* AQUÍ EL PEDIDO YA EXISTE.
+       --------------------------------------------------------------
+       Lo que viene -guardar el comprobante y reportar el pago- puede
+       fallar por su cuenta, y si falla NO es un pedido fallido: es un
+       pedido con el pago sin reportar.
 
+       Estaba fuera de cualquier try, y la clave del envío se soltaba
+       justo antes. O sea: el pedido entraba, reportar el pago reventaba,
+       el cliente veía un error, volvía a darle a confirmar... y como ya
+       no había clave se generaba otra y entraba OTRO pedido. Tres clics,
+       tres pedidos.
+
+       Ahora el fallo del pago se recoge aparte y la clave se suelta al
+       final del todo: mientras siga puesta, reintentar devuelve ESTE
+       mismo pedido en vez de crear uno nuevo. */
+    avisoPago = '';
     if (esTransferencia(borrador.metodoPago)) {
-      if (borrador.comprobante) {
-        S.guardarComprobante(pedido.id, borrador.comprobante);
+      try {
+        if (borrador.comprobante) {
+          S.guardarComprobante(pedido.id, borrador.comprobante);
+        }
+        if (borrador.referencia || borrador.comprobante) {
+          S.reportarPago(pedido.id, borrador.referencia || 'con comprobante adjunto');
+        }
+        pedido = S.getPedido(pedido.id) || pedido;
+      } catch (e) {
+        avisoPago = e.message || 'No pudimos registrar tu pago.';
       }
-      if (borrador.referencia || borrador.comprobante) {
-        S.reportarPago(pedido.id, borrador.referencia || 'con comprobante adjunto');
-      }
-      pedido = S.getPedido(pedido.id);
     }
+
+    /* De aquí no se vuelve: el pedido entró y se le va a enseñar. */
+    borrador.clave = '';
 
     ultimoPedido = pedido;
     recordarPedido(pedido.codigo); // para seguirlo aunque recargue la página
     paso = 'listo';
     pintarCarrito();
     U.toast('¡Pedido ' + pedido.codigo + ' enviado a cocina!');
+    /* El pedido entró igual; lo que no entró es el reporte del pago. Se
+       dice después, para que la primera noticia sea la buena. */
+    if (avisoPago) U.toast('No pudimos registrar tu pago: ' + avisoPago, 'error');
   }
 
   /* =================================================================

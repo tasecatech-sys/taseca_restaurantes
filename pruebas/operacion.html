@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taseca · Pruebas de operación</title>
+
+<!--
+  BANCO DE PRUEBAS DEL CAMINO DE UN PEDIDO
+  ========================================
+  Se abre y ya: no hace falta instalar nada.
+
+      http://localhost:8000/pruebas/operacion.html
+
+  Qué prueba: desde que se crea un pedido hasta que se entrega, por los
+  cuatro caminos (domicilio, recoger, mesa y mostrador), más lo que suele
+  romperse de verdad —el doble clic, los datos basura y varios clientes
+  pidiendo a la vez—.
+
+  SOBRE QUÉ CORRE
+    Sobre el modo local (localStorage), nunca contra la base de datos de
+    nadie. Usa su propio almacén y lo deja como estaba al terminar.
+
+  LO QUE NO PUEDE PROBAR
+    La concurrencia DE VERDAD. El navegador es de un solo hilo: aquí dos
+    clientes "a la vez" son dos llamadas seguidas. Lo que sí comprueba es
+    que la defensa contra el doble envío -la clave de envío- hace su
+    trabajo, que es de donde salen las facturas repetidas.
+-->
+
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 24px 20px 64px;
+    background: #0f1217; color: #e8ecf2;
+    font: 15px/1.6 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  .caja { max-width: 860px; margin-inline: auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .sub { color: #98a2b3; margin: 0 0 20px; }
+  #marcador {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 16px; border-radius: 10px; margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03);
+    font-size: 17px; font-weight: 600;
+  }
+  #marcador.bien { border-color: #12b76a; }
+  #marcador.mal  { border-color: #b4323f; }
+  .n { font-variant-numeric: tabular-nums; }
+  .ok  { color: #12b76a; }
+  .no  { color: #ff6b6b; }
+  h2 {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: #98a2b3; margin: 24px 0 8px; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .p { padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .p b { font-weight: 600; }
+  .p .det { display: block; color: #98a2b3; font-size: 13px; margin-top: 2px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    padding: 9px 18px; border-radius: 8px;
+    border: 1px solid #3b6ea5; background: #3b6ea5; color: #fff;
+  }
+</style>
+</head>
+<body>
+<div class="caja">
+  <h1>Pruebas de operación</h1>
+  <p class="sub">El camino de un pedido, de punta a punta, sobre el modo local.</p>
+  <div id="marcador">Cargando…</div>
+  <div id="salida"></div>
+</div>
+
+<script>
+  /* El banco de pruebas trabaja en modo local a la fuerza: así no toca la
+     base de nadie aunque se abra en el servidor de producción. */
+  if (!/[?&]backend=local/.test(location.search)) {
+    location.search = (location.search ? location.search + '&' : '?') + 'backend=local';
+  }
+</script>
+
+<script src="/js/data.js"></script>
+<script src="/js/store.js"></script>
+<script src="/js/backend.js"></script>
+<script src="/js/remoto.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/menu-dia.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/pruebas/operacion.js"></script>
+</body>
+</html>

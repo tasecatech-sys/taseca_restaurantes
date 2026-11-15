@@ -674,7 +674,12 @@
         e.stopPropagation();
         if (!A.exigir('pedidos_gestionar')) return;
         return U.ocupado(avanzar, '⏳', function () {
-          S.avanzarEstado(avanzar.dataset.avanzar);
+          try {
+            S.avanzarEstado(avanzar.dataset.avanzar, avanzar.dataset.desde);
+          } catch (err) {
+            U.toast(err.message, 'error');
+            return false; // el botón vuelve; el tablero se refresca solo
+          }
           U.toast('Pedido actualizado.');
         });
       }
@@ -769,7 +774,12 @@
       '<div class="tp__pie">' +
       '<div><span class="tp__total">' + U.money(p.total) + '</span><br>' + insigniaPago(p) + '</div>' +
       (siguiente
-        ? '<button class="btn btn--azul btn--xs" data-avanzar="' + p.id + '">' + siguiente + ' →</button>'
+        /* `data-desde` es el estado que el usuario está viendo. Si para
+           cuando suelta el clic el pedido ya se movió -doble clic, u otra
+           persona en otra pantalla- el store lo rechaza en vez de saltarse
+           un estado. */
+        ? '<button class="btn btn--azul btn--xs" data-avanzar="' + p.id +
+          '" data-desde="' + U.esc(p.estado) + '">' + siguiente + ' →</button>'
         : '') +
       '</div>' +
       '</article>'
