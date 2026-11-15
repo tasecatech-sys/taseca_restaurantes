@@ -103,21 +103,29 @@ RETURNS NUMERIC
 LANGUAGE sql STABLE
 SET search_path = core, public
 AS $$
-    SELECT COALESCE(
-        GREATEST(round(
-            CASE WHEN emp.recargo_tipo = 'porcentaje'
-                 THEN COALESCE(p_base, 0) * emp.recargo / 100
-                 ELSE emp.recargo
-            END
-        ), 0), 0)
-      FROM core.empresa_metodos_pago emp
-     WHERE emp.empresa_id     = p_empresa_id
-       AND emp.metodo_pago_id = p_metodo_pago_id
-       AND emp.recargo > 0;
+    /* OJO CON DÓNDE VA EL COALESCE: envuelve la CONSULTA, no el valor.
+       Esto salió mal la primera vez y costó caro —ver la migración 33—:
+       con el COALESCE por dentro protegía de que el cálculo saliera nulo,
+       pero no de que la consulta no devolviera NINGUNA fila. Y no devuelve
+       ninguna en cuanto el recargo es 0, porque `emp.recargo > 0` la
+       descarta. Una función SQL sin filas devuelve NULL, pedidos.recargo_pago
+       es NOT NULL, y dejaron de poderse crear pedidos. */
+    SELECT COALESCE((
+        SELECT GREATEST(round(
+                   CASE WHEN emp.recargo_tipo = 'porcentaje'
+                        THEN COALESCE(p_base, 0) * emp.recargo / 100
+                        ELSE emp.recargo
+                   END
+               ), 0)
+          FROM core.empresa_metodos_pago emp
+         WHERE emp.empresa_id     = p_empresa_id
+           AND emp.metodo_pago_id = p_metodo_pago_id
+           AND emp.recargo > 0
+    ), 0);
 $$;
 
 COMMENT ON FUNCTION core.fn_recargo_pago(INTEGER, INTEGER, NUMERIC) IS
-    'Cuánto recarga un método de pago sobre una base. Espejo de recargoDeMetodo() en js/store.js.';
+    'Cuánto recarga un método de pago sobre una base. Sin recargo configurado devuelve 0, nunca NULL. Espejo de recargoDeMetodo() en js/store.js.';
 
 
 /* ============================================================================

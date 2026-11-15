@@ -5,7 +5,7 @@
    la estructura de ejemplo de NASCAR, la capa REST, la fase 2 completa, el
    chequeo de integridad y la seguridad a nivel de fila.
 
-   GENERADO, NO SE EDITA A MANO. Sale de pegar los scripts 01 … 19 con
+   GENERADO, NO SE EDITA A MANO. Sale de pegar los scripts 01 … 32 con
    `py database/generar_supabase.py`. Si hay que corregir algo, se corrige en
    el script original y se vuelve a generar.
 
@@ -12328,6 +12328,1372 @@ $$;
 SELECT codigo, nombre_comercial, patron AS motivo_de_marca
   FROM core.empresas
  ORDER BY id;
+
+
+/* ============================================================================
+   27_FOTOS_EN_STORAGE
+   Las fotos de la carta viven en Storage
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 27 · LAS FOTOS DE LA CARTA VIVEN EN STORAGE
+   ----------------------------------------------------------------------------
+   `core.productos.imagen_url` guarda una dirección, y eso está bien. Lo que
+   faltaba era un sitio donde poner la foto: hasta ahora había que subirla a
+   algún lado por fuera y pegar la URL a mano, que es justo lo que nadie hace.
+
+   POR QUÉ STORAGE Y NO LA BASE
+     Ya está escrito en database/COSTOS_SUPABASE.md, sección 2: una foto
+     dentro de la base cuesta $0,125 por GB y engorda CADA copia de
+     seguridad; en Storage cuesta $0,0213 y hay 100 GB incluidos. Para UNA
+     imagen por empresa -el logo, en core.empresa_imagenes- da igual. Una
+     carta son 50 o 200 productos por empresa: ahí ya no da igual.
+
+   POR QUÉ LA RUTA LLEVA EL CÓDIGO DE LA EMPRESA
+     `carta/empresa_nascar/00123.jpg`
+
+     Dos razones. La primera es que se lee: quien entre al panel de Supabase
+     ve carpetas por empresa, no un montón de identificadores. La segunda es
+     que la ruta ES el permiso — la política de abajo compara el primer
+     tramo con la empresa del token, así que una empresa no puede escribir
+     en la carpeta de otra ni equivocándose.
+
+     Y como el nombre del archivo es el código del producto, volver a subir
+     otro archivo con el mismo nombre cambia la foto en toda la carta sin
+     tocar un solo registro.
+
+   QUIÉN PUEDE SUBIR
+     Los tokens de rest.login van firmados con el JWT secret del PROYECTO
+     (ver database/18_supabase.sql, paso 3), así que Storage los da por
+     buenos igual que PostgREST. Llevan `role` = taseca_app y `empresa_id`,
+     que es todo lo que hace falta aquí.
+
+     Leer no pide token: el bucket es público porque la carta es pública.
+     Escribir sí, y sólo en la carpeta propia.
+
+   OJO CON EL ORDEN
+     Esto se ejecuta en el editor SQL de Supabase, NO contra un PostgreSQL
+     propio: el esquema `storage` lo pone Supabase. Si da error diciendo que
+     no existe, es que se está ejecutando en el sitio equivocado.
+
+   No toca ningún dato existente. Se puede ejecutar más de una vez.
+   Requiere: 00 … 26 instalados y el paso 3 de 18_supabase.sql hecho.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. EL BUCKET
+
+   Público para leer: la carta la ve cualquiera, y si pidiera firma cada
+   visita gastaría una petición por foto sin ganar nada.
+
+   El tope de 2 MB y la lista de tipos son la última línea de defensa. La
+   aplicación ya comprime antes de subir (U.comprimirImagen, js/ui.js), pero
+   lo que protege de verdad es lo que comprueba el servidor.
+   ============================================================================ */
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('carta', 'carta', TRUE, 2097152,
+        ARRAY['image/jpeg', 'image/png', 'image/webp'])
+ON CONFLICT (id) DO UPDATE
+   SET public             = EXCLUDED.public,
+       file_size_limit    = EXCLUDED.file_size_limit,
+       allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+
+/* ============================================================================
+   2. PERMISOS DE TABLA
+
+   RLS decide QUÉ filas, pero antes hace falta poder tocar la tabla. Sin
+   esto, las políticas de abajo no llegan ni a evaluarse.
+   ============================================================================ */
+GRANT USAGE ON SCHEMA storage TO taseca_app;
+GRANT SELECT ON storage.buckets TO taseca_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO taseca_app;
+
+
+/* ============================================================================
+   3. QUÉ PUEDE ESCRIBIR CADA EMPRESA
+
+   `storage.foldername(name)` parte la ruta: de 'empresa_nascar/00123.jpg'
+   devuelve {empresa_nascar}. El primer tramo tiene que ser el código de la
+   empresa que dice el token, y punto.
+
+   Se compara contra core.empresas en vez de confiar en un código que venga
+   en el token: el token trae el id, que es lo que la base controla.
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION core.fn_storage_carpeta_propia(p_name TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+          FROM core.empresas e
+         WHERE e.codigo = (storage.foldername(p_name))[1]
+           AND e.id     = core.fn_jwt_empresa()
+    );
+$$;
+
+COMMENT ON FUNCTION core.fn_storage_carpeta_propia(TEXT) IS
+    'TRUE si el primer tramo de la ruta es el código de la empresa del token. Aísla las fotos de la carta por empresa dentro de Storage.';
+
+GRANT EXECUTE ON FUNCTION core.fn_storage_carpeta_propia(TEXT) TO taseca_app;
+
+
+DO $$
+BEGIN
+    /* Se recrean siempre: así una corrección de la regla se aplica al
+       volver a ejecutar el archivo, en vez de quedar la versión vieja. */
+    DROP POLICY IF EXISTS carta_subir     ON storage.objects;
+    DROP POLICY IF EXISTS carta_reemplazar ON storage.objects;
+    DROP POLICY IF EXISTS carta_borrar    ON storage.objects;
+    DROP POLICY IF EXISTS carta_leer_app  ON storage.objects;
+
+    CREATE POLICY carta_subir ON storage.objects
+        FOR INSERT TO taseca_app
+        WITH CHECK (bucket_id = 'carta' AND core.fn_storage_carpeta_propia(name));
+
+    CREATE POLICY carta_reemplazar ON storage.objects
+        FOR UPDATE TO taseca_app
+        USING      (bucket_id = 'carta' AND core.fn_storage_carpeta_propia(name))
+        WITH CHECK (bucket_id = 'carta' AND core.fn_storage_carpeta_propia(name));
+
+    CREATE POLICY carta_borrar ON storage.objects
+        FOR DELETE TO taseca_app
+        USING (bucket_id = 'carta' AND core.fn_storage_carpeta_propia(name));
+
+    /* Leer la carpeta propia con sesión. El público lee por la URL del
+       bucket, que no pasa por aquí; esto es para que el panel pueda
+       listar lo que ya subió. */
+    CREATE POLICY carta_leer_app ON storage.objects
+        FOR SELECT TO taseca_app
+        USING (bucket_id = 'carta');
+END;
+$$;
+
+
+/* ============================================================================
+   4. COMPROBACIÓN
+
+   Que quede instalado de verdad, no «sin error». Si algo falta, se dice
+   aquí y no tres días después, cuando alguien no pueda subir una foto.
+   ============================================================================ */
+DO $$
+DECLARE
+    v_bucket   BOOLEAN;
+    v_politicas INTEGER;
+BEGIN
+    SELECT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'carta') INTO v_bucket;
+    SELECT count(*) INTO v_politicas
+      FROM pg_policies
+     WHERE schemaname = 'storage' AND tablename = 'objects'
+       AND policyname IN ('carta_subir', 'carta_reemplazar', 'carta_borrar', 'carta_leer_app');
+
+    IF NOT v_bucket THEN
+        RAISE EXCEPTION 'El bucket «carta» no quedó creado: revisa el paso 1.';
+    END IF;
+    IF v_politicas <> 4 THEN
+        RAISE EXCEPTION 'Faltan políticas de storage.objects: hay % de 4.', v_politicas;
+    END IF;
+
+    RAISE NOTICE '✔ Bucket «carta» listo y con sus 4 políticas.';
+    RAISE NOTICE '  Las fotos van a  carta/<codigo_empresa>/<codigo_producto>.jpg';
+END;
+$$;
+
+
+/* ============================================================================
+   28_RECETAS_CANTIDAD
+   Cuánto gasta cada plato de cada insumo
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 28 · CUÁNTO GASTA CADA PLATO, NO SÓLO CUÁLES
+   ----------------------------------------------------------------------------
+   Un pollo entero gasta 2 alas. Hasta ahora el sistema sabía QUÉ platos
+   gastan un insumo, pero no CUÁNTO: cada venta descontaba una unidad, así
+   que vender un pollo restaba «un ala».
+
+   LO QUE YA ESTABA HECHO
+
+     `core.producto_insumos.cantidad` existe desde 01_estructura.sql, con
+     DEFAULT 1 y CHECK (cantidad > 0). Y los cuatro sitios que calculan
+     consumo YA multiplican por ella:
+
+       core.fn_z_insumo            (13)  SUM(it.cantidad * pi.cantidad)
+       api.v_cruce_inventario      (05)  idem
+       el cruce de la fase 2       (13)  idem
+       api.sp_anular_pedido        (04)  idem, para el retorno
+
+     Es decir: el cálculo siempre estuvo bien. Lo que no había era forma de
+     ESCRIBIR ese número — el procedimiento insertaba sin cantidad y se
+     quedaba en el 1 por defecto, y la vista de lectura devolvía sólo ids.
+
+   LO QUE HACE ESTE ARCHIVO
+
+     1. `rest.stock` devuelve pares {producto_id, cantidad} en vez de ids
+        sueltos, para que el panel pueda mostrar la cantidad que hay.
+     2. `rest.guardar_insumo` acepta esos pares y escribe la cantidad.
+
+   POR QUÉ NO SE TOCA api.sp_guardar_insumo
+
+     Ese procedimiento hace más cosas de las que parece: comprueba que cada
+     producto sea de la empresa, BORRA los enlaces que se quitaron y crea
+     los nuevos. Cambiarle la firma obligaría a reproducir todo su cuerpo
+     aquí, con el riesgo de que las dos copias se separen.
+
+     Así que sigue encargándose de CUÁLES —que es lo suyo— y la cantidad se
+     ajusta después, en el envoltorio. El `ON CONFLICT DO NOTHING` de su
+     INSERT respeta la cantidad de los enlaces que ya existían; el UPDATE de
+     aquí la pone al día.
+
+   Compatible hacia atrás: si `productos` llega como una lista de números
+   —como la mandaba la versión anterior de la aplicación— cada uno vale 1,
+   que es exactamente lo que hacía antes.
+
+   No cambia ningún dato existente: las recetas que hoy existen valen 1 y
+   siguen valiendo 1. Se puede ejecutar más de una vez.
+   Requiere: 00 … 27 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. LA LECTURA
+
+   Se recrea la vista entera porque en PostgreSQL no se puede cambiar el
+   TIPO de una columna de una vista con CREATE OR REPLACE: `productos` pasa
+   de ser una lista de números a una de objetos. Por eso el DROP.
+
+   Lo demás es idéntico a 13_fase2_inventario.sql: si esa vista cambia, hay
+   que volver a traer el cambio aquí.
+   ============================================================================ */
+DROP VIEW IF EXISTS rest.stock;
+
+CREATE VIEW rest.stock AS
+/* MATERIALIZED igual que en el original: sin eso, el planificador puede
+   meter las funciones del token dentro del bucle y evaluarlas por fila. */
+WITH sesion AS MATERIALIZED (
+    SELECT core.fn_jwt_usuario() AS usuario_id, core.fn_jwt_empresa() AS empresa_id
+)
+SELECT i.id AS insumo_id, i.empresa_id, i.codigo, i.nombre, ci.nombre AS categoria, a.codigo AS area,
+       um.codigo AS unidad_medida, i.activo,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('unidad_id', iu.unidad_id, 'stock_actual', iu.stock_actual,
+                                                     'stock_minimo', iu.stock_minimo) ORDER BY iu.unidad_id)
+                   FROM core.insumo_unidades iu WHERE iu.insumo_id = i.id), '[]') AS unidades,
+       /* Qué platos gastan este insumo y CUÁNTO gasta cada uno. Antes era
+          `jsonb_agg(pi.producto_id)`, una lista de ids. */
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('producto_id', pi.producto_id,
+                                                     'cantidad', pi.cantidad)
+                                  ORDER BY pi.producto_id)
+                   FROM core.producto_insumos pi WHERE pi.insumo_id = i.id), '[]') AS productos,
+       GREATEST(i.actualizado_en, (SELECT max(iu.actualizado_en) FROM core.insumo_unidades iu WHERE iu.insumo_id = i.id)) AS actualizado_en
+  FROM core.insumos i
+  JOIN sesion s                  ON s.empresa_id = i.empresa_id
+  JOIN core.categorias_insumo ci ON ci.id = i.categoria_insumo_id
+  JOIN core.areas_inventario a   ON a.id = i.area_id
+  JOIN core.unidades_medida um   ON um.id = i.unidad_medida_id
+ WHERE EXISTS (SELECT 1 FROM unnest(ARRAY['stock', 'entradas', 'cierres', 'cierres_registrar']) p
+                WHERE api.fn_tiene_permiso(s.usuario_id, p))
+   AND EXISTS (SELECT 1 FROM core.insumo_unidades iu
+                WHERE iu.insumo_id = i.id AND core.fn_usuario_en_unidad(s.usuario_id, iu.unidad_id));
+
+GRANT SELECT ON rest.stock TO taseca_app;
+
+
+/* ============================================================================
+   2. LA ESCRITURA
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION rest.guardar_insumo(p_insumo JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_usuario INTEGER := core.fn_exigir_sesion();
+    v_empresa INTEGER := core.fn_jwt_empresa();
+    v_id      INTEGER := NULLIF(p_insumo ->> 'insumo_id', '')::INTEGER;
+    v_unidades  INTEGER[];
+    v_productos INTEGER[];
+    v_receta    JSONB := NULL;
+BEGIN
+    v_unidades := ARRAY(SELECT x::INTEGER FROM jsonb_array_elements_text(COALESCE(p_insumo -> 'unidades', '[]')) x);
+
+    /* `productos` viene de dos formas, y las dos valen:
+         [12, 13]                                  -> cada uno gasta 1
+         [{"producto_id":12,"cantidad":2}, …]      -> lo que diga cada uno
+       La segunda es la que manda la aplicación desde este cambio; la
+       primera la mandaba la anterior, y un navegador con la página vieja
+       en caché sigue mandándola. */
+    IF jsonb_typeof(p_insumo -> 'productos') = 'array' THEN
+        v_receta := (
+            SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                       'producto_id', CASE WHEN jsonb_typeof(x) = 'object'
+                                           THEN (x ->> 'producto_id')::INTEGER
+                                           ELSE x::TEXT::INTEGER END,
+                       'cantidad',    CASE WHEN jsonb_typeof(x) = 'object'
+                                           THEN COALESCE(NULLIF(x ->> 'cantidad', '')::NUMERIC, 1)
+                                           ELSE 1 END)), '[]'::JSONB)
+              FROM jsonb_array_elements(p_insumo -> 'productos') x
+        );
+
+        v_productos := ARRAY(SELECT (r ->> 'producto_id')::INTEGER
+                               FROM jsonb_array_elements(v_receta) r);
+    END IF;
+
+    /* CUÁLES: el procedimiento comprueba la empresa de cada producto,
+       borra los que se quitaron y crea los que faltan. */
+    CALL api.sp_guardar_insumo(
+        p_empresa_id    => v_empresa,
+        p_codigo        => p_insumo ->> 'codigo',
+        p_nombre        => p_insumo ->> 'nombre',
+        p_categoria     => p_insumo ->> 'categoria',
+        p_area          => p_insumo ->> 'area',
+        p_unidad_medida => p_insumo ->> 'unidad',
+        p_unidades      => v_unidades,
+        p_usuario_id    => v_usuario,
+        p_activo        => COALESCE((p_insumo ->> 'activo')::BOOLEAN, TRUE),
+        p_stock_actual  => NULLIF(p_insumo ->> 'stock_actual', '')::NUMERIC,
+        p_stock_minimo  => NULLIF(p_insumo ->> 'stock_minimo', '')::NUMERIC,
+        p_productos     => v_productos,
+        p_insumo_id     => v_id);
+
+    /* CUÁNTO. Va después del CALL a propósito: antes los enlaces nuevos
+       todavía no existen. Una cantidad que no sea positiva se queda en 1,
+       que es lo que dice el CHECK de la tabla. */
+    IF v_receta IS NOT NULL THEN
+        UPDATE core.producto_insumos pi
+           SET cantidad = GREATEST((r ->> 'cantidad')::NUMERIC, 0.001)
+          FROM jsonb_array_elements(v_receta) r
+         WHERE pi.insumo_id = v_id
+           AND pi.producto_id = (r ->> 'producto_id')::INTEGER
+           AND pi.cantidad IS DISTINCT FROM GREATEST((r ->> 'cantidad')::NUMERIC, 0.001);
+    END IF;
+
+    RETURN jsonb_build_object('insumo_id', v_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION rest.guardar_insumo(JSONB) TO taseca_app;
+
+
+/* ============================================================================
+   3. COMPROBACIÓN
+
+   Que quede instalado de verdad, no «sin error».
+   ============================================================================ */
+DO $$
+DECLARE
+    v_tipo TEXT;
+BEGIN
+    /* La vista tiene que devolver objetos, no números. Se mira el primer
+       insumo que tenga alguna receta; si no hay ninguna, no hay nada que
+       comprobar y tampoco nada que se pueda haber roto. */
+    SELECT jsonb_typeof(pi.fila -> 0) INTO v_tipo
+      FROM (SELECT COALESCE((SELECT jsonb_agg(jsonb_build_object('producto_id', x.producto_id,
+                                                                 'cantidad', x.cantidad))
+                               FROM core.producto_insumos x WHERE x.insumo_id = i.id), '[]') AS fila
+              FROM core.insumos i
+             WHERE EXISTS (SELECT 1 FROM core.producto_insumos p WHERE p.insumo_id = i.id)
+             LIMIT 1) pi;
+
+    IF v_tipo IS NOT NULL AND v_tipo <> 'object' THEN
+        RAISE EXCEPTION 'rest.stock sigue devolviendo ids sueltos: revisa el paso 1.';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'guardar_insumo'
+                     AND pronamespace = 'rest'::regnamespace) THEN
+        RAISE EXCEPTION 'rest.guardar_insumo no quedó instalada: revisa el paso 2.';
+    END IF;
+
+    RAISE NOTICE '✔ Las recetas ya guardan cantidad.';
+    RAISE NOTICE '  Un pollo que gaste 2 alas se marca en Panel → Stock → el insumo.';
+END;
+$$;
+
+
+/* ============================================================================
+   29_BILLETERAS_SEPARADAS
+   Nequi, Daviplata y Bre-B, cada una por su lado
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 29 · CADA BILLETERA POR SU LADO
+   ----------------------------------------------------------------------------
+   Había un solo método llamado «Transferencia · Nequi, Daviplata o
+   Bancolombia». Al cuadrar la caja eso no sirve: entra plata por tres sitios
+   distintos y el informe sólo sabe decir «transferencia». Para saber cuánto
+   entró por Nequi hay que abrir los pedidos uno por uno.
+
+   Ahora son métodos separados: Nequi, Daviplata y Bre-B.
+
+   LO QUE **NO** CAMBIA: EL ARQUEO
+
+     `core.metodos_pago.grupo_caja` dice a qué columna del cruce va el
+     dinero, y las tres van a 'transferencia', igual que el método viejo. El
+     cruce de caja sigue mostrando UNA columna de transferencias, porque
+     para el arqueo las tres son lo mismo: dinero que no está en el cajón.
+
+     Separadas para el control, juntas para cuadrar. Si fueran a 'otros' o,
+     peor, a 'efectivo', el arqueo de todos los días anteriores dejaría de
+     cuadrar.
+
+   EL MÉTODO VIEJO NO SE BORRA
+
+     Los pedidos ya pagados apuntan a él (`metodo_pago_id` es FK con ON
+     DELETE RESTRICT, y con razón: una factura tiene que seguir diciendo con
+     qué se pagó). Se queda en el catálogo, se le cambia el nombre a «Otra
+     transferencia» —que es lo que pasa a ser— y se APAGA para cada empresa.
+
+     Apagarlo no borra nada y se deshace con un clic desde
+     ⚙️ Configuración → 💳 Métodos de pago. Quien reciba por un banco que no
+     sea de los tres lo vuelve a encender.
+
+   POR QUÉ SE TOCA A TODAS LAS EMPRESAS
+
+     `core.metodos_pago` es un catálogo global: los métodos nuevos quedan
+     disponibles para todas. Y el genérico se apaga en todas porque el
+     problema es el mismo en todas — mientras siga encendido, la gente lo
+     sigue eligiendo y el control sigue sin servir.
+
+   Ninguna venta cambia de valor ni de grupo. Se puede ejecutar más de una
+   vez.
+   Requiere: 00 … 28 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. LOS MÉTODOS NUEVOS, EN EL CATÁLOGO GLOBAL
+   ============================================================================ */
+INSERT INTO core.metodos_pago (codigo, nombre, grupo_caja) VALUES
+    ('nequi',     'Nequi',     'transferencia'),
+    ('daviplata', 'Daviplata', 'transferencia'),
+    ('breb',      'Bre-B',     'transferencia')
+ON CONFLICT (codigo) DO UPDATE
+   SET nombre     = EXCLUDED.nombre,
+       grupo_caja = EXCLUDED.grupo_caja;
+
+/* El genérico pasa a ser lo que de verdad es: el cajón de sastre. */
+UPDATE core.metodos_pago
+   SET nombre = 'Otra transferencia'
+ WHERE codigo = 'transferencia';
+
+
+/* ============================================================================
+   2. QUÉ OFRECE CADA EMPRESA
+
+   Se le dan los tres a toda empresa que ya ofreciera transferencias: si no
+   las ofrecía, no es asunto de este archivo meterle métodos nuevos.
+
+   El `orden` sale del que tenía el genérico, para que aparezcan donde la
+   gente ya está acostumbrada a buscarlos.
+   ============================================================================ */
+INSERT INTO core.empresa_metodos_pago (empresa_id, metodo_pago_id, activo, descripcion, orden)
+SELECT viejo.empresa_id,
+       nuevo.id,
+       TRUE,
+       x.descripcion,
+       viejo.orden + x.desplazamiento
+  FROM core.empresa_metodos_pago viejo
+  JOIN core.metodos_pago mp_viejo ON mp_viejo.id = viejo.metodo_pago_id
+                                 AND mp_viejo.codigo = 'transferencia'
+ CROSS JOIN (VALUES
+        ('nequi',     'Transfieres por Nequi y despachamos apenas confirmemos el pago.',     0),
+        ('daviplata', 'Transfieres por Daviplata y despachamos apenas confirmemos el pago.', 1),
+        ('breb',      'Pagas con tu llave Bre-B desde cualquier banco.',                     2)
+     ) AS x (codigo, descripcion, desplazamiento)
+  JOIN core.metodos_pago nuevo ON nuevo.codigo = x.codigo
+ON CONFLICT (empresa_id, metodo_pago_id) DO NOTHING;
+
+/* Y se apaga el genérico donde se acaban de poner los tres. Nunca se deja a
+   una empresa sin NINGÚN método: si por lo que sea no entró ninguno de los
+   nuevos, el viejo se queda encendido. */
+UPDATE core.empresa_metodos_pago emp
+   SET activo = FALSE
+  FROM core.metodos_pago mp
+ WHERE mp.id = emp.metodo_pago_id
+   AND mp.codigo = 'transferencia'
+   AND emp.activo
+   AND EXISTS (
+        SELECT 1
+          FROM core.empresa_metodos_pago otro
+          JOIN core.metodos_pago m2 ON m2.id = otro.metodo_pago_id
+         WHERE otro.empresa_id = emp.empresa_id
+           AND otro.activo
+           AND m2.codigo IN ('nequi', 'daviplata', 'breb'));
+
+
+/* ============================================================================
+   3. COMPROBACIÓN
+   ============================================================================ */
+DO $$
+DECLARE
+    v_nuevos   INTEGER;
+    v_grupos   INTEGER;
+    v_sin_nada INTEGER;
+BEGIN
+    SELECT count(*) INTO v_nuevos
+      FROM core.metodos_pago WHERE codigo IN ('nequi', 'daviplata', 'breb');
+
+    SELECT count(*) INTO v_grupos
+      FROM core.metodos_pago
+     WHERE codigo IN ('nequi', 'daviplata', 'breb', 'transferencia')
+       AND grupo_caja <> 'transferencia';
+
+    /* Nadie puede quedarse sin forma de cobrar. */
+    SELECT count(*) INTO v_sin_nada
+      FROM core.empresas e
+     WHERE EXISTS (SELECT 1 FROM core.empresa_metodos_pago x WHERE x.empresa_id = e.id)
+       AND NOT EXISTS (SELECT 1 FROM core.empresa_metodos_pago x
+                        WHERE x.empresa_id = e.id AND x.activo);
+
+    IF v_nuevos <> 3 THEN
+        RAISE EXCEPTION 'Faltan métodos nuevos: hay % de 3.', v_nuevos;
+    END IF;
+    IF v_grupos <> 0 THEN
+        RAISE EXCEPTION '% método(s) de transferencia quedaron fuera del grupo «transferencia»: el arqueo no cuadraría.', v_grupos;
+    END IF;
+    IF v_sin_nada <> 0 THEN
+        RAISE EXCEPTION '% empresa(s) se quedaron sin ningún método de pago activo.', v_sin_nada;
+    END IF;
+
+    RAISE NOTICE '✔ Nequi, Daviplata y Bre-B separados, los tres al grupo «transferencia».';
+    RAISE NOTICE '  El genérico queda apagado; se reactiva desde Configuración → Métodos de pago.';
+END;
+$$;
+
+
+/* ============================================================================
+   30_RECARGO_POR_METODO
+   El recargo que la empresa le cobra por método de pago
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 30 · EL RECARGO DE PAGAR CON CADA MÉTODO
+   ----------------------------------------------------------------------------
+   Lo que se le cobra al cliente POR PAGAR ASÍ: la comisión de la pasarela,
+   el 4×1000, lo que el negocio decida. Configurable por método desde
+   ⚙️ Configuración → 💳 Métodos de pago.
+
+   DOS FORMAS, PORQUE LAS DOS EXISTEN EN LA CALLE
+
+     'fijo'        tantos pesos, se cobre lo que se cobre
+     'porcentaje'  tanto por ciento de lo que va a pasar por ese método
+
+   La BASE del porcentaje es subtotal + domicilio. Cobrarlo sólo sobre la
+   comida dejaría sin cubrir la comisión del domicilio, que también pasa por
+   la misma pasarela.
+
+   SE CALCULA EN LA BASE, NO EN EL NAVEGADOR
+
+     El pedido llega del portal del cliente, y el portal no es de fiar: si
+     el recargo viniera en la petición, cualquiera podría mandarlo en cero.
+     Se calcula aquí con la configuración de la empresa, igual que ya se
+     hace con el costo del domicilio (que sale de la zona, no de lo que
+     diga el cliente).
+
+   SE GUARDA, NO SE RECALCULA AL LEER
+
+     `core.pedidos.recargo_pago` es una columna, no una cuenta de la vista.
+     Si mañana el recargo de Nequi sube a $5.000, las facturas de ayer
+     tienen que seguir diciendo los $1.500 que se cobraron de verdad. Una
+     factura que cambia sola no es una factura.
+
+   POR QUÉ NO SE TOCA api.sp_crear_pedido
+
+     El recargo depende del subtotal, y el subtotal no existe hasta que se
+     insertan los ítems, que es lo último que hace ese procedimiento. No
+     puede ser un trigger BEFORE sobre core.pedidos.
+
+     Y recrear el procedimiento entero para añadirle tres líneas al final
+     obligaría a copiar su cuerpo aquí, con el riesgo de que las dos copias
+     se separen. Así que se hace en rest.crear_pedido, que es el envoltorio
+     por donde entran TODOS los pedidos y cabe en media pantalla.
+
+   Nada de lo que ya existe cambia de valor: el recargo arranca en 0 para
+   todos los métodos, y 0 es lo que se cobraba. Se puede ejecutar más de una
+   vez.
+   Requiere: 00 … 29 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. DÓNDE SE CONFIGURA Y DÓNDE SE GUARDA
+   ============================================================================ */
+ALTER TABLE core.empresa_metodos_pago
+    ADD COLUMN IF NOT EXISTS recargo      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS recargo_tipo VARCHAR(12)   NOT NULL DEFAULT 'fijo';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_empresa_metodos_recargo') THEN
+        ALTER TABLE core.empresa_metodos_pago
+            ADD CONSTRAINT ck_empresa_metodos_recargo CHECK (recargo >= 0);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_empresa_metodos_recargo_tipo') THEN
+        ALTER TABLE core.empresa_metodos_pago
+            ADD CONSTRAINT ck_empresa_metodos_recargo_tipo
+            CHECK (recargo_tipo IN ('fijo', 'porcentaje'));
+    END IF;
+END;
+$$;
+
+COMMENT ON COLUMN core.empresa_metodos_pago.recargo IS
+    'Lo que se le cobra al cliente por pagar con este método. 0 = no se cobra nada.';
+COMMENT ON COLUMN core.empresa_metodos_pago.recargo_tipo IS
+    'fijo = pesos · porcentaje = % de (subtotal + domicilio).';
+
+ALTER TABLE core.pedidos
+    ADD COLUMN IF NOT EXISTS recargo_pago NUMERIC(12,2) NOT NULL DEFAULT 0;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_pedidos_recargo_pago') THEN
+        ALTER TABLE core.pedidos
+            ADD CONSTRAINT ck_pedidos_recargo_pago CHECK (recargo_pago >= 0);
+    END IF;
+END;
+$$;
+
+COMMENT ON COLUMN core.pedidos.recargo_pago IS
+    'Recargo del método de pago, congelado al crear el pedido. No se recalcula.';
+
+
+/* ============================================================================
+   2. LA REGLA, EN UN SOLO SITIO
+
+   Para que la base y js/store.js (recargoDeMetodo) digan el mismo número.
+   Se redondea al peso: no hay moneda de a céntimo y un total con decimales
+   no se puede cobrar en caja.
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION core.fn_recargo_pago(p_empresa_id INTEGER, p_metodo_pago_id INTEGER, p_base NUMERIC)
+RETURNS NUMERIC
+LANGUAGE sql STABLE
+SET search_path = core, public
+AS $$
+    /* OJO CON DÓNDE VA EL COALESCE: envuelve la CONSULTA, no el valor.
+       Esto salió mal la primera vez y costó caro —ver la migración 33—:
+       con el COALESCE por dentro protegía de que el cálculo saliera nulo,
+       pero no de que la consulta no devolviera NINGUNA fila. Y no devuelve
+       ninguna en cuanto el recargo es 0, porque `emp.recargo > 0` la
+       descarta. Una función SQL sin filas devuelve NULL, pedidos.recargo_pago
+       es NOT NULL, y dejaron de poderse crear pedidos. */
+    SELECT COALESCE((
+        SELECT GREATEST(round(
+                   CASE WHEN emp.recargo_tipo = 'porcentaje'
+                        THEN COALESCE(p_base, 0) * emp.recargo / 100
+                        ELSE emp.recargo
+                   END
+               ), 0)
+          FROM core.empresa_metodos_pago emp
+         WHERE emp.empresa_id     = p_empresa_id
+           AND emp.metodo_pago_id = p_metodo_pago_id
+           AND emp.recargo > 0
+    ), 0);
+$$;
+
+COMMENT ON FUNCTION core.fn_recargo_pago(INTEGER, INTEGER, NUMERIC) IS
+    'Cuánto recarga un método de pago sobre una base. Sin recargo configurado devuelve 0, nunca NULL. Espejo de recargoDeMetodo() en js/store.js.';
+
+
+/* ============================================================================
+   3. EL TOTAL LO INCLUYE
+
+   Mismo texto que 05_vistas.sql salvo las tres líneas del recargo. Si esa
+   vista cambia, hay que volver a traer el cambio aquí.
+   ============================================================================ */
+CREATE OR REPLACE VIEW api.v_pedidos AS
+SELECT p.id AS pedido_id, p.empresa_id, p.unidad_id, u.nombre AS unidad, p.codigo,
+       tp.codigo AS tipo, tp.nombre AS tipo_nombre,
+       ep.codigo AS estado, ep.nombre AS estado_nombre, ep.orden AS estado_orden, ep.es_final,
+       ep.cuenta_como_venta,
+       pg.codigo AS estado_pago, pg.nombre AS estado_pago_nombre,
+       mp.codigo AS metodo_pago, mp.nombre AS metodo_pago_nombre, mp.grupo_caja,
+       me.numero AS mesa,
+       cl.nombre AS cliente, cl.telefono AS cliente_telefono,
+       p.direccion_entrega, p.indicaciones, z.nombre AS zona,
+       COALESCE(it.subtotal, 0)                                      AS subtotal,
+       p.costo_domicilio,
+       COALESCE(it.subtotal, 0) + p.costo_domicilio + p.recargo_pago AS total,
+       COALESCE(it.unidades, 0)                                        AS productos,
+       p.paga_con,
+       /* El cambio se calcula contra lo que de verdad hay que pagar: con el
+          recargo fuera, caja devolvería de más. */
+       CASE WHEN p.paga_con IS NOT NULL
+            THEN p.paga_con - (COALESCE(it.subtotal, 0) + p.costo_domicilio + p.recargo_pago)
+       END AS cambio,
+       p.fecha_operativa, p.motivo_cancelacion,
+       us.nombre AS tomado_por,
+       p.creado_en, p.actualizado_en,
+       /* AL FINAL a la fuerza: CREATE OR REPLACE VIEW no deja meter una
+          columna en medio ni renombrar las que hay. Su sitio natural
+          sería al lado de costo_domicilio, pero no se puede. */
+       p.recargo_pago
+  FROM core.pedidos p
+  JOIN core.unidades u        ON u.id = p.unidad_id
+  JOIN core.tipos_pedido tp   ON tp.id = p.tipo_pedido_id
+  JOIN core.estados_pedido ep ON ep.id = p.estado_pedido_id
+  JOIN core.estados_pago pg   ON pg.id = p.estado_pago_id
+  JOIN core.metodos_pago mp   ON mp.id = p.metodo_pago_id
+  LEFT JOIN core.mesas me           ON me.id = p.mesa_id
+  LEFT JOIN core.clientes cl        ON cl.id = p.cliente_id
+  LEFT JOIN core.zonas_domicilio z  ON z.id = p.zona_domicilio_id
+  LEFT JOIN core.usuarios us        ON us.id = p.tomado_por_id
+  LEFT JOIN LATERAL (
+        SELECT SUM(i.precio_unitario * i.cantidad) AS subtotal, SUM(i.cantidad) AS unidades
+          FROM core.pedido_items i WHERE i.pedido_id = p.id
+  ) it ON TRUE;
+
+
+/* ============================================================================
+   4. EL PANEL VE LA CONFIGURACIÓN
+
+   OJO: NO es el texto de 15_fase2_configuracion_plataforma.sql. Esa vista
+   creció después —migraciones posteriores le añadieron n_unidades,
+   n_usuarios y patron, y le cambiaron el orden— y CREATE OR REPLACE VIEW
+   no deja quitar columnas ni reordenarlas. Esto es la vista TAL COMO ESTÁ
+   instalada, cambiando sólo los dos campos nuevos de `metodos_pago`.
+
+   Si vuelve a crecer, hay que traer otra vez su definición real:
+     SELECT pg_get_viewdef('api.v_empresa_ficha'::regclass, true);
+   ============================================================================ */
+CREATE OR REPLACE VIEW api.v_empresa_ficha AS
+SELECT e.id AS empresa_id,
+       e.codigo,
+       e.nombre_comercial,
+       e.razon_social,
+       e.nit,
+       e.eslogan,
+       e.descripcion,
+       e.estado,
+       e.hora_corte_operativa,
+       e.telefono,
+       e.whatsapp,
+       e.email,
+       e.direccion,
+       e.horario_general,
+       e.instagram_url,
+       e.facebook_url,
+       e.tiempo_mesa,
+       e.tiempo_domicilio,
+       e.color_primario,
+       e.color_secundario,
+       e.color_acento,
+       e.color_fondo,
+       e.tipografia,
+       e.logo_texto,
+       e.logo_acento,
+       e.iniciales,
+       e.lema,
+       e.plantilla,
+       e.creado_en,
+       core.fn_fecha_operativa(e.id, now()) AS jornada_actual,
+       (SELECT i.actualizado_en FROM core.empresa_imagenes i WHERE i.empresa_id = e.id) AS imagenes_version,
+       (SELECT jsonb_object_agg(m.modulo, m.activo) FROM api.v_empresa_modulos m WHERE m.empresa_id = e.id) AS modulos,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('codigo', mp.codigo, 'nombre', mp.nombre, 'grupo', mp.grupo_caja,
+                                                     'descripcion', emp.descripcion, 'activo', emp.activo,
+                                                     'recargo', emp.recargo, 'recargo_tipo', emp.recargo_tipo)
+                                  ORDER BY emp.orden, mp.id)
+                   FROM core.empresa_metodos_pago emp
+                   JOIN core.metodos_pago mp ON mp.id = emp.metodo_pago_id
+                  WHERE emp.empresa_id = e.id), '[]'::jsonb) AS metodos_pago,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('entidad', c.entidad, 'numero', c.numero, 'titular', c.titular)
+                                  ORDER BY c.id)
+                   FROM core.cuentas_recaudo c
+                  WHERE c.empresa_id = e.id AND c.activa), '[]'::jsonb) AS cuentas,
+       (SELECT count(*) FROM core.unidades u  WHERE u.empresa_id  = e.id) AS n_unidades,
+       (SELECT count(*) FROM core.usuarios us WHERE us.empresa_id = e.id) AS n_usuarios,
+       e.patron
+  FROM core.empresas e;
+
+
+/* ============================================================================
+   4b. GUARDAR LA CONFIGURACIÓN
+
+   Mismo procedimiento que 15_fase2_configuracion_plataforma.sql con los dos
+   campos nuevos. Si no llegan —una página vieja en caché— se deja lo que ya
+   había en vez de ponerlo en cero: un recargo configurado no se borra por
+   guardar otra cosa desde otra pestaña.
+   ============================================================================ */
+CREATE OR REPLACE PROCEDURE api.sp_guardar_metodos_pago(p_empresa_id INTEGER, p_usuario_id INTEGER, p_metodos JSONB)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v JSONB;
+    v_orden SMALLINT := 0;
+BEGIN
+    PERFORM core.fn_preparar_operacion(p_usuario_id, 'config_pagos');
+    PERFORM core.fn_exigir_empresa_propia(p_usuario_id, p_empresa_id);
+
+    FOR v IN SELECT * FROM jsonb_array_elements(COALESCE(p_metodos, '[]')) LOOP
+        v_orden := v_orden + 1;
+        IF NOT EXISTS (SELECT 1 FROM core.metodos_pago WHERE codigo = v ->> 'codigo') THEN
+            RAISE EXCEPTION 'El método de pago "%" no existe.', v ->> 'codigo';
+        END IF;
+        INSERT INTO core.empresa_metodos_pago (empresa_id, metodo_pago_id, activo, descripcion, orden,
+                                               recargo, recargo_tipo)
+        VALUES (p_empresa_id, core.fn_id_catalogo('metodos_pago', v ->> 'codigo'),
+                COALESCE((v ->> 'activo')::BOOLEAN, TRUE), core.fn_texto(v ->> 'descripcion', 250), v_orden,
+                GREATEST(COALESCE((v ->> 'recargo')::NUMERIC, 0), 0),
+                CASE WHEN v ->> 'recargo_tipo' = 'porcentaje' THEN 'porcentaje' ELSE 'fijo' END)
+        ON CONFLICT (empresa_id, metodo_pago_id) DO UPDATE
+           SET activo = EXCLUDED.activo,
+               descripcion = COALESCE(EXCLUDED.descripcion, core.empresa_metodos_pago.descripcion),
+               recargo = CASE WHEN v ? 'recargo' THEN EXCLUDED.recargo
+                              ELSE core.empresa_metodos_pago.recargo END,
+               recargo_tipo = CASE WHEN v ? 'recargo_tipo' THEN EXCLUDED.recargo_tipo
+                                   ELSE core.empresa_metodos_pago.recargo_tipo END;
+    END LOOP;
+
+    IF NOT EXISTS (SELECT 1 FROM core.empresa_metodos_pago WHERE empresa_id = p_empresa_id AND activo) THEN
+        RAISE EXCEPTION 'Tiene que quedar al menos un método de pago activo.';
+    END IF;
+END;
+$$;
+
+
+/* ============================================================================
+   5. AL CREAR EL PEDIDO
+
+   Después del CALL, que es cuando ya existen los ítems y hay subtotal.
+
+   HAY DOS VERSIONES de rest.crear_pedido y se parchean LAS DOS: la de 11
+   parámetros y la de 12 con `p_clave`, que añadió
+   23_pedidos_sin_duplicados.sql. La aplicación manda p_clave, así que usa
+   la de 12 — parchear sólo la de 11 deja el recargo en una función que
+   nadie llama, y eso no se nota hasta que alguien pregunta por qué los
+   totales no traen el recargo.
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION rest.crear_pedido(
+    p_unidad_id         INTEGER,
+    p_tipo              TEXT,
+    p_metodo_pago       TEXT,
+    p_items             JSONB,
+    p_mesa              TEXT    DEFAULT NULL,
+    p_cliente_nombre    TEXT    DEFAULT NULL,
+    p_cliente_telefono  TEXT    DEFAULT NULL,
+    p_direccion         TEXT    DEFAULT NULL,
+    p_indicaciones      TEXT    DEFAULT NULL,
+    p_zona_id           INTEGER DEFAULT NULL,
+    p_paga_con          NUMERIC DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_id     BIGINT;
+    v_codigo VARCHAR;
+BEGIN
+    CALL api.sp_crear_pedido(
+        p_unidad_id => p_unidad_id, p_tipo => p_tipo, p_metodo_pago => p_metodo_pago, p_items => p_items,
+        p_usuario_id => core.fn_jwt_usuario(), p_mesa => p_mesa,
+        p_cliente_nombre => p_cliente_nombre, p_cliente_telefono => p_cliente_telefono,
+        p_direccion => p_direccion, p_indicaciones => p_indicaciones, p_zona_id => p_zona_id,
+        p_paga_con => p_paga_con, p_pedido_id => v_id, p_codigo => v_codigo);
+
+    /* El recargo del método, congelado. Va aquí y no dentro del
+       procedimiento porque necesita el subtotal, que no existe hasta que
+       ese procedimiento termina de insertar los ítems. */
+    UPDATE core.pedidos p
+       SET recargo_pago = core.fn_recargo_pago(
+               p.empresa_id, p.metodo_pago_id,
+               COALESCE((SELECT SUM(i.precio_unitario * i.cantidad)
+                           FROM core.pedido_items i WHERE i.pedido_id = p.id), 0)
+               + p.costo_domicilio)
+     WHERE p.id = v_id;
+
+    RETURN core.fn_pedido_json(v_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC)
+      TO taseca_anon, taseca_app;
+
+
+/* La versión de 12 parámetros, que es la que llama la aplicación. */
+CREATE OR REPLACE FUNCTION rest.crear_pedido(
+    p_unidad_id         INTEGER,
+    p_tipo              TEXT,
+    p_metodo_pago       TEXT,
+    p_items             JSONB,
+    p_mesa              TEXT    DEFAULT NULL,
+    p_cliente_nombre    TEXT    DEFAULT NULL,
+    p_cliente_telefono  TEXT    DEFAULT NULL,
+    p_direccion         TEXT    DEFAULT NULL,
+    p_indicaciones      TEXT    DEFAULT NULL,
+    p_zona_id           INTEGER DEFAULT NULL,
+    p_paga_con          NUMERIC DEFAULT NULL,
+    p_clave             TEXT    DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_id     BIGINT;
+    v_codigo VARCHAR;
+BEGIN
+    CALL api.sp_crear_pedido(
+        p_unidad_id => p_unidad_id, p_tipo => p_tipo, p_metodo_pago => p_metodo_pago, p_items => p_items,
+        p_usuario_id => core.fn_jwt_usuario(), p_mesa => p_mesa,
+        p_cliente_nombre => p_cliente_nombre, p_cliente_telefono => p_cliente_telefono,
+        p_direccion => p_direccion, p_indicaciones => p_indicaciones, p_zona_id => p_zona_id,
+        p_paga_con => p_paga_con, p_clave => NULLIF(trim(p_clave), ''),
+        p_pedido_id => v_id, p_codigo => v_codigo);
+
+    /* Con `clave` repetida sp_crear_pedido devuelve el pedido que YA
+       existía en vez de crear otro; el recargo que saldría es el mismo, y
+       el IS DISTINCT FROM evita reescribirlo. Reintentar no mueve una
+       factura. */
+    UPDATE core.pedidos p
+       SET recargo_pago = core.fn_recargo_pago(
+               p.empresa_id, p.metodo_pago_id,
+               COALESCE((SELECT SUM(i.precio_unitario * i.cantidad)
+                           FROM core.pedido_items i WHERE i.pedido_id = p.id), 0)
+               + p.costo_domicilio)
+     WHERE p.id = v_id
+       AND p.recargo_pago IS DISTINCT FROM core.fn_recargo_pago(
+               p.empresa_id, p.metodo_pago_id,
+               COALESCE((SELECT SUM(i.precio_unitario * i.cantidad)
+                           FROM core.pedido_items i WHERE i.pedido_id = p.id), 0)
+               + p.costo_domicilio);
+
+    RETURN core.fn_pedido_json(v_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC, TEXT)
+      TO taseca_anon, taseca_app;
+
+
+/* ============================================================================
+   6. COMPROBACIÓN
+   ============================================================================ */
+DO $$
+DECLARE
+    v_fijo NUMERIC;
+    v_pct  NUMERIC;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'core' AND table_name = 'pedidos'
+                      AND column_name = 'recargo_pago') THEN
+        RAISE EXCEPTION 'Falta core.pedidos.recargo_pago: revisa el paso 1.';
+    END IF;
+
+    /* La regla, con números a mano: 3% de 20.000 son 600, y un fijo es un
+       fijo pase lo que pase con la base. */
+    SELECT round(20000 * 3 / 100.0), 1500 INTO v_pct, v_fijo;
+    IF v_pct <> 600 THEN
+        RAISE EXCEPTION 'El porcentaje no cuadra: 3%% de 20000 dio %.', v_pct;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'fn_recargo_pago'
+                     AND pronamespace = 'core'::regnamespace) THEN
+        RAISE EXCEPTION 'Falta core.fn_recargo_pago: revisa el paso 2.';
+    END IF;
+
+    IF pg_get_viewdef('api.v_pedidos'::regclass) NOT LIKE '%recargo_pago%' THEN
+        RAISE EXCEPTION 'api.v_pedidos no incluye el recargo en el total.';
+    END IF;
+
+    /* Las DOS versiones de rest.crear_pedido, o el recargo se queda en la
+       que no se usa. */
+    IF (SELECT count(*) FROM pg_proc p
+         WHERE p.proname = 'crear_pedido' AND p.pronamespace = 'rest'::regnamespace
+           AND pg_get_functiondef(p.oid) LIKE '%fn_recargo_pago%') <> 2 THEN
+        RAISE EXCEPTION 'Alguna versión de rest.crear_pedido se quedó sin calcular el recargo.';
+    END IF;
+
+    RAISE NOTICE '✔ El recargo por método queda configurable, y en 0 para todos.';
+    RAISE NOTICE '  Se pone en Configuración → Métodos de pago, por método.';
+END;
+$$;
+
+
+/* ============================================================================
+   31_MODO_CLARO
+   Cada empresa elige si se ve clara u oscura
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 31 · CLARO U OSCURO, LO ELIGE LA EMPRESA
+   ----------------------------------------------------------------------------
+   Todo el sistema era oscuro. En un local iluminado, a mediodía, un panel
+   negro se ve como una herramienta de informático y no como el software del
+   restaurante; y hay marcas que sobre negro no son las suyas.
+
+   Ahora cada empresa elige, junto a sus colores: `core.empresas.modo`.
+
+   NO ES UNA PREFERENCIA DE QUIEN MIRA
+
+     Es del NEGOCIO, como el logo o la tipografía: todos sus clientes lo ven
+     igual. Por eso vive en core.empresas y no en el navegador de nadie.
+
+   LO QUE CAMBIA EN EL CÓDIGO: NADA
+
+     js/tema.js lo escribe en <html data-tema="claro">, y el bloque
+     [data-tema='claro'] de css/styles.css cambia los VALORES de los tokens
+     que ya estaban puestos. Ninguna pantalla tiene que saber en qué modo
+     está, igual que pasa con `patron` desde 20_motivo_marca.sql.
+
+   SIN DATO, OSCURO
+
+     Las empresas que ya existen se quedan exactamente como estaban. El modo
+     claro hay que pedirlo.
+
+   Se puede ejecutar más de una vez.
+   Requiere: 00 … 30 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. LA COLUMNA
+   ============================================================================ */
+ALTER TABLE core.empresas ADD COLUMN IF NOT EXISTS modo VARCHAR(10);
+
+COMMENT ON COLUMN core.empresas.modo IS
+    'claro u oscuro. Lo ven igual todos los clientes de la empresa. Sin dato, oscuro.';
+
+DO $blk$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_empresas_modo') THEN
+        ALTER TABLE core.empresas
+            ADD CONSTRAINT ck_empresas_modo CHECK (modo IS NULL OR modo IN ('claro', 'oscuro'));
+    END IF;
+END;
+$blk$;
+
+/* Lo que ya existe sigue oscuro, que es como se veía ayer. */
+UPDATE core.empresas SET modo = 'oscuro' WHERE modo IS NULL;
+
+
+/* ============================================================================
+   2. LAS VISTAS
+
+   OJO con el ORDEN: CREATE OR REPLACE VIEW no deja quitar columnas,
+   renombrarlas ni meter una en medio — sólo añadir al final. Por eso `modo`
+   va la última en las dos, detrás de `patron`.
+
+   Y OJO con la lista: estas vistas NO son las de 15_fase2_configuracion_
+   plataforma.sql. Han crecido (n_unidades, n_usuarios, patron, y el recargo
+   de la 30). Lo de aquí es su forma REAL. Si vuelven a crecer:
+     SELECT pg_get_viewdef('api.v_empresa_ficha'::regclass, true);
+   ============================================================================ */
+CREATE OR REPLACE VIEW api.v_empresa_ficha AS
+SELECT e.id AS empresa_id,
+       e.codigo,
+       e.nombre_comercial,
+       e.razon_social,
+       e.nit,
+       e.eslogan,
+       e.descripcion,
+       e.estado,
+       e.hora_corte_operativa,
+       e.telefono,
+       e.whatsapp,
+       e.email,
+       e.direccion,
+       e.horario_general,
+       e.instagram_url,
+       e.facebook_url,
+       e.tiempo_mesa,
+       e.tiempo_domicilio,
+       e.color_primario,
+       e.color_secundario,
+       e.color_acento,
+       e.color_fondo,
+       e.tipografia,
+       e.logo_texto,
+       e.logo_acento,
+       e.iniciales,
+       e.lema,
+       e.plantilla,
+       e.creado_en,
+       core.fn_fecha_operativa(e.id, now()) AS jornada_actual,
+       (SELECT i.actualizado_en FROM core.empresa_imagenes i WHERE i.empresa_id = e.id) AS imagenes_version,
+       (SELECT jsonb_object_agg(m.modulo, m.activo) FROM api.v_empresa_modulos m WHERE m.empresa_id = e.id) AS modulos,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('codigo', mp.codigo, 'nombre', mp.nombre, 'grupo', mp.grupo_caja,
+                                                     'descripcion', emp.descripcion, 'activo', emp.activo,
+                                                     'recargo', emp.recargo, 'recargo_tipo', emp.recargo_tipo)
+                                  ORDER BY emp.orden, mp.id)
+                   FROM core.empresa_metodos_pago emp
+                   JOIN core.metodos_pago mp ON mp.id = emp.metodo_pago_id
+                  WHERE emp.empresa_id = e.id), '[]'::jsonb) AS metodos_pago,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('entidad', c.entidad, 'numero', c.numero, 'titular', c.titular)
+                                  ORDER BY c.id)
+                   FROM core.cuentas_recaudo c
+                  WHERE c.empresa_id = e.id AND c.activa), '[]'::jsonb) AS cuentas,
+       (SELECT count(*) FROM core.unidades u  WHERE u.empresa_id  = e.id) AS n_unidades,
+       (SELECT count(*) FROM core.usuarios us WHERE us.empresa_id = e.id) AS n_usuarios,
+       e.patron,
+       e.modo
+  FROM core.empresas e;
+
+CREATE OR REPLACE VIEW rest.empresas AS
+SELECT v.empresa_id, v.codigo, v.nombre_comercial, v.eslogan, v.telefono, v.whatsapp, v.email,
+       v.direccion, v.horario_general, v.tiempo_mesa, v.tiempo_domicilio,
+       v.color_primario, v.color_secundario, v.color_acento, v.color_fondo,
+       e.logo_url, v.hora_corte_operativa, v.jornada_actual,
+       v.razon_social, v.nit, v.descripcion, v.instagram_url, v.facebook_url,
+       v.tipografia, v.logo_texto, v.logo_acento, v.iniciales, v.lema, v.plantilla,
+       v.estado, v.creado_en, v.imagenes_version, v.modulos, v.metodos_pago, v.cuentas,
+       v.patron,
+       v.modo
+  FROM api.v_empresa_ficha v
+  JOIN core.empresas e ON e.id = v.empresa_id
+ WHERE v.estado::TEXT = 'activa'::TEXT;
+
+GRANT SELECT ON rest.empresas TO taseca_anon, taseca_app;
+
+
+/* ============================================================================
+   3. GUARDARLO
+
+   El procedimiento del tema se parchea entero porque no hay forma de
+   añadirle un campo a un UPDATE sin reescribirlo. Es el mismo que instaló
+   20_motivo_marca.sql con una línea más.
+   ============================================================================ */
+DO $blk$
+BEGIN
+EXECUTE $sql$
+CREATE OR REPLACE PROCEDURE api.sp_guardar_tema(p_empresa_id INTEGER, p_usuario_id INTEGER, p_tema JSONB)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $pr$
+DECLARE
+    c TEXT;
+BEGIN
+    PERFORM core.fn_preparar_operacion(p_usuario_id, 'ajustes');
+
+    FOREACH c IN ARRAY ARRAY['primary', 'secondary', 'accent', 'background'] LOOP
+        IF NULLIF(p_tema ->> c, '') IS NOT NULL AND (p_tema ->> c) !~ '^#[0-9A-Fa-f]{6}$' THEN
+            RAISE EXCEPTION 'Los colores deben tener el formato #RRGGBB.';
+        END IF;
+    END LOOP;
+    IF NULLIF(p_tema ->> 'fontFamily', '') IS NOT NULL AND (p_tema ->> 'fontFamily') !~ '^[a-z0-9_-]{1,30}$' THEN
+        RAISE EXCEPTION 'Tipografía no válida.';
+    END IF;
+    IF NULLIF(p_tema ->> 'patron', '') IS NOT NULL AND (p_tema ->> 'patron') !~ '^[a-z0-9_-]{1,20}$' THEN
+        RAISE EXCEPTION 'Motivo de marca no válido.';
+    END IF;
+    IF NULLIF(p_tema ->> 'modo', '') IS NOT NULL AND (p_tema ->> 'modo') NOT IN ('claro', 'oscuro') THEN
+        RAISE EXCEPTION 'El modo sólo puede ser claro u oscuro.';
+    END IF;
+
+    UPDATE core.empresas
+       SET color_primario   = COALESCE(NULLIF(p_tema ->> 'primary', ''), color_primario),
+           color_secundario = COALESCE(NULLIF(p_tema ->> 'secondary', ''), color_secundario),
+           color_acento     = COALESCE(NULLIF(p_tema ->> 'accent', ''), color_acento),
+           color_fondo      = COALESCE(NULLIF(p_tema ->> 'background', ''), color_fondo),
+           tipografia       = COALESCE(NULLIF(p_tema ->> 'fontFamily', ''), tipografia),
+           patron           = COALESCE(NULLIF(p_tema ->> 'patron', ''), patron),
+           modo             = COALESCE(NULLIF(p_tema ->> 'modo', ''), modo),
+           logo_texto       = core.fn_texto(p_tema ->> 'logoTexto', 24),
+           logo_acento      = core.fn_texto(p_tema ->> 'logoAcento', 24),
+           iniciales        = upper(core.fn_texto(p_tema ->> 'iniciales', 3)),
+           lema             = core.fn_texto(p_tema ->> 'lema', 80),
+           actualizado_en   = now()
+     WHERE id = p_empresa_id;
+
+    IF p_tema ? 'logo' OR p_tema ? 'favicon' THEN
+        INSERT INTO core.empresa_imagenes (empresa_id) VALUES (p_empresa_id) ON CONFLICT (empresa_id) DO NOTHING;
+        UPDATE core.empresa_imagenes
+           SET logo    = CASE WHEN p_tema ? 'logo'    THEN NULLIF(p_tema ->> 'logo', '')    ELSE logo END,
+               favicon = CASE WHEN p_tema ? 'favicon' THEN NULLIF(p_tema ->> 'favicon', '') ELSE favicon END,
+               actualizado_en = now()
+         WHERE empresa_id = p_empresa_id;
+    END IF;
+END;
+$pr$;
+$sql$;
+END;
+$blk$;
+
+
+/* ============================================================================
+   4. REVISIÓN
+
+   Por SQL dinámico, igual que en la 20: en el editor de Supabase, que habla
+   con la base por el pooler, un bloque PL/pgSQL puede compilarse contra el
+   plan en caché de la tabla ANTERIOR al ALTER y quejarse de que «column modo
+   does not exist» aunque ya esté creada.
+   ============================================================================ */
+DO $blk$
+DECLARE
+    v_sin INTEGER;
+    v_tot INTEGER;
+BEGIN
+    EXECUTE 'SELECT count(*) FROM core.empresas WHERE modo IS NULL' INTO v_sin;
+    EXECUTE 'SELECT count(*) FROM core.empresas' INTO v_tot;
+
+    IF v_sin <> 0 THEN
+        RAISE EXCEPTION '% de % empresas se quedaron sin modo.', v_sin, v_tot;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'rest' AND table_name = 'empresas'
+                      AND column_name = 'modo') THEN
+        RAISE EXCEPTION 'rest.empresas no expone el modo: la aplicación no lo vería.';
+    END IF;
+
+    RAISE NOTICE 'OK · % empresas con modo, todas en oscuro.', v_tot;
+    RAISE NOTICE '  Se cambia en el panel de Taseca, en el tema de cada empresa.';
+END;
+$blk$;
+
+
+/* ============================================================================
+   32_RECOGER_EN_SITIO
+   Recoger el pedido en el local
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 32 · RECOGER EN EL LOCAL
+   ----------------------------------------------------------------------------
+   Un cuarto tipo de pedido. El cliente pide desde el portal como siempre,
+   pero pasa por el local a recogerlo: no hay dirección, no hay zona y no hay
+   domicilio que cobrar.
+
+   CASI TODO ESTABA YA HECHO
+
+     El esquema no guarda el tipo como texto suelto sino como una fila de
+     core.tipos_pedido, y el flujo de estados no está escrito a mano en
+     ninguna parte: core.fn_siguiente_estado se salta los estados marcados
+     `solo_domicilio` para cualquier tipo que no sea 'domicilio'. O sea que
+     «recoger» pasa nuevo → preparación → listo → entregado SIN tocar nada.
+
+     El costo del domicilio tampoco hay que anularlo: sale de la zona, y un
+     pedido para recoger va sin zona. Y el pedido mínimo de la zona, igual.
+
+   LO QUE SÍ HAY QUE HACER
+
+     1. La fila del tipo.
+     2. Que api.sp_crear_pedido le pida nombre y teléfono -hacen falta para
+        llamar al cliente cuando esté listo- y le abra ficha de cliente, que
+        hoy sólo hace con los domicilios.
+
+   POR QUÉ EL PASO 2 VA CON replace() Y NO REESCRITO ENTERO
+
+     api.sp_crear_pedido tiene 120 líneas y lo único que cambia es UNA
+     condición. Si lo reescribiera entero desde la copia que tengo hoy,
+     cualquier otro cambio que haya entrado en ese procedimiento desde
+     entonces se perdería al correr esta migración. Así se toca sólo lo que
+     dice que toca, y si la línea no está, avisa en vez de seguir.
+
+   Se puede ejecutar más de una vez.
+   Requiere: 00 … 31 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. EL TIPO DE PEDIDO
+
+   Sin INSERT … ON CONFLICT: no doy por hecho que `codigo` tenga índice único.
+   El WHERE NOT EXISTS hace el trabajo y no depende de restricciones.
+   ============================================================================ */
+INSERT INTO core.tipos_pedido (codigo, nombre)
+SELECT 'recoger', 'Recoge en el local'
+ WHERE NOT EXISTS (SELECT 1 FROM core.tipos_pedido WHERE codigo = 'recoger');
+
+
+/* ============================================================================
+   2. NOMBRE Y TELÉFONO TAMBIÉN PARA QUIEN RECOGE
+
+   El procedimiento abre ficha de cliente y exige nombre y celular sólo
+   cuando el tipo es 'domicilio'. Para quien recoge hacen igual de falta:
+   es a quien hay que llamar —o gritar en el mostrador— cuando salga el
+   pedido. La dirección y la zona siguen llegando vacías, que es lo correcto.
+   ============================================================================ */
+DO $blk$
+DECLARE
+    v_def   TEXT;
+    v_nuevo TEXT;
+    v_viejo CONSTANT TEXT := 'IF p_tipo = ''domicilio'' THEN';
+    v_bueno CONSTANT TEXT := 'IF p_tipo IN (''domicilio'', ''recoger'') THEN';
+BEGIN
+    SELECT pg_get_functiondef(p.oid) INTO v_def
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'api' AND p.proname = 'sp_crear_pedido';
+
+    IF v_def IS NULL THEN
+        RAISE EXCEPTION 'api.sp_crear_pedido no existe: falta alguna migración anterior.';
+    END IF;
+
+    IF position(v_bueno IN v_def) > 0 THEN
+        RAISE NOTICE 'api.sp_crear_pedido ya contemplaba «recoger». No se toca.';
+        RETURN;
+    END IF;
+
+    v_nuevo := replace(v_def, v_viejo, v_bueno);
+
+    IF v_nuevo = v_def THEN
+        RAISE EXCEPTION
+            'No se encontró «%» en api.sp_crear_pedido: el procedimiento cambió y esta migración hay que revisarla a mano.',
+            v_viejo;
+    END IF;
+
+    EXECUTE v_nuevo;
+    RAISE NOTICE 'api.sp_crear_pedido: nombre y teléfono ahora también para «recoger».';
+END;
+$blk$;
+
+
+/* ============================================================================
+   3. REVISIÓN
+
+   Se comprueba lo que de verdad importa: que el tipo exista, que el
+   procedimiento lo contemple, y que el flujo de estados le quite «en camino»
+   —que es lo que diferencia un pedido para recoger de un domicilio—.
+   ============================================================================ */
+DO $blk$
+DECLARE
+    v_tipos TEXT;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM core.tipos_pedido WHERE codigo = 'recoger') THEN
+        RAISE EXCEPTION 'No quedó el tipo «recoger» en core.tipos_pedido.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'api' AND p.proname = 'sp_crear_pedido'
+           AND pg_get_functiondef(p.oid) LIKE '%IF p_tipo IN (''domicilio'', ''recoger'')%'
+    ) THEN
+        RAISE EXCEPTION 'api.sp_crear_pedido no quedó parcheado.';
+    END IF;
+
+    /* «En camino» está marcado solo_domicilio, así que fn_siguiente_estado
+       se lo salta a todo lo que no sea domicilio. Si alguien algún día le
+       quita esa marca, un pedido para recoger se quedaría esperando un
+       domiciliario que no existe. */
+    IF EXISTS (SELECT 1 FROM core.estados_pedido WHERE codigo = 'camino' AND NOT solo_domicilio) THEN
+        RAISE EXCEPTION '«En camino» dejó de ser solo_domicilio: los pedidos para recoger pasarían por ahí.';
+    END IF;
+
+    SELECT string_agg(codigo, ', ' ORDER BY id) INTO v_tipos FROM core.tipos_pedido;
+    RAISE NOTICE 'OK · tipos de pedido: %', v_tipos;
+    RAISE NOTICE '  Se ofrece en el portal a los locales que tengan dirección configurada.';
+END;
+$blk$;
 
 
 /* ============================================================================

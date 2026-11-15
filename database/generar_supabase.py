@@ -39,6 +39,27 @@ PARTES = [
     ('26_anulacion_por_item.sql',            'Al anular, qué vuelve al stock y qué se da de baja'),
     ('23_pedidos_sin_duplicados.sql',        'Un envío, un pedido: candado contra facturas repetidas'),
     ('20_motivo_marca.sql',                  'El motivo de marca de cada empresa'),
+
+    # ---- Lo de después de la 20. Van AQUÍ, entre la 20 y la 19, y en este
+    #      orden, porque se apoyan unas en otras:
+    #        · la 31 reconstruye api.v_empresa_ficha incluyendo el `patron`
+    #          de la 20 y el recargo de la 30, así que va detrás de las dos;
+    #        · la 30 parchea los DOS rest.crear_pedido, y el segundo nace en
+    #          la 23, que ya está más arriba;
+    #        · la 32 busca una condición dentro de api.sp_crear_pedido, cuya
+    #          última definición viene de la 23;
+    #        · la 19 se queda la última, como estaba, porque enciende RLS
+    #          sobre todas las tablas y estas tres añaden columnas.
+    #
+    #      La 33 NO está: era el parche del fallo de la 30 para las bases ya
+    #      instaladas. La 30 ya nace corregida, así que aquí sobraría.
+    ('27_fotos_en_storage.sql',              'Las fotos de la carta viven en Storage'),
+    ('28_recetas_cantidad.sql',              'Cuánto gasta cada plato de cada insumo'),
+    ('29_billeteras_separadas.sql',          'Nequi, Daviplata y Bre-B, cada una por su lado'),
+    ('30_recargo_por_metodo.sql',            'El recargo que la empresa le cobra por método de pago'),
+    ('31_modo_claro.sql',                    'Cada empresa elige si se ve clara u oscura'),
+    ('32_recoger_en_sitio.sql',              'Recoger el pedido en el local'),
+
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
 ]
 
@@ -49,7 +70,7 @@ CABECERA = '''/* ===============================================================
    la estructura de ejemplo de NASCAR, la capa REST, la fase 2 completa, el
    chequeo de integridad y la seguridad a nivel de fila.
 
-   GENERADO, NO SE EDITA A MANO. Sale de pegar los scripts 01 … 19 con
+   GENERADO, NO SE EDITA A MANO. Sale de pegar los scripts 01 … 32 con
    `py database/generar_supabase.py`. Si hay que corregir algo, se corrige en
    el script original y se vuelve a generar.
 

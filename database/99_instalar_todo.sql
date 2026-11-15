@@ -87,6 +87,27 @@
 \i 20_motivo_marca.sql
 \echo '== 20 · Pruebas del motivo de marca (se deshacen con ROLLBACK)'
 \i 20_pruebas_motivo_marca.sql
+-- Lo de después de la 20. Mismo orden que en el instalador de Supabase:
+-- se apoyan unas en otras y la 19 se queda la última, porque enciende RLS
+-- sobre todas las tablas y estas añaden columnas.
+--
+-- La 27 (fotos en Storage) NO está: necesita el esquema `storage`, que es
+-- de Supabase. En un PostgreSQL normal no existe y el script fallaría. Las
+-- fotos de la carta sólo funcionan en la instalación de Supabase.
+--
+-- La 33 tampoco: era el parche del fallo de la 30 para las bases ya
+-- instaladas, y la 30 ya nace corregida.
+\echo '== 28 · Cuánto gasta cada plato de cada insumo'
+\i 28_recetas_cantidad.sql
+\echo '== 29 · Nequi, Daviplata y Bre-B, cada una por su lado'
+\i 29_billeteras_separadas.sql
+\echo '== 30 · El recargo por método de pago'
+\i 30_recargo_por_metodo.sql
+\echo '== 31 · Cada empresa elige si se ve clara u oscura'
+\i 31_modo_claro.sql
+\echo '== 32 · Recoger el pedido en el local'
+\i 32_recoger_en_sitio.sql
+
 \echo '== 19 · Seguridad a nivel de fila en todas las tablas'
 \i 19_rls.sql
 
