@@ -133,7 +133,7 @@
   function pintarFiltros() {
     const cont = $('#filtrosCarta');
     // Las categorías de la unidad de esta mesa
-    const cats = [{ id: 'todos', nombre: 'Todo', icono: '🏁' }].concat(S.getCategorias({ sucursalId: sucursalId }));
+    const cats = [{ id: 'todos', nombre: 'Todo', icono: S.emblema() || '•' }].concat(S.getCategorias({ sucursalId: sucursalId }));
     cont.innerHTML = cats
       .map(
         (c) =>
@@ -165,21 +165,17 @@
     let platos = S.getCarta({ sucursalId: sucursalId }); // la carta de ESTA unidad
     if (categoriaActiva !== 'todos') platos = platos.filter((p) => p.cat === categoriaActiva);
 
+    /* El emoji de cada categoría, para los platos que no tienen foto. */
+    const iconos = {};
+    S.getCategorias({ sucursalId: sucursalId }).forEach(function (c) {
+      iconos[c.id] = c.icono;
+    });
+
+    /* La misma tarjeta que en el portal del cliente, de una sola fuente.
+       En mesa no se pintan las etiquetas («el más pedido»): quien está
+       sentado ya eligió el sitio, no necesita que le vendan el plato. */
     $('#listaCarta').innerHTML = platos
-      .map(function (p) {
-        return (
-          '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
-          U.fotoPlato(p) +
-          '<div class="plato__top"><h3>' + U.esc(p.nombre) + '</h3>' +
-          '<span class="plato__precio">' + U.money(p.precio) + '</span></div>' +
-          '<p class="plato__desc">' + U.esc(p.desc) + '</p>' +
-          '<div class="plato__pie"><span></span>' +
-          (p.disponible
-            ? '<button class="btn btn--fantasma btn--xs" data-add-carta="' + p.id + '">+ Agregar</button>'
-            : '<span class="badge badge--gris">Agotado</span>') +
-          '</div></article>'
-        );
-      })
+      .map((p) => U.tarjetaPlato(p, { icono: iconos[p.cat] }))
       .join('');
   }
 

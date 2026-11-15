@@ -2101,6 +2101,48 @@ por empresa, caducan a las 24 horas y no se guardan más de cinco.
 - Respeta la preferencia de *reducir movimiento* del sistema operativo.
 - Las comandas y los reportes salen bien al imprimir.
 
+### El piloto de diseño: la carta
+
+El front se veía rústico, y la razón no era el gusto de nadie: eran **29
+tamaños de letra distintos** y **77 valores de relleno distintos** repartidos
+por el CSS. Diferencias de medio píxel que nadie ve de una en una, pero que
+juntas hacen que la página parezca desalineada sin que se sepa por qué.
+
+Lo que hay ahora en `css/styles.css`, en `:root`:
+
+| Tokens | Para qué |
+|---|---|
+| `--txt-xs` … `--txt-3xl` | escala de texto: cada paso ~1,2 veces el anterior |
+| `--e-1` … `--e-12` | escala de espacio, múltiplos de 4 |
+| `--elev-1`, `--elev-2` | dos alturas de relieve, y nada más |
+| `--alto-cabecera`, `--pad-contenedor` | medidas que se usaban copiadas en varios sitios |
+
+**Añadir los tokens no cambió nada por sí solo.** Lo que cambió es la carta,
+que es la única pantalla reescrita con ellos. Es a propósito: el resto de la
+página sigue como estaba para poder comparar las dos **en la misma pantalla**
+—basta con mirar las tarjetas del menú del día, justo encima— y decidir con
+eso si se propaga o no.
+
+Lo que se ve distinto en la carta:
+
+- **Manda la foto.** 4:3 arriba de la tarjeta, y el resto debajo.
+- **Los nombres de los platos ya no gritan.** Iban en mayúsculas condensadas;
+  ahora en la tipografía de la empresa, en minúsculas. De paso se arregla un
+  problema viejo: `--f-cond` y `--f-display` están clavadas para *todas* las
+  empresas, así que cualquier restaurante llevaba la tipografía de carreras
+  de NASCAR en sus platos.
+- **El botón de agregar es un botón.** Relleno, del color de la marca y de
+  44 px de alto. Era un contorno fino de 28 px.
+- **En el celular, dos columnas.** Con una sola, con foto, se veía un plato
+  por pantalla y 58 productos por delante.
+- **La barra de categorías se desliza y se queda pegada** bajo la cabecera.
+  Antes se partía en tres filas que se comían la pantalla.
+- **Los platos sin foto** llevan el emoji de su categoría, grande y apagado,
+  en vez de un rectángulo vacío que parece una imagen que no cargó.
+
+La tarjeta la arma ahora `U.tarjetaPlato()` en `js/ui.js`: estaba copiada en
+`app.js` y en `mesa.js`, y cualquier cambio había que hacerlo en los dos.
+
 ---
 
 ## Precios de referencia

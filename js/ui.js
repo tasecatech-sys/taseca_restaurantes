@@ -539,8 +539,95 @@ NASCAR.UI = (function () {
     const src = plato && plato.imagen ? String(plato.imagen).trim() : '';
     if (!src) return '';
     return (
+      '<figure class="plato__marco">' +
       '<img class="plato__foto" src="' + esc(src) + '" alt="" ' +
-      'loading="lazy" decoding="async">'
+      'loading="lazy" decoding="async">' +
+      '</figure>'
+    );
+  }
+
+  /**
+   * LA TARJETA DE UN PLATO, completa.
+   *
+   * Se escribía dos veces —en el portal del cliente y en la pantalla de
+   * mesa— con el mismo marcado copiado. Eran ya dos copias de diez
+   * líneas de HTML en cadenas: cualquier cambio de diseño había que
+   * hacerlo en los dos sitios y acordarse de los dos.
+   *
+   * Qué recibe:
+   *   plato      el producto de la carta
+   *   opciones   .etiqueta  ['badge--rojo', '★ El más pedido'] o nada
+   *              .icono     el emoji de su categoría, si no hay foto
+   *
+   * CÓMO ESTÁ ARMADA, que importa para el CSS:
+   *
+   *   .plato                    sin relleno, recorta lo que sobresale
+   *     .plato__marco           la foto, en 4:3 (sólo si hay foto)
+   *       .plato__foto
+   *       .plato__sello         la etiqueta, encima de la foto
+   *     .plato__cuerpo          aquí vive TODO el relleno
+   *       .plato__sello         la etiqueta, si no hay foto donde ponerla
+   *       h3.plato__nombre
+   *       p.plato__desc
+   *       .plato__pie           precio a la izquierda, botón a la derecha
+   *
+   * La foto no se sangra con márgenes negativos: antes compensaba a mano
+   * el relleno de la tarjeta, así que cambiar ese relleno descolocaba la
+   * foto. Ahora el relleno está un nivel más adentro y la foto no sabe
+   * nada de él.
+   */
+  function tarjetaPlato(plato, opciones) {
+    const o = opciones || {};
+    const et = o.etiqueta;
+    const nombre = esc(plato.nombre);
+
+    /* Sin foto, el emoji de la categoría a tamaño grande y apagado.
+
+       No es un adorno: en una rejilla donde la mayoría de las tarjetas
+       llevan foto, la que no la lleva se estiraba hasta la altura de las
+       demás y quedaba un rectángulo vacío que parece un error de carga.
+       Con el emoji el hueco se lee como lo que es —un plato sin foto
+       todavía— y la rejilla conserva su ritmo.
+
+       El emoji sale de la categoría, que ya lo tiene; no se inventa
+       ninguno ni se pone una foto de relleno que no sea del negocio. */
+    const foto =
+      fotoPlato(plato) ||
+      (o.icono
+        ? '<figure class="plato__marco plato__marco--vacio" aria-hidden="true">' +
+          '<span class="plato__icono">' + esc(o.icono) + '</span>' +
+          '</figure>'
+        : '');
+
+    /* El sello va sobre la foto. Sin foto no hay dónde ponerlo, así que
+       entra en el cuerpo como una línea más: la etiqueta es información
+       («el más pedido»), no decoración, y no puede desaparecer porque al
+       producto le falte la imagen. */
+    const sello = et
+      ? '<span class="plato__sello badge ' + et[0] + '">' + et[1] + '</span>'
+      : '';
+
+    const accion = plato.disponible
+      ? '<button class="btn btn--azul plato__add" data-add-carta="' + plato.id + '"' +
+        ' aria-label="Agregar ' + nombre + '">Agregar</button>'
+      : '<span class="badge badge--gris">Agotado</span>';
+
+    return (
+      '<article class="plato' +
+      (plato.disponible ? '' : ' no-disp') +
+      (foto ? '' : ' plato--sin-foto') +
+      '">' +
+      (foto ? foto.replace('</figure>', sello + '</figure>') : '') +
+      '<div class="plato__cuerpo">' +
+      (foto ? '' : sello) +
+      '<h3 class="plato__nombre">' + nombre + '</h3>' +
+      (plato.desc ? '<p class="plato__desc">' + esc(plato.desc) + '</p>' : '') +
+      '<div class="plato__pie">' +
+      '<span class="plato__precio">' + money(plato.precio) + '</span>' +
+      accion +
+      '</div>' +
+      '</div>' +
+      '</article>'
     );
   }
 
@@ -556,7 +643,14 @@ NASCAR.UI = (function () {
       'error',
       function (e) {
         const n = e.target;
-        if (n && n.classList && n.classList.contains('plato__foto')) n.remove();
+        if (!n || !n.classList || !n.classList.contains('plato__foto')) return;
+        /* Se va el MARCO, no sólo la imagen: quitar la <img> dejaba un
+           rectángulo gris de 4:3 vacío, que se ve peor que no tener
+           foto. La tarjeta pasa a verse como las que no la tienen. */
+        const marco = n.closest('.plato__marco');
+        const tarjeta = n.closest('.plato');
+        if (tarjeta) tarjeta.classList.add('plato--sin-foto');
+        (marco || n).remove();
       },
       true
     );
@@ -608,6 +702,7 @@ NASCAR.UI = (function () {
     enlaceWhatsApp: enlaceWhatsApp,
     comprimirImagen: comprimirImagen,
     fotoPlato: fotoPlato,
+    tarjetaPlato: tarjetaPlato,
     paramURL: paramURL,
     iniciarComunes: iniciarComunes,
   };

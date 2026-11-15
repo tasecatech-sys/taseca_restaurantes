@@ -244,26 +244,16 @@
       compartir: ['badge--azul', 'Para compartir'],
     };
 
+    /* El emoji de cada categoría, para los platos que no tienen foto. */
+    const iconos = {};
+    S.getCategorias({ sucursalId: unidadPortal }).forEach(function (c) {
+      iconos[c.id] = c.icono;
+    });
+
+    /* La tarjeta la arma U.tarjetaPlato: es la misma del portal y de la
+       pantalla de mesa, y vivía copiada en los dos sitios. */
     cont.innerHTML = platos
-      .map(function (p) {
-        const tag = etiquetas[p.tag];
-        return (
-          '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
-          U.fotoPlato(p) +
-          '<div class="plato__top">' +
-          '<h3>' + U.esc(p.nombre) + '</h3>' +
-          '<span class="plato__precio">' + U.money(p.precio) + '</span>' +
-          '</div>' +
-          '<p class="plato__desc">' + U.esc(p.desc) + '</p>' +
-          '<div class="plato__pie">' +
-          (tag ? '<span class="badge ' + tag[0] + '">' + tag[1] + '</span>' : '<span></span>') +
-          (p.disponible
-            ? '<button class="btn btn--fantasma btn--xs" data-add-carta="' + p.id + '">+ Agregar</button>'
-            : '<span class="badge badge--gris">Agotado</span>') +
-          '</div>' +
-          '</article>'
-        );
-      })
+      .map((p) => U.tarjetaPlato(p, { etiqueta: etiquetas[p.tag], icono: iconos[p.cat] }))
       .join('');
   }
 
