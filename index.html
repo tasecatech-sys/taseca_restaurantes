@@ -24,6 +24,80 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- ===================================================================
+     LA MARCA, ANTES DEL PRIMER FOTOGRAMA
+
+     Entre que llega el HTML y js/tema.js aplica el tema de la empresa
+     pasan unas décimas. En esas décimas se ve lo que diga css/styles.css,
+     que es la paleta de la plataforma y no la del restaurante. Al
+     refrescar, eso es exactamente lo que el cliente ve: su página
+     cambiando de colores delante de él.
+
+     Esto lo arregla sin servidor: la última vez que esta empresa se
+     pintó bien, su marca quedó guardada en el navegador. Aquí se vuelve
+     a poner ANTES de que el navegador dibuje nada. Si no hay nada
+     guardado -primera visita- no pasa nada: se ve la paleta neutra y
+     js/tema.js corrige un instante después, como hasta ahora.
+
+     Va en línea y no en un archivo a propósito: un <script src> es otra
+     petición, y para entonces el primer fotograma ya se pintó.
+
+     La clave lleva la empresa de ESTA dirección. Sin eso, quien visita
+     dos restaurantes distintos vería el segundo con los colores del
+     primero.
+     =================================================================== -->
+<script>
+(function () {
+  'use strict';
+  var raiz = document.documentElement;
+
+  /* La misma empresa que resolverá después js/backend.js: ?empresa=,
+     la ranura de /taseca/<ranura>/… o, en su defecto, el dominio. */
+  function clave() {
+    var q = (location.search.match(/[?&]empresa=([^&]+)/) || [])[1];
+    var ranura = (location.pathname.match(/\/taseca\/([^/]+)/) || [])[1];
+    return 'taseca.marca.' + decodeURIComponent(q || ranura || location.host);
+  }
+
+  var COLOR = /^#[0-9a-f]{6}$/i;
+  /* Una familia tipográfica y nada más: ni url(), ni llaves, ni
+     punto y coma. Lo guardado es nuestro, pero una variable CSS admite
+     cualquier texto y esto sale gratis. */
+  var FUENTE = /^[-\w\s'",.]{1,160}$/;
+
+  function pintar(t) {
+    if (!t || typeof t !== 'object') return;
+    [['primary', '--azul'], ['secondary', '--rojo'], ['accent', '--azul-claro'],
+     ['background', '--negro-900'], ['azulGlow', '--azul-glow'], ['rojoGlow', '--rojo-glow']
+    ].forEach(function (par) {
+      var v = t[par[0]];
+      if (typeof v === 'string' && (COLOR.test(v) || /^rgba\([\d.,\s]+\)$/.test(v)))
+        raiz.style.setProperty(par[1], v);
+    });
+
+    [['body', '--f-body'], ['titular', '--f-display'], ['cond', '--f-cond']].forEach(function (par) {
+      var v = t[par[0]];
+      if (typeof v === 'string' && FUENTE.test(v)) raiz.style.setProperty(par[1], v);
+    });
+
+    if (t.peso > 0 && t.peso <= 900) raiz.style.setProperty('--f-display-peso', String(t.peso));
+    if (t.modo === 'claro' || t.modo === 'oscuro') raiz.setAttribute('data-tema', t.modo);
+    if (typeof t.patron === 'string' && /^[a-z0-9_-]{1,20}$/.test(t.patron))
+      raiz.setAttribute('data-patron', t.patron);
+  }
+
+  window.TasecaMarca = {
+    /* js/tema.js llama aquí con lo que acaba de aplicar, para que la
+       próxima visita no tenga que esperarlo. */
+    guardar: function (t) {
+      try { localStorage.setItem(clave(), JSON.stringify(t)); } catch (e) { /* sin sitio o en privado */ }
+    },
+  };
+
+  try { pintar(JSON.parse(localStorage.getItem(clave()) || 'null')); } catch (e) { /* da igual: tema.js llega enseguida */ }
+})();
+</script>
+
 <link rel="stylesheet" href="/css/styles.css">
 </head>
 

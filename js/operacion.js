@@ -188,7 +188,11 @@ NASCAR.Operacion = (function () {
     }
 
     function pintarFiltros() {
-      const cats = [{ id: 'todos', nombre: 'Todo', icono: '🏁' }].concat(S.getCategorias({ sucursalId: sucId }));
+      /* El emblema de la empresa, no la bandera a cuadros. Sin motivo
+         propio, un punto: el chip necesita algo delante del texto. */
+      const cats = [{ id: 'todos', nombre: 'Todo', icono: S.emblema() || '•' }].concat(
+        S.getCategorias({ sucursalId: sucId })
+      );
       U.$('#tpFiltros', m.raiz).innerHTML = cats
         .map(
           (c) =>
@@ -270,7 +274,8 @@ NASCAR.Operacion = (function () {
             .join('') +
           '<div class="linea" style="border-top:1px solid var(--borde);padding-top:8px;margin-top:6px">' +
           '<span><b>Total (' + n + ')</b></span><b>' + U.money(total) + '</b></div></div>' +
-          '<button class="btn btn--rojo btn--bloque mt-16" id="tpEnviar">🏁 Enviar a cocina</button>'
+          '<button class="btn btn--rojo btn--bloque mt-16" id="tpEnviar">' +
+          (S.emblema() ? S.emblema() + ' ' : '') + 'Enviar a cocina</button>'
         : '<p class="mini tenue centro">Agrega productos para armar el pedido.</p>';
 
       /* El botón acaba de nacer con este repintado, así que el candado se le

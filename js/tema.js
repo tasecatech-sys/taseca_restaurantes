@@ -62,7 +62,14 @@ NASCAR.Tema = (function () {
 
     // --- Tipografía
     cargarFuente(t.fontFamily);
+    const tip = S.tipografia(t.fontFamily) || {};
     raiz.style.setProperty('--f-body', S.familiaTipografica(t.fontFamily));
+    /* La de los titulares sale de la misma elección. Estaba clavada en
+       'Archivo Black' para todas las empresas, que es la letra de los
+       titulares de NASCAR: cualquier restaurante llevaba tipografía de
+       carreras en sus títulos sin haberlo pedido. */
+    if (tip.titular) raiz.style.setProperty('--f-display', tip.titular);
+    raiz.style.setProperty('--f-display-peso', String(tip.peso || 400));
 
     /* Claro u oscuro. Es un atributo en <html> y nada más: el bloque
        [data-tema='claro'] de css/styles.css cambia los VALORES de los
@@ -77,6 +84,28 @@ NASCAR.Tema = (function () {
     pintarLogotipo(t);
     pintarFavicon(t);
     pintarTitulo();
+
+    /* Se deja guardado para la próxima visita: el guión del <head> lo
+       vuelve a poner antes del primer fotograma y el cliente ya no ve su
+       página cambiar de colores al refrescar. Se guarda lo YA RESUELTO
+       —el acento corregido para claro, el fondo sólo si va— y no el tema
+       en bruto, para que repintar sea copiar y no volver a decidir. */
+    if (window.TasecaMarca)
+      window.TasecaMarca.guardar({
+        primary: t.primary,
+        secondary: t.secondary,
+        accent: claro ? paraFondoClaro(t.accent) : t.accent,
+        /* En claro el fondo de la empresa no se aplica: manda la rampa
+           clara. Guardarlo sería volver a pintar la página de negro. */
+        background: claro ? '' : t.background,
+        azulGlow: conAlfa(t.primary, 0.35),
+        rojoGlow: conAlfa(t.secondary, 0.35),
+        body: S.familiaTipografica(t.fontFamily),
+        titular: tip.titular || '',
+        peso: tip.peso || 400,
+        modo: claro ? 'claro' : 'oscuro',
+        patron: (S.patron ? (S.patron(t.patron) || {}).id : '') || '',
+      });
 
     return t;
   }

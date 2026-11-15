@@ -150,7 +150,10 @@ NASCAR.Inventario = (function () {
       '<button class="btn btn--fantasma btn--sm" id="btnVolver">←<span class="txt-ancho"> Cambiar datos</span></button>' +
       '<div class="crece"></div>' +
       '<button class="btn btn--fantasma btn--sm" id="btnBorrador">💾<span class="txt-ancho"> Guardar</span> borrador</button>' +
-      '<button class="btn btn--rojo" id="btnGuardar">🏁 Guardar<span class="txt-ancho"> cierre</span></button>' +
+      /* El emblema es el del motivo de la empresa, no la bandera a
+         cuadros: la carrera es de NASCAR, no de todos los negocios. */
+      '<button class="btn btn--rojo" id="btnGuardar">' + (S.emblema() ? S.emblema() + ' ' : '') +
+      'Guardar<span class="txt-ancho"> cierre</span></button>' +
       '</div></div>'
     );
   }

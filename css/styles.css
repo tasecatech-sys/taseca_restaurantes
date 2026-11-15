@@ -53,8 +53,24 @@
 :root {
   color-scheme: dark;
 
+  /* ── LA PALETA POR DEFECTO ES NEUTRA, A PROPÓSITO ──────────────────
+     Aquí estaban el azul y el rojo de NASCAR. No como ejemplo: como
+     valores de la plataforma. O sea que cualquier restaurante enseñaba
+     la identidad de NASCAR en el instante entre que llega el HTML y
+     js/tema.js aplica la suya —y, al refrescar, eso es justo lo que se
+     ve—.
+
+     Ahora son grises con una pizca de azul: no son de nadie. NASCAR
+     recibe los suyos por el mismo camino que todos, desde su tema.
+
+     El rojo sigue siendo rojo porque además de ser el secundario de la
+     marca es el color de lo que destruye —anular, cancelar—, y ahí tiene
+     que leerse como peligro. Lo que cambia es que es un rojo cualquiera
+     y no el rojo de la carrera.
+     ──────────────────────────────────────────────────────────────── */
+
   /* Paleta */
-  --negro-900: #06080c;
+  --negro-900: #0f1217;
   --negro-800: #0b0f16;
   --negro-700: #121824;
   --negro-600: #1a2130;
@@ -70,15 +86,15 @@
   --velo: rgba(255, 255, 255, 0.04);
   --velo-fuerte: rgba(255, 255, 255, 0.09);
 
-  --azul: #0b5fff;
-  --azul-claro: #4d8cff;
-  --azul-osc: #04309b;
-  --azul-glow: rgba(11, 95, 255, 0.35);
+  --azul: #3b6ea5;
+  --azul-claro: #7ba7d9;
+  --azul-osc: #27496b;
+  --azul-glow: rgba(59, 110, 165, 0.35);
 
-  --rojo: #e4002b;
-  --rojo-claro: #ff3355;
-  --rojo-osc: #a30020;
-  --rojo-glow: rgba(228, 0, 43, 0.35);
+  --rojo: #b4323f;
+  --rojo-claro: #d14a57;
+  --rojo-osc: #7e212b;
+  --rojo-glow: rgba(180, 50, 63, 0.35);
 
   --blanco: #ffffff;
   --humo: #e8ecf2;
@@ -263,6 +279,10 @@ a:hover {
   color: var(--blanco);
 }
 
+/* El peso va en variable porque depende de la familia: Archivo Black ya
+   es negra de serie y pide 400, pero Inter o Poppins en 400 saldrían
+   finas donde debería haber un titular. Lo escribe js/tema.js junto con
+   la familia. */
 h1,
 h2,
 h3,
@@ -270,7 +290,7 @@ h4 {
   margin: 0 0 0.4em;
   line-height: 1.08;
   font-family: var(--f-display);
-  font-weight: 400;
+  font-weight: var(--f-display-peso, 400);
   letter-spacing: -0.01em;
 }
 

@@ -320,40 +320,63 @@ NASCAR.MODULOS_POR_DEFECTO = { basico: true, stock: true, cierre: true };
    personalización tiene que ser controlada, así que no se admite CSS ni
    fuentes arbitrarias. Cada entrada dice qué familia usar y, si hace
    falta, de dónde cargarla. */
+/* `familia` es el texto corrido. `titular` es la de los títulos grandes y
+   `peso` el grueso con el que esa familia se ve como un titular: Archivo
+   Black ya es negra y pide 400; Inter o Poppins en 400 saldrían finas.
+
+   POR QUÉ ESTO ESTÁ AQUÍ Y NO CLAVADO EN EL CSS
+
+   `--f-display` valía 'Archivo Black' para TODAS las empresas. Archivo
+   Black es la letra de los titulares de NASCAR, así que una arepera o un
+   asadero de pollo llevaban tipografía de carreras en sus títulos sin
+   haberlo pedido y sin poder quitarla. Ahora sale de la tipografía que la
+   empresa eligió: quien elige Barlow sigue teniendo Archivo Black -es la
+   pareja de siempre y NASCAR no cambia-, y quien elige cualquier otra
+   lleva la suya. */
 NASCAR.TIPOGRAFIAS = [
   {
     id: 'barlow',
     nombre: 'Barlow',
     muestra: 'Deportiva y compacta',
     familia: "'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-    google: 'Barlow:wght@400;500;600',
+    titular: "'Archivo Black', 'Arial Black', 'Impact', sans-serif",
+    peso: 400,
+    google: 'Barlow:wght@400;500;600&family=Archivo+Black',
   },
   {
     id: 'inter',
     nombre: 'Inter',
     muestra: 'Neutra y muy legible',
     familia: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
-    google: 'Inter:wght@400;500;600;700',
+    titular: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    peso: 800,
+    google: 'Inter:wght@400;500;600;700;800',
   },
   {
     id: 'poppins',
     nombre: 'Poppins',
     muestra: 'Redonda y amable',
     familia: "'Poppins', system-ui, 'Segoe UI', sans-serif",
-    google: 'Poppins:wght@400;500;600;700',
+    titular: "'Poppins', system-ui, 'Segoe UI', sans-serif",
+    peso: 700,
+    google: 'Poppins:wght@400;500;600;700;800',
   },
   {
     id: 'lora',
     nombre: 'Lora',
     muestra: 'Con serifa, más clásica',
     familia: "'Lora', Georgia, 'Times New Roman', serif",
-    google: 'Lora:wght@400;500;600',
+    titular: "'Lora', Georgia, 'Times New Roman', serif",
+    peso: 700,
+    google: 'Lora:wght@400;500;600;700',
   },
   {
     id: 'sistema',
     nombre: 'Del sistema',
     muestra: 'La del dispositivo, sin descargar nada',
     familia: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    titular: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    peso: 800,
     google: '',
   },
 ];

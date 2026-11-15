@@ -1838,6 +1838,59 @@ vendido de cada uno. Un producto que no se venda directamente lleva
 
 ---
 
+## Que ninguna empresa enseñe la marca de otra
+
+Al refrescar, una empresa veía la identidad de NASCAR durante unas décimas:
+sus colores, su letra de titulares y su bandera a cuadros, y después la
+página cambiaba a lo suyo. No era un retraso de carga: era que **los valores
+por defecto de la plataforma eran los de NASCAR**.
+
+Se arregló por tres lados.
+
+**1. Los valores por defecto son neutros.** En `css/styles.css`, `--azul` y
+`--rojo` eran `#0b5fff` y `#e4002b` —los de la carrera—. Ahora son grises con
+una pizca de azul, que no son de nadie. NASCAR recibe los suyos por el mismo
+camino que todos: desde su tema.
+
+> El rojo sigue siendo rojo porque, además de ser un color de marca, es el de
+> lo que destruye (anular, cancelar) y ahí tiene que leerse como peligro. Lo
+> que cambia es que es un rojo cualquiera, no el de la carrera.
+
+**2. La marca se pinta antes del primer fotograma.** Cada página de empresa
+lleva en el `<head>` un guión de unas treinta líneas: la última vez que esta
+empresa se pintó bien, `js/tema.js` dejó su marca guardada en el navegador, y
+el guión la vuelve a poner **antes de que el navegador dibuje nada**. Al
+refrescar ya no hay cambio de colores.
+
+- La clave lleva la empresa de *esa* dirección (`?empresa=`, la ranura de
+  `/taseca/<ranura>/…` o el dominio). Sin eso, quien visita dos restaurantes
+  vería el segundo con los colores del primero.
+- Va **en línea**, no en un archivo: un `<script src>` es otra petición, y
+  para entonces el primer fotograma ya se pintó.
+- Valida lo que lee (color hexadecimal, familia tipográfica sin `url()`, peso
+  entre 1 y 900, modo y motivo de una lista). Lo guardado es nuestro, pero una
+  variable CSS admite cualquier texto y comprobarlo sale gratis.
+- Sin nada guardado —primera visita— no hace nada: se ve la paleta neutra y
+  `tema.js` corrige un instante después, como siempre.
+
+**3. La tipografía de titulares es de la empresa.** `--f-display` valía
+`'Archivo Black'` para todas: una arepera llevaba la letra de los titulares de
+NASCAR sin haberlo pedido y sin poder quitarla. Ahora sale de la tipografía
+elegida (`NASCAR.TIPOGRAFIAS`, campos `titular` y `peso`). Quien elige Barlow
+sigue con Archivo Black —es la pareja de siempre, NASCAR no cambia—; quien
+elige Poppins lleva Poppins.
+
+> **Lo que todavía no es de la empresa:** `--f-cond` (Barlow Condensed), la de
+> las etiquetas en mayúsculas. Se dejó fija a propósito: es una condensada, y
+> cambiarla por una normal ensancha todas las etiquetas del panel. Toca
+> revisarlo con calma.
+
+Y las últimas banderas a cuadros escritas a mano —en `inventario.js`,
+`mesa.js` y `operacion.js`— ahora salen de `S.emblema()`, que devuelve el
+emblema del motivo de la empresa, o nada.
+
+---
+
 ## Recoger en el local
 
 Un cuarto tipo de pedido, junto a **mesa**, **domicilio** y **mostrador**. El

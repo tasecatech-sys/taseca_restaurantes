@@ -232,7 +232,8 @@
         '<p class="mini tenue">El pago se realiza al final del servicio. Si necesitas factura, avísale al mesero.</p>' +
         /* Hook propio, no data-accion: el modal vive fuera de la raíz de la
            vista y con data-accion el envío se disparaba dos veces. */
-        '<button class="btn btn--rojo btn--bloque mt-16" data-enviar-modal>🏁 Enviar a cocina</button>';
+        '<button class="btn btn--rojo btn--bloque mt-16" data-enviar-modal>' +
+        (S.emblema() ? S.emblema() + ' ' : '') + 'Enviar a cocina</button>';
 
       pintarBarra();
     }
@@ -306,7 +307,8 @@
 
         '<div class="fila fila--fin mt-16">' +
         '<button class="btn btn--fantasma" id="mNo">Revisar</button>' +
-        '<button class="btn btn--rojo" id="mSi">🏁 Enviar a cocina</button></div>',
+        '<button class="btn btn--rojo" id="mSi">' +
+        (S.emblema() ? S.emblema() + ' ' : '') + 'Enviar a cocina</button></div>',
     });
 
     U.$('#mNo', m.raiz).onclick = m.cerrar;
