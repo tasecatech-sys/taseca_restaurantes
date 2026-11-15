@@ -387,8 +387,14 @@ NASCAR.Remoto = (function () {
   /* De la aplicación a la base: el ítem del carrito a la línea del pedido. */
   function aLineaBase(it) {
     const ref = String(it.refId || '');
-    const linea = { cantidad: Number(it.cantidad) || 1 };
-    if (it.notas) linea.notas = it.notas;
+    /* Entre 1 y 99, como en el modo local. `Number(x) || 1` dejaba pasar
+       los NEGATIVOS -son «verdaderos» para JavaScript- y con ellos una
+       comanda de -3 pechugas y un subtotal en contra. */
+    const linea = { cantidad: Math.min(99, Math.max(1, Math.round(Number(it.cantidad) || 1))) };
+    /* 200 es lo que aguanta core.pedido_items.notas. Sin recortar aquí la
+       base no «corta» el texto: rechaza el pedido entero con un «value too
+       long for type character varying(200)» que el cliente no entiende. */
+    if (it.notas) linea.notas = S.recortar(it.notas, S.TOPES.notaItem);
 
     if (it.origen === 'armado' || ref.indexOf('armado:') === 0) {
       const partes = ref.split(':'); // armado:m12:mo3.mo7
@@ -820,10 +826,13 @@ NASCAR.Remoto = (function () {
         p_metodo_pago: datos.metodoPago || 'efectivo',
         p_items: (datos.items || []).map(aLineaBase),
         p_mesa: datos.tipo === 'mesa' ? String(datos.mesa) : null,
-        p_cliente_nombre: cliente.nombre || null,
-        p_cliente_telefono: cliente.telefono || null,
-        p_direccion: cliente.direccion || null,
-        p_indicaciones: cliente.notas || null,
+        /* Los mismos topes que las columnas de core.pedidos. Esto NO
+           pasa por crearPedido() de store.js -remoto reemplaza ese
+           método-, así que recortarlo allí no servía de nada aquí. */
+        p_cliente_nombre: S.recortar(cliente.nombre, S.TOPES.nombre) || null,
+        p_cliente_telefono: S.recortar(cliente.telefono, S.TOPES.telefono) || null,
+        p_direccion: S.recortar(cliente.direccion, S.TOPES.direccion) || null,
+        p_indicaciones: S.recortar(cliente.notas, S.TOPES.indicaciones) || null,
         p_zona_id: zona ? zona.id : null,
         p_paga_con: cliente.pagaCon ? Number(cliente.pagaCon) : null,
         // Si este mismo envío ya entró, la base devuelve aquel pedido
@@ -948,8 +957,18 @@ NASCAR.Remoto = (function () {
       return ponerPedido(aPedido(rpc('cambiar_estado', { p_pedido_id: idBase(pedidoId), p_estado: estado })));
     },
 
-    avanzarEstado: function (pedidoId) {
-      return ponerPedido(aPedido(rpc('avanzar_estado', { p_pedido_id: idBase(pedidoId) })));
+    avanzarEstado: function (pedidoId, estadoEsperado) {
+      /* `p_desde` es el estado que el usuario tenia en PANTALLA. La base lo
+         compara con el real y se niega si alguien se adelanto: su propio
+         segundo clic -el tablero se repinta entre uno y otro, asi que
+         deshabilitar el boton no basta- u otra persona en otra pantalla.
+
+         Sin el dato se llama como siempre, a la variante de un argumento. */
+      return ponerPedido(aPedido(
+        estadoEsperado
+          ? rpc('avanzar_estado', { p_pedido_id: idBase(pedidoId), p_desde: String(estadoEsperado) })
+          : rpc('avanzar_estado', { p_pedido_id: idBase(pedidoId) })
+      ));
     },
 
     cancelarPedido: function (pedidoId, motivo) {

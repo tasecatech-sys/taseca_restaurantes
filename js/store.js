@@ -1616,6 +1616,18 @@ NASCAR.Store = (function () {
      core.pedidos.direccion_entrega VARCHAR(200) e indicaciones
      VARCHAR(300). Lo que se pase de ahí no se recorta solo, hace fallar
      el INSERT entero y el pedido no entra. */
+  /* Lo que aguanta cada columna en core.*. Si alguna cambia en la base,
+     se cambia AQUÍ y los dos caminos -local y nube- se enteran. */
+  const TOPES = {
+    nombre: 80,
+    telefono: 20,
+    direccion: 200, // core.pedidos.direccion_entrega
+    zona: 80,
+    indicaciones: 300, // core.pedidos.indicaciones
+    notaItem: 200, // core.pedido_items.notas
+    detalle: 400,
+  };
+
   function recortar(valor, tope) {
     return String(valor == null ? '' : valor).slice(0, tope);
   }
@@ -1623,11 +1635,11 @@ NASCAR.Store = (function () {
   /* Los datos del cliente con los mismos topes que la base. */
   function clienteConTopes(c) {
     const x = Object.assign({}, c || {});
-    x.nombre = recortar(x.nombre, 80);
-    x.telefono = recortar(x.telefono, 20);
-    x.direccion = recortar(x.direccion, 200);
-    x.zona = recortar(x.zona, 80);
-    x.notas = recortar(x.notas, 300);
+    x.nombre = recortar(x.nombre, TOPES.nombre);
+    x.telefono = recortar(x.telefono, TOPES.telefono);
+    x.direccion = recortar(x.direccion, TOPES.direccion);
+    x.zona = recortar(x.zona, TOPES.zona);
+    x.notas = recortar(x.notas, TOPES.indicaciones);
     return x;
   }
 
@@ -3465,12 +3477,12 @@ NASCAR.Store = (function () {
         /* 200 es lo que aguanta core.pedido_items.notas. Sin recortarlo
            aquí la nota no «se corta»: hace FALLAR el pedido entero en la
            base, con un mensaje que el cliente no entiende. */
-        notas: recortar(it.notas, 200),
+        notas: recortar(it.notas, TOPES.notaItem),
         origen: it.origen || 'carta', // 'carta' | 'dia' | 'armado'
       };
       // Menú armado: lo que eligió el cliente ("Sopa: Sancocho · Proteína: Pollo").
       // Va aparte de las notas para que una nota nunca lo borre.
-      if (it.detalle) item.detalle = String(it.detalle).slice(0, 400);
+      if (it.detalle) item.detalle = recortar(it.detalle, TOPES.detalle);
       return item;
     });
 
@@ -5721,6 +5733,11 @@ NASCAR.Store = (function () {
     patron: patron,
     emblema: emblema,
     paraFondoClaro: paraFondoClaro,
+    /* Los usa js/remoto.js: en la nube el pedido no pasa por
+       crearPedido() de aquí, así que los topes hay que aplicarlos
+       también allí. Una sola implementación, dos caminos. */
+    recortar: recortar,
+    TOPES: TOPES,
 
     // --- Cruce de información / caja de la jornada ---
     getBases: getBases,
