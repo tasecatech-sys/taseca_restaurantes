@@ -10662,6 +10662,283 @@ $$;
 
 
 /* ============================================================================
+   23_PEDIDOS_SIN_DUPLICADOS
+   Un envío, un pedido: candado contra facturas repetidas
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 23 · UN ENVÍO, UN PEDIDO
+   ----------------------------------------------------------------------------
+   El cliente reportó pedidos duplicados «por demoras en el botón de pedir».
+   Es exactamente eso: las escrituras viajan por XHR síncrono, así que al
+   tocar «enviar» la pantalla se queda congelada un segundo o dos. Quien está
+   atendiendo cree que no registró, vuelve a tocar, y los toques se encolan:
+   entran dos pedidos iguales.
+
+   En la pantalla se arregla con un candado en el botón. Pero eso sólo tapa el
+   caso del doble toque: no cubre recargar la página, perder la red a mitad de
+   camino ni un reintento del navegador. El candado de verdad va aquí.
+
+   CÓMO FUNCIONA
+     Cada ENVÍO lleva una clave que genera la pantalla (no el pedido: el
+     envío). Si llega una clave que esta empresa ya usó, la base no crea nada
+     y devuelve el pedido que se hizo la primera vez. Para quien atiende, es
+     como si hubiera funcionado al primer toque.
+
+     Es opcional: un envío sin clave se comporta como siempre, así que nada
+     de lo que ya existe se rompe.
+
+   No toca pedidos, ventas, pagos ni auditoría. Se puede ejecutar más de una
+   vez sin efectos.
+   Requiere: 00 … 17 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. MODELO
+   ============================================================================ */
+
+ALTER TABLE core.pedidos ADD COLUMN IF NOT EXISTS clave_envio VARCHAR(64);
+COMMENT ON COLUMN core.pedidos.clave_envio IS
+    'Identifica el ENVÍO que creó esta factura. Si llega repetido, se devuelve esta misma factura en vez de crear otra.';
+
+/* Única por empresa, y sólo donde hay clave: los pedidos de siempre -y los
+   que entren sin clave- no estorban. */
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pedidos_clave_envio
+    ON core.pedidos (empresa_id, clave_envio)
+ WHERE clave_envio IS NOT NULL;
+
+
+/* ============================================================================
+   2. CREAR UN PEDIDO, UNA SOLA VEZ
+
+   Se borra la firma anterior para no dejar dos versiones conviviendo: todos
+   los que la llaman usan parámetros por nombre.
+   ============================================================================ */
+
+DROP PROCEDURE IF EXISTS api.sp_crear_pedido(INTEGER, VARCHAR, VARCHAR, JSONB, INTEGER, VARCHAR, VARCHAR,
+                                             VARCHAR, VARCHAR, VARCHAR, INTEGER, NUMERIC, BIGINT, VARCHAR);
+
+CREATE OR REPLACE PROCEDURE api.sp_crear_pedido(
+    p_unidad_id         INTEGER,
+    p_tipo              VARCHAR,
+    p_metodo_pago       VARCHAR,
+    p_items             JSONB,
+    p_usuario_id        INTEGER DEFAULT NULL,
+    p_mesa              VARCHAR DEFAULT NULL,
+    p_cliente_nombre    VARCHAR DEFAULT NULL,
+    p_cliente_telefono  VARCHAR DEFAULT NULL,
+    p_direccion         VARCHAR DEFAULT NULL,
+    p_indicaciones      VARCHAR DEFAULT NULL,
+    p_zona_id           INTEGER DEFAULT NULL,
+    p_paga_con          NUMERIC DEFAULT NULL,
+    p_clave             VARCHAR DEFAULT NULL,
+    INOUT p_pedido_id   BIGINT  DEFAULT NULL,
+    INOUT p_codigo      VARCHAR DEFAULT NULL
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_empresa   INTEGER := core.fn_empresa_de_unidad(p_unidad_id);
+    v_metodo    INTEGER := core.fn_id_catalogo('metodos_pago', p_metodo_pago);
+    v_tipo      INTEGER := core.fn_id_catalogo('tipos_pedido', p_tipo);
+    v_cliente   BIGINT;
+    v_mesa      INTEGER;
+    v_linea     JSONB;
+    v_item      BIGINT;
+    v_minimo    NUMERIC;
+    v_falta     TEXT;
+BEGIN
+    IF v_empresa IS NULL THEN
+        RAISE EXCEPTION 'La unidad % no existe.', p_unidad_id;
+    END IF;
+
+    /* ¿Este mismo envío ya entró? Entonces no es un pedido nuevo: es el
+       mismo toque que llegó dos veces -el mesero tocó otra vez porque la
+       pantalla se quedó pensando, o se recargó la página-. Se devuelve el
+       que ya existe y no se crea ninguno. */
+    IF p_clave IS NOT NULL THEN
+        SELECT id, codigo INTO p_pedido_id, p_codigo
+          FROM core.pedidos
+         WHERE empresa_id = v_empresa AND clave_envio = p_clave;
+        IF FOUND THEN
+            RETURN;
+        END IF;
+    END IF;
+
+    PERFORM core.fn_preparar_operacion(p_usuario_id, NULL, p_unidad_id);
+    IF p_usuario_id IS NOT NULL THEN
+        PERFORM core.fn_exigir_alguno(p_usuario_id, ARRAY['pedidos_mesa', 'pedidos_gestionar']);
+    END IF;
+
+    IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
+        RAISE EXCEPTION 'El pedido está vacío.';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM core.empresa_metodos_pago
+                    WHERE empresa_id = v_empresa AND metodo_pago_id = v_metodo AND activo) THEN
+        RAISE EXCEPTION 'El método de pago "%" no está disponible.', p_metodo_pago;
+    END IF;
+
+    IF p_tipo = 'domicilio' THEN
+        IF length(trim(COALESCE(p_cliente_nombre, ''))) < 3 THEN
+            RAISE EXCEPTION 'Escribe tu nombre completo.';
+        END IF;
+        IF regexp_replace(COALESCE(p_cliente_telefono, ''), '\D', '', 'g') !~ '^[0-9]{7,10}$' THEN
+            RAISE EXCEPTION 'El celular debe tener entre 7 y 10 dígitos.';
+        END IF;
+        INSERT INTO core.clientes (empresa_id, nombre, telefono)
+        VALUES (v_empresa, trim(p_cliente_nombre), regexp_replace(p_cliente_telefono, '\D', '', 'g'))
+        ON CONFLICT (empresa_id, telefono) DO UPDATE SET nombre = EXCLUDED.nombre
+        RETURNING id INTO v_cliente;
+    ELSIF p_tipo = 'mesa' THEN
+        SELECT id INTO v_mesa FROM core.mesas
+         WHERE unidad_id = p_unidad_id AND numero = trim(p_mesa) AND activa;
+        IF v_mesa IS NULL THEN
+            RAISE EXCEPTION 'La mesa "%" no existe en esta unidad.', p_mesa;
+        END IF;
+    END IF;
+
+    BEGIN
+        INSERT INTO core.pedidos (unidad_id, tipo_pedido_id, metodo_pago_id, mesa_id, cliente_id,
+                                  zona_domicilio_id, direccion_entrega, indicaciones, paga_con, tomado_por_id,
+                                  clave_envio)
+        VALUES (p_unidad_id, v_tipo, v_metodo, v_mesa, v_cliente, p_zona_id,
+                NULLIF(trim(p_direccion), ''), NULLIF(trim(p_indicaciones), ''), p_paga_con, p_usuario_id,
+                p_clave)
+        RETURNING id, codigo INTO p_pedido_id, p_codigo;
+    EXCEPTION WHEN unique_violation THEN
+        /* Dos envíos idénticos a la vez: uno entró primero. El segundo se
+           lleva el mismo pedido, no un error ni una factura repetida. */
+        SELECT id, codigo INTO p_pedido_id, p_codigo
+          FROM core.pedidos
+         WHERE empresa_id = v_empresa AND clave_envio = p_clave;
+        IF FOUND THEN
+            RETURN;
+        END IF;
+        RAISE;   -- era otra cosa (el consecutivo, por ejemplo)
+    END;
+
+    FOR v_linea IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+        INSERT INTO core.pedido_items (pedido_id, producto_id, plato_dia_id, menu_dia_id, cantidad, notas)
+        VALUES (p_pedido_id,
+                (v_linea ->> 'producto_id')::INTEGER,
+                (v_linea ->> 'plato_dia_id')::BIGINT,
+                (v_linea ->> 'menu_dia_id')::BIGINT,
+                COALESCE((v_linea ->> 'cantidad')::INTEGER, 1),
+                NULLIF(trim(v_linea ->> 'notas'), ''))
+        RETURNING id INTO v_item;
+
+        IF v_linea ? 'menu_dia_id' THEN
+            INSERT INTO core.pedido_item_opciones (pedido_item_id, menu_opcion_id)
+            SELECT v_item, x::BIGINT FROM jsonb_array_elements_text(COALESCE(v_linea -> 'opciones', '[]')) x;
+
+            -- Toda categoría obligatoria con opciones activas debe tener al menos una elegida
+            SELECT string_agg(c.nombre, ', ' ORDER BY c.orden) INTO v_falta
+              FROM core.menu_categorias c
+             WHERE c.menu_dia_id = (v_linea ->> 'menu_dia_id')::BIGINT
+               AND c.activa AND c.obligatoria
+               AND EXISTS (SELECT 1 FROM core.menu_opciones o WHERE o.menu_categoria_id = c.id AND o.activa)
+               AND NOT EXISTS (SELECT 1 FROM core.pedido_item_opciones x
+                                 JOIN core.menu_opciones o ON o.id = x.menu_opcion_id
+                                WHERE x.pedido_item_id = v_item AND o.menu_categoria_id = c.id);
+            IF v_falta IS NOT NULL THEN
+                RAISE EXCEPTION 'Te falta elegir: %.', v_falta;
+            END IF;
+        END IF;
+    END LOOP;
+
+    SELECT pedido_minimo INTO v_minimo FROM core.zonas_domicilio WHERE id = p_zona_id;
+    IF v_minimo IS NOT NULL AND core.fn_subtotal_pedido(p_pedido_id) < v_minimo THEN
+        RAISE EXCEPTION 'El pedido mínimo para esta zona es %.', v_minimo;
+    END IF;
+END;
+$$;
+
+/* ============================================================================
+   3. LA PUERTA DE LA APLICACIÓN
+   ============================================================================ */
+
+DROP FUNCTION IF EXISTS rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC);
+
+CREATE OR REPLACE FUNCTION rest.crear_pedido(
+    p_unidad_id         INTEGER,
+    p_tipo              TEXT,
+    p_metodo_pago       TEXT,
+    p_items             JSONB,
+    p_mesa              TEXT    DEFAULT NULL,
+    p_cliente_nombre    TEXT    DEFAULT NULL,
+    p_cliente_telefono  TEXT    DEFAULT NULL,
+    p_direccion         TEXT    DEFAULT NULL,
+    p_indicaciones      TEXT    DEFAULT NULL,
+    p_zona_id           INTEGER DEFAULT NULL,
+    p_paga_con          NUMERIC DEFAULT NULL,
+    p_clave             TEXT    DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_id     BIGINT;
+    v_codigo VARCHAR;
+BEGIN
+    CALL api.sp_crear_pedido(
+        p_unidad_id => p_unidad_id, p_tipo => p_tipo, p_metodo_pago => p_metodo_pago, p_items => p_items,
+        p_usuario_id => core.fn_jwt_usuario(), p_mesa => p_mesa,
+        p_cliente_nombre => p_cliente_nombre, p_cliente_telefono => p_cliente_telefono,
+        p_direccion => p_direccion, p_indicaciones => p_indicaciones, p_zona_id => p_zona_id,
+        p_paga_con => p_paga_con, p_clave => NULLIF(trim(p_clave), ''),
+        p_pedido_id => v_id, p_codigo => v_codigo);
+    RETURN core.fn_pedido_json(v_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION
+    rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC, TEXT)
+    TO taseca_anon, taseca_app;
+
+
+/* ============================================================================
+   4. REVISIÓN
+   ============================================================================ */
+
+DO $$
+DECLARE
+    v_col BOOLEAN;
+    v_idx BOOLEAN;
+    v_fn  INTEGER;
+BEGIN
+    SELECT EXISTS (SELECT 1 FROM pg_attribute
+                    WHERE attrelid = 'core.pedidos'::regclass AND attname = 'clave_envio' AND NOT attisdropped)
+      INTO v_col;
+    SELECT EXISTS (SELECT 1 FROM pg_indexes
+                    WHERE schemaname = 'core' AND indexname = 'uq_pedidos_clave_envio') INTO v_idx;
+    SELECT count(*) INTO v_fn FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'rest' AND p.proname = 'crear_pedido';
+
+    RAISE NOTICE '--------------------------------------------------';
+    RAISE NOTICE 'Columna core.pedidos.clave_envio ... %', CASE WHEN v_col THEN 'sí' ELSE 'NO' END;
+    RAISE NOTICE 'Índice único por empresa ........... %', CASE WHEN v_idx THEN 'sí' ELSE 'NO' END;
+    RAISE NOTICE 'Versiones de rest.crear_pedido ..... % (tiene que ser 1)', v_fn;
+    RAISE NOTICE '--------------------------------------------------';
+
+    IF NOT v_col OR NOT v_idx THEN
+        RAISE EXCEPTION 'El candado no quedó puesto: revisa el paso 1.';
+    END IF;
+    IF v_fn <> 1 THEN
+        RAISE EXCEPTION 'Quedaron % versiones de rest.crear_pedido: la API no sabría cuál llamar.', v_fn;
+    END IF;
+END;
+$$;
+
+
+/* ============================================================================
    24_ARRANQUE_EN_UN_VIAJE
    Abrir el panel en una sola petición
    ============================================================================ */
@@ -11855,283 +12132,6 @@ BEGIN
     END IF;
     IF v_n <> 1 THEN
         RAISE EXCEPTION 'Quedaron % versiones de rest.anular_pedido: la API no sabría cuál llamar.', v_n;
-    END IF;
-END;
-$$;
-
-
-/* ============================================================================
-   23_PEDIDOS_SIN_DUPLICADOS
-   Un envío, un pedido: candado contra facturas repetidas
-   ============================================================================ */
-
-/* ============================================================================
-   TASECA · 23 · UN ENVÍO, UN PEDIDO
-   ----------------------------------------------------------------------------
-   El cliente reportó pedidos duplicados «por demoras en el botón de pedir».
-   Es exactamente eso: las escrituras viajan por XHR síncrono, así que al
-   tocar «enviar» la pantalla se queda congelada un segundo o dos. Quien está
-   atendiendo cree que no registró, vuelve a tocar, y los toques se encolan:
-   entran dos pedidos iguales.
-
-   En la pantalla se arregla con un candado en el botón. Pero eso sólo tapa el
-   caso del doble toque: no cubre recargar la página, perder la red a mitad de
-   camino ni un reintento del navegador. El candado de verdad va aquí.
-
-   CÓMO FUNCIONA
-     Cada ENVÍO lleva una clave que genera la pantalla (no el pedido: el
-     envío). Si llega una clave que esta empresa ya usó, la base no crea nada
-     y devuelve el pedido que se hizo la primera vez. Para quien atiende, es
-     como si hubiera funcionado al primer toque.
-
-     Es opcional: un envío sin clave se comporta como siempre, así que nada
-     de lo que ya existe se rompe.
-
-   No toca pedidos, ventas, pagos ni auditoría. Se puede ejecutar más de una
-   vez sin efectos.
-   Requiere: 00 … 17 instalados.
-   ============================================================================ */
-
-SET search_path = core, public;
-
-
-/* ============================================================================
-   1. MODELO
-   ============================================================================ */
-
-ALTER TABLE core.pedidos ADD COLUMN IF NOT EXISTS clave_envio VARCHAR(64);
-COMMENT ON COLUMN core.pedidos.clave_envio IS
-    'Identifica el ENVÍO que creó esta factura. Si llega repetido, se devuelve esta misma factura en vez de crear otra.';
-
-/* Única por empresa, y sólo donde hay clave: los pedidos de siempre -y los
-   que entren sin clave- no estorban. */
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pedidos_clave_envio
-    ON core.pedidos (empresa_id, clave_envio)
- WHERE clave_envio IS NOT NULL;
-
-
-/* ============================================================================
-   2. CREAR UN PEDIDO, UNA SOLA VEZ
-
-   Se borra la firma anterior para no dejar dos versiones conviviendo: todos
-   los que la llaman usan parámetros por nombre.
-   ============================================================================ */
-
-DROP PROCEDURE IF EXISTS api.sp_crear_pedido(INTEGER, VARCHAR, VARCHAR, JSONB, INTEGER, VARCHAR, VARCHAR,
-                                             VARCHAR, VARCHAR, VARCHAR, INTEGER, NUMERIC, BIGINT, VARCHAR);
-
-CREATE OR REPLACE PROCEDURE api.sp_crear_pedido(
-    p_unidad_id         INTEGER,
-    p_tipo              VARCHAR,
-    p_metodo_pago       VARCHAR,
-    p_items             JSONB,
-    p_usuario_id        INTEGER DEFAULT NULL,
-    p_mesa              VARCHAR DEFAULT NULL,
-    p_cliente_nombre    VARCHAR DEFAULT NULL,
-    p_cliente_telefono  VARCHAR DEFAULT NULL,
-    p_direccion         VARCHAR DEFAULT NULL,
-    p_indicaciones      VARCHAR DEFAULT NULL,
-    p_zona_id           INTEGER DEFAULT NULL,
-    p_paga_con          NUMERIC DEFAULT NULL,
-    p_clave             VARCHAR DEFAULT NULL,
-    INOUT p_pedido_id   BIGINT  DEFAULT NULL,
-    INOUT p_codigo      VARCHAR DEFAULT NULL
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = core, public
-AS $$
-DECLARE
-    v_empresa   INTEGER := core.fn_empresa_de_unidad(p_unidad_id);
-    v_metodo    INTEGER := core.fn_id_catalogo('metodos_pago', p_metodo_pago);
-    v_tipo      INTEGER := core.fn_id_catalogo('tipos_pedido', p_tipo);
-    v_cliente   BIGINT;
-    v_mesa      INTEGER;
-    v_linea     JSONB;
-    v_item      BIGINT;
-    v_minimo    NUMERIC;
-    v_falta     TEXT;
-BEGIN
-    IF v_empresa IS NULL THEN
-        RAISE EXCEPTION 'La unidad % no existe.', p_unidad_id;
-    END IF;
-
-    /* ¿Este mismo envío ya entró? Entonces no es un pedido nuevo: es el
-       mismo toque que llegó dos veces -el mesero tocó otra vez porque la
-       pantalla se quedó pensando, o se recargó la página-. Se devuelve el
-       que ya existe y no se crea ninguno. */
-    IF p_clave IS NOT NULL THEN
-        SELECT id, codigo INTO p_pedido_id, p_codigo
-          FROM core.pedidos
-         WHERE empresa_id = v_empresa AND clave_envio = p_clave;
-        IF FOUND THEN
-            RETURN;
-        END IF;
-    END IF;
-
-    PERFORM core.fn_preparar_operacion(p_usuario_id, NULL, p_unidad_id);
-    IF p_usuario_id IS NOT NULL THEN
-        PERFORM core.fn_exigir_alguno(p_usuario_id, ARRAY['pedidos_mesa', 'pedidos_gestionar']);
-    END IF;
-
-    IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
-        RAISE EXCEPTION 'El pedido está vacío.';
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM core.empresa_metodos_pago
-                    WHERE empresa_id = v_empresa AND metodo_pago_id = v_metodo AND activo) THEN
-        RAISE EXCEPTION 'El método de pago "%" no está disponible.', p_metodo_pago;
-    END IF;
-
-    IF p_tipo = 'domicilio' THEN
-        IF length(trim(COALESCE(p_cliente_nombre, ''))) < 3 THEN
-            RAISE EXCEPTION 'Escribe tu nombre completo.';
-        END IF;
-        IF regexp_replace(COALESCE(p_cliente_telefono, ''), '\D', '', 'g') !~ '^[0-9]{7,10}$' THEN
-            RAISE EXCEPTION 'El celular debe tener entre 7 y 10 dígitos.';
-        END IF;
-        INSERT INTO core.clientes (empresa_id, nombre, telefono)
-        VALUES (v_empresa, trim(p_cliente_nombre), regexp_replace(p_cliente_telefono, '\D', '', 'g'))
-        ON CONFLICT (empresa_id, telefono) DO UPDATE SET nombre = EXCLUDED.nombre
-        RETURNING id INTO v_cliente;
-    ELSIF p_tipo = 'mesa' THEN
-        SELECT id INTO v_mesa FROM core.mesas
-         WHERE unidad_id = p_unidad_id AND numero = trim(p_mesa) AND activa;
-        IF v_mesa IS NULL THEN
-            RAISE EXCEPTION 'La mesa "%" no existe en esta unidad.', p_mesa;
-        END IF;
-    END IF;
-
-    BEGIN
-        INSERT INTO core.pedidos (unidad_id, tipo_pedido_id, metodo_pago_id, mesa_id, cliente_id,
-                                  zona_domicilio_id, direccion_entrega, indicaciones, paga_con, tomado_por_id,
-                                  clave_envio)
-        VALUES (p_unidad_id, v_tipo, v_metodo, v_mesa, v_cliente, p_zona_id,
-                NULLIF(trim(p_direccion), ''), NULLIF(trim(p_indicaciones), ''), p_paga_con, p_usuario_id,
-                p_clave)
-        RETURNING id, codigo INTO p_pedido_id, p_codigo;
-    EXCEPTION WHEN unique_violation THEN
-        /* Dos envíos idénticos a la vez: uno entró primero. El segundo se
-           lleva el mismo pedido, no un error ni una factura repetida. */
-        SELECT id, codigo INTO p_pedido_id, p_codigo
-          FROM core.pedidos
-         WHERE empresa_id = v_empresa AND clave_envio = p_clave;
-        IF FOUND THEN
-            RETURN;
-        END IF;
-        RAISE;   -- era otra cosa (el consecutivo, por ejemplo)
-    END;
-
-    FOR v_linea IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-        INSERT INTO core.pedido_items (pedido_id, producto_id, plato_dia_id, menu_dia_id, cantidad, notas)
-        VALUES (p_pedido_id,
-                (v_linea ->> 'producto_id')::INTEGER,
-                (v_linea ->> 'plato_dia_id')::BIGINT,
-                (v_linea ->> 'menu_dia_id')::BIGINT,
-                COALESCE((v_linea ->> 'cantidad')::INTEGER, 1),
-                NULLIF(trim(v_linea ->> 'notas'), ''))
-        RETURNING id INTO v_item;
-
-        IF v_linea ? 'menu_dia_id' THEN
-            INSERT INTO core.pedido_item_opciones (pedido_item_id, menu_opcion_id)
-            SELECT v_item, x::BIGINT FROM jsonb_array_elements_text(COALESCE(v_linea -> 'opciones', '[]')) x;
-
-            -- Toda categoría obligatoria con opciones activas debe tener al menos una elegida
-            SELECT string_agg(c.nombre, ', ' ORDER BY c.orden) INTO v_falta
-              FROM core.menu_categorias c
-             WHERE c.menu_dia_id = (v_linea ->> 'menu_dia_id')::BIGINT
-               AND c.activa AND c.obligatoria
-               AND EXISTS (SELECT 1 FROM core.menu_opciones o WHERE o.menu_categoria_id = c.id AND o.activa)
-               AND NOT EXISTS (SELECT 1 FROM core.pedido_item_opciones x
-                                 JOIN core.menu_opciones o ON o.id = x.menu_opcion_id
-                                WHERE x.pedido_item_id = v_item AND o.menu_categoria_id = c.id);
-            IF v_falta IS NOT NULL THEN
-                RAISE EXCEPTION 'Te falta elegir: %.', v_falta;
-            END IF;
-        END IF;
-    END LOOP;
-
-    SELECT pedido_minimo INTO v_minimo FROM core.zonas_domicilio WHERE id = p_zona_id;
-    IF v_minimo IS NOT NULL AND core.fn_subtotal_pedido(p_pedido_id) < v_minimo THEN
-        RAISE EXCEPTION 'El pedido mínimo para esta zona es %.', v_minimo;
-    END IF;
-END;
-$$;
-
-/* ============================================================================
-   3. LA PUERTA DE LA APLICACIÓN
-   ============================================================================ */
-
-DROP FUNCTION IF EXISTS rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC);
-
-CREATE OR REPLACE FUNCTION rest.crear_pedido(
-    p_unidad_id         INTEGER,
-    p_tipo              TEXT,
-    p_metodo_pago       TEXT,
-    p_items             JSONB,
-    p_mesa              TEXT    DEFAULT NULL,
-    p_cliente_nombre    TEXT    DEFAULT NULL,
-    p_cliente_telefono  TEXT    DEFAULT NULL,
-    p_direccion         TEXT    DEFAULT NULL,
-    p_indicaciones      TEXT    DEFAULT NULL,
-    p_zona_id           INTEGER DEFAULT NULL,
-    p_paga_con          NUMERIC DEFAULT NULL,
-    p_clave             TEXT    DEFAULT NULL
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = core, public
-AS $$
-DECLARE
-    v_id     BIGINT;
-    v_codigo VARCHAR;
-BEGIN
-    CALL api.sp_crear_pedido(
-        p_unidad_id => p_unidad_id, p_tipo => p_tipo, p_metodo_pago => p_metodo_pago, p_items => p_items,
-        p_usuario_id => core.fn_jwt_usuario(), p_mesa => p_mesa,
-        p_cliente_nombre => p_cliente_nombre, p_cliente_telefono => p_cliente_telefono,
-        p_direccion => p_direccion, p_indicaciones => p_indicaciones, p_zona_id => p_zona_id,
-        p_paga_con => p_paga_con, p_clave => NULLIF(trim(p_clave), ''),
-        p_pedido_id => v_id, p_codigo => v_codigo);
-    RETURN core.fn_pedido_json(v_id);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION
-    rest.crear_pedido(INTEGER, TEXT, TEXT, JSONB, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC, TEXT)
-    TO taseca_anon, taseca_app;
-
-
-/* ============================================================================
-   4. REVISIÓN
-   ============================================================================ */
-
-DO $$
-DECLARE
-    v_col BOOLEAN;
-    v_idx BOOLEAN;
-    v_fn  INTEGER;
-BEGIN
-    SELECT EXISTS (SELECT 1 FROM pg_attribute
-                    WHERE attrelid = 'core.pedidos'::regclass AND attname = 'clave_envio' AND NOT attisdropped)
-      INTO v_col;
-    SELECT EXISTS (SELECT 1 FROM pg_indexes
-                    WHERE schemaname = 'core' AND indexname = 'uq_pedidos_clave_envio') INTO v_idx;
-    SELECT count(*) INTO v_fn FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'rest' AND p.proname = 'crear_pedido';
-
-    RAISE NOTICE '--------------------------------------------------';
-    RAISE NOTICE 'Columna core.pedidos.clave_envio ... %', CASE WHEN v_col THEN 'sí' ELSE 'NO' END;
-    RAISE NOTICE 'Índice único por empresa ........... %', CASE WHEN v_idx THEN 'sí' ELSE 'NO' END;
-    RAISE NOTICE 'Versiones de rest.crear_pedido ..... % (tiene que ser 1)', v_fn;
-    RAISE NOTICE '--------------------------------------------------';
-
-    IF NOT v_col OR NOT v_idx THEN
-        RAISE EXCEPTION 'El candado no quedó puesto: revisa el paso 1.';
-    END IF;
-    IF v_fn <> 1 THEN
-        RAISE EXCEPTION 'Quedaron % versiones de rest.crear_pedido: la API no sabría cuál llamar.', v_fn;
     END IF;
 END;
 $$;
@@ -13703,6 +13703,335 @@ BEGIN
     SELECT string_agg(codigo, ', ' ORDER BY id) INTO v_tipos FROM core.tipos_pedido;
     RAISE NOTICE 'OK · tipos de pedido: %', v_tipos;
     RAISE NOTICE '  Se ofrece en el portal a los locales que tengan dirección configurada.';
+END;
+$blk$;
+
+
+/* ============================================================================
+   34_REPORTAR_PAGO_CON_BILLETERAS
+   Reportar el pago desde Nequi, Daviplata y Bre-B
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 34 · REPORTAR EL PAGO TAMBIÉN DESDE NEQUI, DAVIPLATA Y BRE-B
+   ----------------------------------------------------------------------------
+   EL SÍNTOMA
+
+     El cliente paga por Nequi, escribe la referencia, le da a confirmar y le
+     sale:
+
+       «No se encontró un pedido por transferencia reciente con ese número.»
+
+     Con cualquier referencia. No era la referencia: era el método.
+
+   LA CAUSA
+
+     rest.reportar_pago busca el pedido así:
+
+       AND m.codigo = 'transferencia'
+
+     La migración 29 partió «transferencia» en Nequi, Daviplata y Bre-B, y
+     dejó la genérica desactivada y renombrada «Otra transferencia». Desde
+     entonces ningún pedido real tiene el código `transferencia`: tienen
+     `nequi`, `daviplata` o `breb`. La 29 actualizó los datos, las vistas y
+     la aplicación, pero se le pasó esta función.
+
+     Resultado: desde la 29, NADIE puede reportar un pago.
+
+   EL ARREGLO
+
+     Buscar por GRUPO y no por código. `grupo_caja = 'transferencia'` es
+     justo lo que agrupa a las cuatro, y es el mismo criterio que usan la
+     caja y js/store.js (grupoDeMetodo). Si mañana se añade otra billetera,
+     con ponerla en ese grupo ya entra: no hay que volver aquí.
+
+   Se puede ejecutar más de una vez.
+   Requiere: 00 … 33 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. LA FUNCIÓN
+
+   Se reescribe entera porque es corta. Lo único que cambia es la línea del
+   método, pero se deja el resto a la vista para que se lea de un golpe qué
+   condiciones tiene que cumplir un pedido para poder reportar su pago.
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION rest.reportar_pago(
+    p_codigo     TEXT,
+    p_referencia TEXT DEFAULT NULL,
+    p_imagen     TEXT DEFAULT NULL,
+    p_empresa    TEXT DEFAULT 'empresa_nascar'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'core', 'public'
+AS $fn$
+DECLARE
+    v_id   BIGINT;
+    v_comp BIGINT;
+BEGIN
+    SELECT p.id INTO v_id
+      FROM core.pedidos p
+      JOIN core.empresas e     ON e.id = p.empresa_id
+      JOIN core.metodos_pago m ON m.id = p.metodo_pago_id
+     WHERE e.codigo = p_empresa
+       AND p.codigo = core.fn_normalizar_codigo_pedido(e.id, p_codigo)
+       /* Por GRUPO, no por código: desde la migración 29 los pagos por
+          transferencia llegan como nequi, daviplata o breb. */
+       AND m.grupo_caja = 'transferencia'
+       AND p.creado_en > now() - INTERVAL '24 hours';
+
+    IF v_id IS NULL THEN
+        RAISE EXCEPTION 'No se encontró un pedido por transferencia reciente con ese número.';
+    END IF;
+
+    CALL api.sp_registrar_comprobante(p_pedido_id     => v_id,
+                                      p_archivo_url   => p_imagen,
+                                      p_referencia    => p_referencia,
+                                      p_comprobante_id => v_comp);
+    RETURN rest.seguimiento(p_codigo, p_empresa);
+END;
+$fn$;
+
+COMMENT ON FUNCTION rest.reportar_pago(TEXT, TEXT, TEXT, TEXT) IS
+    'El cliente reporta que ya transfirió. Vale para cualquier método del grupo transferencia: Nequi, Daviplata, Bre-B y la genérica.';
+
+
+/* ============================================================================
+   2. REVISIÓN
+
+   No basta con que la función exista. Se comprueba que el criterio alcanza a
+   las cuatro billeteras, que es lo que se rompió.
+   ============================================================================ */
+DO $blk$
+DECLARE
+    v_grupo   INTEGER;
+    v_codigo  INTEGER;
+    v_def     TEXT;
+BEGIN
+    SELECT count(*) INTO v_grupo  FROM core.metodos_pago WHERE grupo_caja = 'transferencia';
+    SELECT count(*) INTO v_codigo FROM core.metodos_pago WHERE codigo     = 'transferencia';
+
+    IF v_grupo < 4 THEN
+        RAISE EXCEPTION 'Sólo % métodos en el grupo transferencia: falta la migración 29.', v_grupo;
+    END IF;
+
+    IF v_grupo = v_codigo THEN
+        RAISE EXCEPTION 'El grupo y el código coinciden: este arreglo no serviría de nada.';
+    END IF;
+
+    SELECT pg_get_functiondef(p.oid) INTO v_def
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'rest' AND p.proname = 'reportar_pago';
+
+    IF position('m.grupo_caja = ''transferencia''' IN v_def) = 0 THEN
+        RAISE EXCEPTION 'rest.reportar_pago no quedó buscando por grupo.';
+    END IF;
+    IF position('m.codigo = ''transferencia''' IN v_def) > 0 THEN
+        RAISE EXCEPTION 'rest.reportar_pago sigue buscando por código.';
+    END IF;
+
+    RAISE NOTICE 'OK · reportar_pago alcanza a los % métodos del grupo transferencia.', v_grupo;
+END;
+$blk$;
+
+
+/* ============================================================================
+   35_AVANZAR_DESDE_DONDE_SE_VE
+   Avanzar un pedido solo desde donde se esta viendo
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 35 · AVANZAR UN PEDIDO DESDE DONDE SE ESTÁ VIENDO
+   ----------------------------------------------------------------------------
+   EL SÍNTOMA
+
+     Doble clic en «A preparación» y el pedido se va a «Listo», saltándose
+     un estado. La cocina nunca lo ve. Medido en producción:
+
+       nuevo → preparacion → listo   (con dos clics seguidos)
+
+   POR QUÉ NO BASTABA EL ARREGLO DEL NAVEGADOR
+
+     El panel ya deshabilita el botón mientras trabaja, y no sirve: el
+     tablero se repinta entre un clic y el siguiente, así que el segundo
+     cae sobre un botón NUEVO, que no está deshabilitado.
+
+     Se le puso un candado a js/store.js y tampoco alcanzó: js/remoto.js
+     REEMPLAZA los métodos del store cuando se trabaja contra la base
+     (S[k] = operaciones[k]), así que en la nube ese candado no existía.
+
+     Y aunque existiera, no cubriría lo de verdad peligroso: el mesero y la
+     cocina tocando el mismo pedido desde dos pantallas. Eso sólo se
+     resuelve donde hay una única verdad, que es aquí.
+
+   EL ARREGLO, EN DOS CAPAS
+
+     1. El paso se vuelve ATÓMICO. El UPDATE comprueba en su propio WHERE
+        que el pedido siga en el estado desde el que se calculó el
+        siguiente. Dos llamadas a la vez: una gana, la otra no encuentra
+        fila y avisa. Protege aunque nadie mande nada nuevo.
+
+     2. Se puede decir DESDE DÓNDE se avanza (`p_desde`). Es lo que para el
+        doble clic: el segundo sigue diciendo «vengo de nuevo», pero el
+        pedido ya está en preparación, y se rechaza con un mensaje claro.
+
+   OJO CON LAS SOBRECARGAS
+
+     Al procedimiento se le añade un parámetro, así que hay que BORRAR el
+     de dos argumentos antes de crear el de tres. Si se dejaran los dos,
+     PostgreSQL preferiría el de aridad exacta al llamarlo con dos, y
+     rest.avanzar_estado seguiría usando la versión SIN arreglar.
+
+     A rest.avanzar_estado, en cambio, no se le toca nada: se añade otra
+     función de dos argumentos SIN valor por defecto, y así no hay
+     ambigüedad al llamar con uno solo.
+
+   LA PRUEBA DE VERDAD VA APARTE
+
+     En 35_pruebas_avanzar.sql. Tiene que deshacerse con ROLLBACK, y si
+     estuviera en este archivo -que el editor de Supabase corre entero en
+     una transacción- se desharían también las funciones de arriba.
+
+   Se puede ejecutar más de una vez.
+   Requiere: 00 … 34 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. EL PROCEDIMIENTO: ATÓMICO, Y CON «DESDE DÓNDE» OPCIONAL
+   ============================================================================ */
+DROP PROCEDURE IF EXISTS api.sp_avanzar_estado_pedido(BIGINT, INTEGER);
+
+CREATE OR REPLACE PROCEDURE api.sp_avanzar_estado_pedido(
+    IN p_pedido_id BIGINT,
+    IN p_usuario_id INTEGER,
+    IN p_desde VARCHAR DEFAULT NULL
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $pr$
+DECLARE
+    v_actual    INTEGER;
+    v_cod_act   VARCHAR;
+    v_siguiente INTEGER;
+BEGIN
+    PERFORM core.fn_preparar_operacion(p_usuario_id, NULL,
+            (SELECT unidad_id FROM core.pedidos WHERE id = p_pedido_id));
+    PERFORM core.fn_exigir_alguno(p_usuario_id,
+            ARRAY['pedidos_gestionar', 'pedidos_cocina', 'pedidos_listos', 'pedidos_domicilio']);
+
+    SELECT p.estado_pedido_id, e.codigo
+      INTO v_actual, v_cod_act
+      FROM core.pedidos p
+      JOIN core.estados_pedido e ON e.id = p.estado_pedido_id
+     WHERE p.id = p_pedido_id;
+
+    IF v_actual IS NULL THEN
+        RAISE EXCEPTION 'El pedido % no existe.', p_pedido_id;
+    END IF;
+
+    /* ¿Sigue donde quien pulsó lo estaba viendo? Si no, alguien se
+       adelantó: otra pantalla, o su propio segundo clic. */
+    IF p_desde IS NOT NULL AND v_cod_act <> p_desde THEN
+        RAISE EXCEPTION 'Ese pedido ya está en «%». Alguien se te adelantó.',
+            (SELECT e.nombre FROM core.estados_pedido e WHERE e.id = v_actual);
+    END IF;
+
+    v_siguiente := core.fn_siguiente_estado(p_pedido_id);
+    IF v_siguiente IS NULL THEN
+        RAISE EXCEPTION 'El pedido % ya no tiene un estado siguiente.', p_pedido_id;
+    END IF;
+
+    /* El estado actual va en el WHERE: eso es lo que hace atómico el paso.
+       Si entre el SELECT de arriba y este UPDATE alguien movió el pedido,
+       aquí no hay fila que actualizar y se avisa en vez de pisarlo. */
+    UPDATE core.pedidos
+       SET estado_pedido_id = v_siguiente
+     WHERE id = p_pedido_id
+       AND estado_pedido_id = v_actual;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Ese pedido lo movió alguien más mientras lo actualizabas. Vuelve a intentarlo.';
+    END IF;
+END;
+$pr$;
+
+
+/* ============================================================================
+   2. LA PUERTA DE LA APLICACIÓN
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION rest.avanzar_estado(p_pedido_id BIGINT, p_desde TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'core', 'public'
+AS $fn$
+BEGIN
+    CALL api.sp_avanzar_estado_pedido(p_pedido_id, core.fn_exigir_sesion(),
+                                      NULLIF(trim(p_desde), ''));
+    RETURN core.fn_pedido_de_sesion(p_pedido_id);
+END;
+$fn$;
+
+GRANT EXECUTE ON FUNCTION rest.avanzar_estado(BIGINT, TEXT) TO taseca_app;
+
+COMMENT ON FUNCTION rest.avanzar_estado(BIGINT, TEXT) IS
+    'Avanza un pedido al siguiente estado, pero sólo si sigue en p_desde. Contra el doble clic y contra dos pantallas a la vez.';
+
+
+/* ============================================================================
+   3. REVISIÓN
+
+   Sólo de forma: que las firmas quedaran como se espera y que no haya
+   sobrecargas sueltas. El comportamiento se prueba en
+   35_pruebas_avanzar.sql, que se deshace con ROLLBACK.
+   ============================================================================ */
+DO $blk$
+DECLARE
+    v_proc  INTEGER;
+    v_viejo INTEGER;
+    v_rest  INTEGER;
+BEGIN
+    SELECT count(*) INTO v_proc
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'api' AND p.proname = 'sp_avanzar_estado_pedido' AND p.pronargs = 3;
+
+    SELECT count(*) INTO v_viejo
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'api' AND p.proname = 'sp_avanzar_estado_pedido' AND p.pronargs = 2;
+
+    SELECT count(*) INTO v_rest
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'rest' AND p.proname = 'avanzar_estado';
+
+    IF v_proc <> 1 THEN
+        RAISE EXCEPTION 'api.sp_avanzar_estado_pedido de 3 argumentos: hay %.', v_proc;
+    END IF;
+
+    IF v_viejo <> 0 THEN
+        RAISE EXCEPTION 'Sigue existiendo el de 2 argumentos: las llamadas antiguas usarían la versión sin arreglar.';
+    END IF;
+
+    IF v_rest <> 2 THEN
+        RAISE EXCEPTION 'rest.avanzar_estado debería tener 2 variantes (1 y 2 argumentos); hay %.', v_rest;
+    END IF;
+
+    IF position('AND estado_pedido_id = v_actual' IN
+                (SELECT pg_get_functiondef(p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  WHERE n.nspname = 'api' AND p.proname = 'sp_avanzar_estado_pedido')) = 0 THEN
+        RAISE EXCEPTION 'El UPDATE no quedó atómico.';
+    END IF;
+
+    RAISE NOTICE 'OK · procedimiento atómico y con p_desde; rest.avanzar_estado con sus dos variantes.';
+    RAISE NOTICE '  Ahora corre 35_pruebas_avanzar.sql para probar el comportamiento.';
 END;
 $blk$;
 

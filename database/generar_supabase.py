@@ -34,10 +34,22 @@ PARTES = [
     ('16_pagos_en_caja.sql',                 'Todos los pagos se confirman en caja'),
     ('17_integridad_multiempresa.sql',       'Chequeo de relaciones y red de seguridad'),
     ('22_relaciones_empresa_completas.sql',  'Red de seguridad completa en el camino de un pedido'),
+
+    # ---- OJO CON EL ORDEN DE LA 23 Y LA 25 -----------------------------
+    # La 23 borra la firma de sp_crear_pedido de 14 argumentos -la del 04-
+    # y crea la de 15, con p_clave. La 25 borra la de 15 y crea la suya,
+    # que lleva p_clave Y la venta directa.
+    #
+    # Aqui la 23 estaba DESPUES de la 25, y eso rompia la instalacion:
+    # la 25 no encontraba nada que borrar y quedaban dos versiones del
+    # procedimiento. Su propio chequeo lo cazaba y paraba el instalador
+    # («Quedaron 3 versiones de los procedimientos»). Y de no pararlo,
+    # habria sido peor: la 23 habria corrido despues pisando la version
+    # de la 25 y dejando la venta directa rota en silencio.
+    ('23_pedidos_sin_duplicados.sql',        'Un envío, un pedido: candado contra facturas repetidas'),
     ('24_arranque_en_un_viaje.sql',          'Abrir el panel en una sola petición'),
     ('25_venta_directa.sql',                 'Venta directa en el mostrador'),
     ('26_anulacion_por_item.sql',            'Al anular, qué vuelve al stock y qué se da de baja'),
-    ('23_pedidos_sin_duplicados.sql',        'Un envío, un pedido: candado contra facturas repetidas'),
     ('20_motivo_marca.sql',                  'El motivo de marca de cada empresa'),
 
     # ---- Lo de después de la 20. Van AQUÍ, entre la 20 y la 19, y en este
@@ -51,14 +63,19 @@ PARTES = [
     #        · la 19 se queda la última, como estaba, porque enciende RLS
     #          sobre todas las tablas y estas tres añaden columnas.
     #
-    #      La 33 NO está: era el parche del fallo de la 30 para las bases ya
-    #      instaladas. La 30 ya nace corregida, así que aquí sobraría.
+    #      NO están la 33 ni la 36: eran parches para bases YA instaladas.
+    #      Sus fallos se corrigieron en origen -la 30 y la 15-, así que en
+    #      una instalación nueva sobrarían. La 34 y la 35 sí están, porque
+    #      arreglan funciones que nacen en los scripts base y no hay dónde
+    #      corregirlas antes.
     ('27_fotos_en_storage.sql',              'Las fotos de la carta viven en Storage'),
     ('28_recetas_cantidad.sql',              'Cuánto gasta cada plato de cada insumo'),
     ('29_billeteras_separadas.sql',          'Nequi, Daviplata y Bre-B, cada una por su lado'),
     ('30_recargo_por_metodo.sql',            'El recargo que la empresa le cobra por método de pago'),
     ('31_modo_claro.sql',                    'Cada empresa elige si se ve clara u oscura'),
     ('32_recoger_en_sitio.sql',              'Recoger el pedido en el local'),
+    ('34_reportar_pago_con_billeteras.sql',  'Reportar el pago desde Nequi, Daviplata y Bre-B'),
+    ('35_avanzar_desde_donde_se_ve.sql',     'Avanzar un pedido solo desde donde se esta viendo'),
 
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
 ]
