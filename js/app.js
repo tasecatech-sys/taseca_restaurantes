@@ -32,6 +32,9 @@
     telefono: '',
     direccion: '',
     zona: '',
+    /* 'domicilio' o 'recoger'. Decide qué campos se piden, si hay costo de
+       entrega y con qué tipo nace el pedido. */
+    entrega: 'domicilio',
     notas: '',
     metodoPago: 'efectivo',
     pagaCon: '',
@@ -657,32 +660,40 @@
       '<span class="mini tenue">Cada pedido sale de un solo local: el de los productos que elegiste.</span>' +
       '</label>' +
 
+      selectorEntrega(suc) +
+
       '<label class="campo"><span>Tu nombre <i class="req">*</i></span>' +
       '<input class="input" id="fNombre" placeholder="Ej. Juan Pérez" value="' + U.esc(borrador.nombre) + '" autocomplete="name"></label>' +
 
+      /* El celular se pide también para recoger: es por donde se avisa que
+         ya está, y por donde se pregunta si alguien no aparece. */
       '<label class="campo"><span>Celular <i class="req">*</i></span>' +
       '<input class="input" id="fTelefono" inputmode="tel" placeholder="Ej. 3001234567" value="' + U.esc(borrador.telefono) + '" autocomplete="tel"></label>' +
 
-      /* La zona sólo se pide si el local tiene zonas configuradas. Sin
-         zonas el domicilio no tiene costo ni pedido mínimo. */
-      (hayZonas(suc)
-        ? '<label class="campo"><span>Zona de entrega <i class="req">*</i></span>' +
-          '<select class="select" id="fZona"><option value="">Selecciona tu zona…</option>' +
-          suc.zonas
-            .map(
-              (z) =>
-                '<option value="' + U.esc(z.nombre) + '"' + (z.nombre === borrador.zona ? ' selected' : '') + '>' +
-                U.esc(z.nombre) + ' · ' + U.money(z.costo) + '</option>'
-            )
-            .join('') +
-          '</select></label>'
-        : '') +
+      (esRecoger()
+        ? dondeRecoger(suc)
+        : /* La zona sólo se pide si el local tiene zonas configuradas. Sin
+             zonas el domicilio no tiene costo ni pedido mínimo. */
+          (hayZonas(suc)
+            ? '<label class="campo"><span>Zona de entrega <i class="req">*</i></span>' +
+              '<select class="select" id="fZona"><option value="">Selecciona tu zona…</option>' +
+              suc.zonas
+                .map(
+                  (z) =>
+                    '<option value="' + U.esc(z.nombre) + '"' + (z.nombre === borrador.zona ? ' selected' : '') + '>' +
+                    U.esc(z.nombre) + ' · ' + U.money(z.costo) + '</option>'
+                )
+                .join('') +
+              '</select></label>'
+            : '') +
+          '<label class="campo"><span>Dirección completa <i class="req">*</i></span>' +
+          '<input class="input" id="fDireccion" placeholder="Cra. 10 # 20-30, apto 501, torre 2" value="' + U.esc(borrador.direccion) + '" autocomplete="street-address"></label>') +
 
-      '<label class="campo"><span>Dirección completa <i class="req">*</i></span>' +
-      '<input class="input" id="fDireccion" placeholder="Cra. 10 # 20-30, apto 501, torre 2" value="' + U.esc(borrador.direccion) + '" autocomplete="street-address"></label>' +
-
-      '<label class="campo"><span>Indicaciones para el domiciliario</span>' +
-      '<textarea class="textarea" id="fNotas" placeholder="Portería, punto de referencia, timbre…">' + U.esc(borrador.notas) + '</textarea></label>' +
+      '<label class="campo"><span>' +
+      (esRecoger() ? 'Algo que debamos saber' : 'Indicaciones para el domiciliario') + '</span>' +
+      '<textarea class="textarea" id="fNotas" placeholder="' +
+      (esRecoger() ? 'Sin cebolla, va a nombre de…, llego sobre las 7' : 'Portería, punto de referencia, timbre…') +
+      '">' + U.esc(borrador.notas) + '</textarea></label>' +
 
       '<div id="avisoMinimo"></div>';
 
@@ -705,6 +716,18 @@
       (s) => $(s) && $(s).addEventListener('input', leerFormularioDatos)
     );
 
+    /* Cambiar entre domicilio y recoger cambia QUÉ campos hay, así que se
+       vuelve a pintar el paso entero. Antes se lee lo escrito: si no, al
+       cambiar de opción se perdería el nombre a medio escribir. */
+    $$('[data-entrega]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (borrador.entrega === this.dataset.entrega) return;
+        leerFormularioDatos();
+        borrador.entrega = this.dataset.entrega;
+        pintarPasoDatos();
+      });
+    });
+
     recalcular();
   }
 
@@ -713,8 +736,13 @@
     borrador.sucursalId = sucursalObligatoria() || Number(unidadPortal) || Number($('#fSucursal').value);
     borrador.nombre = $('#fNombre').value.trim();
     borrador.telefono = $('#fTelefono').value.trim();
-    borrador.zona = $('#fZona') ? $('#fZona').value : '';
-    borrador.direccion = $('#fDireccion').value.trim();
+    /* Un campo que no está en pantalla conserva lo que ya tenía. Al pasar
+       a «recoger» desaparecen la zona y la dirección, y si el cliente se
+       vuelve a domicilio no tiene que escribirlas otra vez. Lo que no vale
+       es MANDARLAS en un pedido para recoger, y de eso se encarga
+       confirmarPedido(). */
+    if ($('#fZona')) borrador.zona = $('#fZona').value;
+    if ($('#fDireccion')) borrador.direccion = $('#fDireccion').value.trim();
     borrador.notas = $('#fNotas').value.trim();
   }
 
@@ -722,9 +750,75 @@
     return !!(suc && (suc.zonas || []).length);
   }
 
+  /**
+   * ¿Este local deja recoger el pedido en sitio?
+   *
+   * Se deduce de que tenga dirección. Si el local no dice dónde está, no
+   * hay a dónde ir, y ofrecer «recoger» sería mandar al cliente a ninguna
+   * parte.
+   *
+   * No es un interruptor por local: si algún día un local CON dirección
+   * quiere trabajar sólo a domicilio, eso pide un campo nuevo en la
+   * unidad (y su columna en la base). Hoy no hay ninguno así.
+   */
+  function puedeRecoger(suc) {
+    return !!(suc && String(suc.direccion || '').trim());
+  }
+
+  /* Si el local elegido no permite recoger, la elección no vale: el
+     cliente pudo marcarla en otro local y después cambiarse de local.
+     Preguntando aquí, y no en cada sitio, no hay forma de que se escape
+     un pedido «para recoger» en un local que no recoge. */
+  function esRecoger() {
+    return borrador.entrega === 'recoger' && puedeRecoger(U.sucursal(borrador.sucursalId));
+  }
+
   function zonaActual() {
+    /* Quien recoge no tiene zona: ni costo de entrega ni pedido mínimo.
+       Se corta aquí y no en los tres sitios que preguntan por la zona. */
+    if (esRecoger()) return null;
     const suc = U.sucursal(borrador.sucursalId);
     return ((suc && suc.zonas) || []).find((z) => z.nombre === borrador.zona) || null;
+  }
+
+  /* Los dos botones de «¿cómo lo quieres?».
+
+     Si el local no permite recoger no se pinta nada: un selector con una
+     sola opción no es una elección, es ruido. */
+  function selectorEntrega(suc) {
+    if (!puedeRecoger(suc)) return '';
+    const op = function (id, ico, titulo, pie) {
+      const activo = borrador.entrega === id;
+      return (
+        '<button type="button" class="entrega__op' + (activo ? ' is-activo' : '') +
+        '" data-entrega="' + id + '" aria-pressed="' + activo + '">' +
+        '<span class="entrega__ico">' + ico + '</span>' +
+        '<b>' + titulo + '</b>' +
+        '<span class="mini tenue">' + pie + '</span>' +
+        '</button>'
+      );
+    };
+    return (
+      '<div class="campo"><span>¿Cómo lo quieres?</span>' +
+      '<div class="entrega">' +
+      op('domicilio', '🛵', 'Domicilio', 'Te lo llevamos') +
+      op('recoger', '🥡', 'Recoger', 'Pasas por el local') +
+      '</div></div>'
+    );
+  }
+
+  /* Dónde y cuándo pasar. Ocupa el sitio de la zona y la dirección, que
+     para recoger no se piden: la dirección es la del local y la pone el
+     local, no el cliente. */
+  function dondeRecoger(suc) {
+    return (
+      '<div class="caja-datos">' +
+      '<b>Recoges en ' + U.esc(suc.nombre) + '</b>' +
+      '<p class="mini tenue" style="margin:4px 0 0">' + U.esc(suc.direccion) +
+      (suc.horario ? ' · ' + U.esc(suc.horario) : '') + '</p>' +
+      '<p class="mini tenue" style="margin:4px 0 0">Te avisamos cuando esté listo. No se cobra domicilio.</p>' +
+      '</div>'
+    );
   }
 
   function costoDomicilio() {
@@ -752,10 +846,14 @@
 
     cont.innerHTML =
       '<div><span>Subtotal</span><span class="num">' + U.money(sub) + '</span></div>' +
-      '<div><span>Domicilio' + (borrador.zona ? ' · ' + U.esc(borrador.zona) : '') + '</span>' +
-      '<span class="num">' +
-      (borrador.zona ? U.money(dom) : hayZonas(U.sucursal(borrador.sucursalId)) ? '—' : 'Sin costo') +
-      '</span></div>' +
+      /* Quien recoge no paga entrega, así que la línea no aparece: un
+         «Domicilio: $0» invita a preguntarse si hay letra pequeña. */
+      (esRecoger()
+        ? ''
+        : '<div><span>Domicilio' + (borrador.zona ? ' · ' + U.esc(borrador.zona) : '') + '</span>' +
+          '<span class="num">' +
+          (borrador.zona ? U.money(dom) : hayZonas(U.sucursal(borrador.sucursalId)) ? '—' : 'Sin costo') +
+          '</span></div>') +
       (rec > 0
         ? '<div><span>Recargo' + (metodo ? ' · ' + U.esc(metodo.nombre) : '') + '</span>' +
           '<span class="num">' + U.money(rec) + '</span></div>'
@@ -999,18 +1097,22 @@
   }
 
   function enlaceWhatsApp(p, suc) {
+    const recoge = p.tipo === 'recoger';
     const lineas = [
       // La marca es la de la empresa que atiende, no una escrita a mano
       '*Pedido ' + p.codigo + '* — ' + (S.getConfig().marca || '') + ' ' + suc.corto,
       '',
       'Cliente: ' + p.cliente.nombre,
       'Tel: ' + p.cliente.telefono,
-      'Dirección: ' + p.cliente.direccion + (p.cliente.zona ? ' (' + p.cliente.zona + ')' : ''),
+      recoge
+        ? 'RECOGE EN EL LOCAL: ' + (suc.direccion || suc.nombre)
+        : 'Dirección: ' + p.cliente.direccion + (p.cliente.zona ? ' (' + p.cliente.zona + ')' : ''),
       '',
       ...p.items.map((it) => '• ' + it.cantidad + ' x ' + it.nombre + (it.detalle ? ' (' + it.detalle + ')' : '') + ' — ' + U.money(it.precio * it.cantidad)),
       '',
       'Subtotal: ' + U.money(p.subtotal),
-      'Domicilio: ' + U.money(p.domicilio),
+      // Sin domicilio que cobrar no hay línea de domicilio
+      ...(recoge ? [] : ['Domicilio: ' + U.money(p.domicilio)]),
       // Sólo si lo hay: una línea en cero no dice nada
       ...(p.recargo ? ['Recargo: ' + U.money(p.recargo)] : []),
       '*Total: ' + U.money(p.total) + '*',
@@ -1029,13 +1131,18 @@
     if (borrador.nombre.length < 3) errores.push('Escribe tu nombre completo.');
     if (!/^\d{7,10}$/.test(borrador.telefono.replace(/\D/g, '')))
       errores.push('El celular debe tener entre 7 y 10 dígitos.');
-    if (!borrador.zona && hayZonas(U.sucursal(borrador.sucursalId)))
-      errores.push('Selecciona tu zona de entrega.');
-    if (borrador.direccion.length < 8) errores.push('Escribe la dirección completa.');
+    /* Zona, dirección y pedido mínimo son del domicilio. A quien recoge no
+       se le puede exigir una dirección que no va a usar nadie, ni un
+       mínimo que existe para que salga a cuenta mandar la moto. */
+    if (!esRecoger()) {
+      if (!borrador.zona && hayZonas(U.sucursal(borrador.sucursalId)))
+        errores.push('Selecciona tu zona de entrega.');
+      if (borrador.direccion.length < 8) errores.push('Escribe la dirección completa.');
 
-    const z = zonaActual();
-    if (z && carrito.subtotal() < z.min)
-      errores.push('El pedido mínimo para ' + z.nombre + ' es ' + U.money(z.min) + '.');
+      const z = zonaActual();
+      if (z && carrito.subtotal() < z.min)
+        errores.push('El pedido mínimo para ' + z.nombre + ' es ' + U.money(z.min) + '.');
+    }
 
     if (errores.length) {
       U.toast(errores[0], 'error');
@@ -1059,13 +1166,16 @@
     try {
       pedido = S.crearPedido({
         clave: borrador.clave,
-        tipo: 'domicilio',
+        tipo: esRecoger() ? 'recoger' : 'domicilio',
         sucursalId: borrador.sucursalId,
         cliente: {
           nombre: borrador.nombre,
           telefono: borrador.telefono,
-          direccion: borrador.direccion,
-          zona: borrador.zona,
+          /* En un pedido para recoger no van ni dirección ni zona, aunque
+             el borrador las traiga de antes de cambiar de opción: con zona
+             la base le cobraría el domicilio. */
+          direccion: esRecoger() ? '' : borrador.direccion,
+          zona: esRecoger() ? '' : borrador.zona,
           notas: borrador.notas,
           pagaCon: borrador.pagaCon || '',
         },
@@ -1201,11 +1311,14 @@
        a entregado. Un estado sin texto aquí se muestra con su nombre. */
     function pasosDe(p) {
       const dom = p.tipo === 'domicilio';
+      const rec = p.tipo === 'recoger';
       const info = {
         nuevo: { ico: '🧾', corto: 'Recibido', titulo: 'Recibimos tu pedido', texto: 'Ya está en el sistema. En un momento la cocina empieza a prepararlo.' },
         preparacion: { ico: '👨‍🍳', corto: 'Preparando', titulo: 'Estamos preparando tu pedido', texto: 'La cocina está trabajando en él.' },
         listo: dom
           ? { ico: '🛍️', corto: 'Listo', titulo: 'Tu pedido está listo', texto: 'Lo estamos empacando para despacharlo.' }
+          : rec
+          ? { ico: '🥡', corto: 'Listo', titulo: 'Tu pedido está listo', texto: 'Ya puedes pasar por el local a recogerlo.' }
           : { ico: '🍽️', corto: 'Listo', titulo: 'Tu pedido está listo', texto: 'En un momento lo llevamos a tu mesa.' },
         camino: { ico: '🛵', corto: 'En camino', titulo: 'Tu pedido va en camino', texto: 'El domiciliario va hacia tu dirección. Ten tu teléfono a la mano.' },
         entregado: { ico: '✅', corto: 'Entregado', titulo: '¡Pedido entregado!', texto: 'Gracias por pedir con nosotros. ¡Buen provecho!' },
@@ -1255,8 +1368,10 @@
         '<div class="seg-datos">' +
         '<div><span>Pedido</span><b>#' + U.esc(p.codigo) + '</b></div>' +
         '<div><span>Local</span><b>' + U.esc(suc ? suc.nombre : '—') + '</b></div>' +
+        /* Decía «Domicilio» para todo lo que no fuera mesa, así que un
+           pedido para recoger salía como si fuera a ir en moto. */
         '<div><span>' + (p.tipo === 'mesa' ? 'Mesa' : 'Entrega') + '</span><b>' +
-        (p.tipo === 'mesa' ? U.esc(p.mesa) : 'Domicilio') + '</b></div>' +
+        (p.tipo === 'mesa' ? U.esc(p.mesa) : U.etiquetaTipo(p)) + '</b></div>' +
         '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
         '<div class="seg-datos__ancho"><span>Pago</span><b>' + insigniaPago(p) + '</b></div>' +
         '</div>';

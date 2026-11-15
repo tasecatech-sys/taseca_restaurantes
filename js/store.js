@@ -3227,7 +3227,12 @@ NASCAR.Store = (function () {
     anulado: 'Anulada',
   };
 
-  /* Flujo que le corresponde a un pedido según su tipo. */
+  /* Flujo que le corresponde a un pedido según su tipo.
+
+     «En camino» es sólo del domicilio. Un pedido de mesa, de mostrador o
+     para recoger pasa de listo a entregado: no hay nadie llevándolo a
+     ninguna parte. Es la misma regla que la base aplica con la marca
+     `solo_domicilio` de core.estados_pedido. */
   function flujoEstados(tipo) {
     return tipo === 'domicilio'
       ? ['nuevo', 'preparacion', 'listo', 'camino', 'entregado']
@@ -3350,7 +3355,7 @@ NASCAR.Store = (function () {
   /**
    * Crea un pedido.
    * datos = {
-   *   tipo: 'mesa' | 'domicilio',
+   *   tipo: 'mesa' | 'domicilio' | 'recoger' | 'mostrador',
    *   sucursalId, mesa,
    *   cliente: { nombre, telefono, direccion, zona, notas },
    *   items: [{ refId, nombre, precio, cantidad, notas, origen }],

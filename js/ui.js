@@ -130,7 +130,7 @@ NASCAR.UI = (function () {
     return 'e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   }
 
-  /* Cómo se llama un pedido en pantalla. Tres tipos hoy; el día que haya
+  /* Cómo se llama un pedido en pantalla. Cuatro tipos; el día que haya
      otro se añade aquí y no en seis sitios. */
   function etiquetaTipo(p, opciones) {
     const o = opciones || {};
@@ -138,14 +138,20 @@ NASCAR.UI = (function () {
     if (!p) return '';
     if (p.tipo === 'mesa') return (o.icono ? '🍽️ ' : '') + (conMesa ? 'Mesa ' + esc(p.mesa) : 'Mesa');
     if (p.tipo === 'mostrador') return (o.icono ? '🧾 ' : '') + 'Mostrador';
+    if (p.tipo === 'recoger') return (o.icono ? '🥡 ' : '') + 'Recoge en el local';
     return (o.icono ? '🛵 ' : '') + 'Domicilio';
   }
 
-  /* El color del distintivo según el tipo. */
+  /* El color del distintivo según el tipo.
+
+     Ámbar para el que recoge porque en el tablero hay que distinguirlo de
+     un domicilio de un vistazo: el rojo quiere decir «sale a la calle» y
+     éste no sale, espera a que vengan por él. */
   function colorTipo(p) {
     if (!p) return 'badge--rojo';
     if (p.tipo === 'mesa') return 'badge--azul';
     if (p.tipo === 'mostrador') return 'badge--verde';
+    if (p.tipo === 'recoger') return 'badge--ambar';
     return 'badge--rojo';
   }
 

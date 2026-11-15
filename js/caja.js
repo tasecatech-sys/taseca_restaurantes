@@ -415,6 +415,11 @@ NASCAR.Caja = (function () {
   function quienEs(p) {
     if (p.tipo === 'mesa') return 'Mesa ' + U.esc(p.mesa);
     if (p.tipo === 'domicilio') return U.esc(p.cliente.nombre || 'Domicilio');
+    /* El que recoge también tiene nombre: es quien va a aparecer en el
+       mostrador a reclamarlo, así que en caja hay que poder buscarlo por
+       ahí. Sin el caso, caía en «Mostrador» y no se distinguía de una
+       venta directa. */
+    if (p.tipo === 'recoger') return U.esc(p.cliente.nombre || 'Recoge en el local');
     return 'Mostrador';
   }
 

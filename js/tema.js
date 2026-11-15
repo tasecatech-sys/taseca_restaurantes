@@ -230,11 +230,20 @@ NASCAR.Tema = (function () {
 
     pintarFichas(t);
 
+    /* Que la marca sea una IMAGEN o un TEXTO cambia cómo se compone la
+       cabecera entera, no sólo este nodo: con imagen sobra el subtítulo
+       de debajo. Se marca en <html> para que el CSS lo resuelva solo, en
+       vez de repartir estilos en línea por aquí. */
+    document.documentElement.setAttribute('data-logo', t.logo ? 'imagen' : 'texto');
+
     document.querySelectorAll('.logo__marca').forEach(function (nodo) {
       if (t.logo) {
+        /* El tamaño lo manda css/styles.css (.logo__img). Estaba escrito
+           aquí como `height:30px` en línea, que además de quedar perdido
+           en una barra de 74px le ganaba a cualquier regla del CSS: no
+           había forma de encogerlo en el móvil. */
         nodo.innerHTML =
-          '<img src="' + t.logo + '" alt="' + escapar(nombre) + '" ' +
-          'style="height:30px;width:auto;display:block;object-fit:contain">';
+          '<img class="logo__img" src="' + t.logo + '" alt="' + escapar(nombre) + '">';
         return;
       }
       if (t.logoTexto || t.logoAcento) {

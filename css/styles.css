@@ -643,6 +643,48 @@ textarea {
   width: 100%;
 }
 
+/* Domicilio o recoger: los dos botones del paso de datos.
+
+   Dos tarjetas en vez de un desplegable o dos radios: es la primera
+   decisión del paso y cambia el formulario entero, así que tiene que
+   verse de lejos cuál está elegida. */
+.entrega {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--e-2);
+}
+.entrega__op {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--e-3);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--r);
+  background: var(--velo);
+  color: var(--gris);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t), background var(--t);
+}
+.entrega__op b {
+  font-family: var(--f-body);
+  font-size: var(--txt-base);
+  font-weight: 600;
+  color: var(--blanco);
+}
+.entrega__ico {
+  font-size: 20px;
+  line-height: 1;
+}
+.entrega__op:hover {
+  border-color: var(--blanco);
+}
+.entrega__op.is-activo {
+  border-color: var(--azul);
+  background: var(--azul-glow);
+}
+
 /* Chips (filtros de categoría) */
 .chip {
   padding: 9px 18px;
@@ -817,12 +859,44 @@ textarea {
   font-style: normal;
   color: var(--rojo);
 }
+/* Con un logo de imagen sobra el subtítulo.
+
+   El HTML trae «Restaurante» escrito a mano -lo mismo para toda empresa,
+   sea restaurante, bar o arepera-. Debajo de un logo que ya lleva el
+   nombre del negocio es relleno, y como va con 0.28em de espaciado
+   acababa midiendo MÁS ANCHO que el propio logo: una imagen pequeña con
+   un pie más grande que ella. Eso es lo que se veía desproporcionado. */
+[data-logo='imagen'] .logo__sub {
+  display: none;
+}
+
 .logo__cuadros {
   width: 26px;
   height: 26px;
   border-radius: 3px;
   transform: skewX(-10deg);
 }
+/* El logotipo cuando la empresa subió una imagen.
+
+   Antes se escribía `height:30px` en línea desde js/tema.js. Treinta
+   píxeles en una barra de 74 se veían perdidos, y si el logo llevaba el
+   nombre dentro -que es lo normal- quedaba ilegible. Peor: por ir en
+   línea, ninguna regla del CSS podía tocarlo.
+
+   El alto sale ahora de la barra, así que es proporcional por
+   construcción y no un número que haya que recordar cambiar.
+
+   El ancho máximo es para los logos muy apaisados, que si no empujan el
+   menú; y `min(…, 40vw)` para que en el móvil le dejen sitio al botón
+   de pedido. */
+.logo__img {
+  display: block;
+  height: calc(var(--alto-cabecera) * 0.6);
+  width: auto;
+  max-width: min(220px, 40vw);
+  object-fit: contain;
+}
+
 .logo__sub {
   display: block;
   font-family: var(--f-cond);

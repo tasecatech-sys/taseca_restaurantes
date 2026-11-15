@@ -1838,6 +1838,41 @@ vendido de cada uno. Un producto que no se venda directamente lleva
 
 ---
 
+## Recoger en el local
+
+Un cuarto tipo de pedido, junto a **mesa**, **domicilio** y **mostrador**. El
+cliente pide desde el portal como siempre, pero pasa por el local a recogerlo.
+
+**Se ofrece en los locales que tengan dirección configurada.** Si el local no
+dice dónde está, no hay a dónde ir a recoger, así que el selector no aparece y
+el portal se comporta como siempre. No es un interruptor por local: si algún
+día un local *con* dirección quiere trabajar sólo a domicilio, eso pide un
+campo nuevo en la unidad.
+
+Qué cambia frente a un domicilio:
+
+| | Domicilio | Recoger |
+|---|---|---|
+| Dirección y zona | se piden | no se piden |
+| Costo de entrega | el de la zona | no hay |
+| Pedido mínimo | el de la zona | no aplica |
+| Nombre y celular | se piden | **también** — es a quien se llama |
+| Flujo | nuevo → preparación → listo → **en camino** → entregado | nuevo → preparación → listo → entregado |
+| Cola de domiciliarios | entra | no entra |
+
+**Casi todo esto ya lo sabía la base de datos.** El tipo no es un texto suelto
+sino una fila de `core.tipos_pedido`, y el flujo de estados no está escrito a
+mano en ninguna parte: `core.fn_siguiente_estado` se salta los estados
+marcados `solo_domicilio` para cualquier tipo que no sea `domicilio`. Por eso
+la migración `32_recoger_en_sitio.sql` es tan corta: añade la fila del tipo y
+hace que `api.sp_crear_pedido` pida nombre y teléfono también para quien
+recoge.
+
+El costo de entrega tampoco hay que anularlo a mano: sale de la zona, y un
+pedido para recoger va sin zona.
+
+---
+
 ## Cómo funcionan los pagos
 
 **Entregar no es cobrar.** Todo pedido —de mesa o a domicilio, con cualquier
@@ -2096,6 +2131,15 @@ por empresa, caducan a las 24 horas y no se guardan más de cinco.
 
 - **Colores:** negro `#06080C` de fondo, azul de carrera `#0B5FFF`, rojo `#E4002B`, blanco.
 - **Tipografías:** Archivo Black (títulos), Barlow Condensed (etiquetas y cifras), Barlow (texto). Cargan de Google Fonts; sin internet caen a fuentes del sistema y la página se ve bien igual.
+- **El logotipo de la empresa** se escala con la cabecera (`--alto-cabecera`),
+  no con un número fijo. Llevaba `height:30px` escrito en línea desde
+  `js/tema.js`: en una barra de 74px se veía perdido, y por ir en línea
+  ninguna regla del CSS podía tocarlo. Cuando hay logo de imagen se esconde
+  además el subtítulo «Restaurante» que trae el HTML — con 0.28em de
+  espaciado acababa midiendo más ancho que el propio logo.
+  > Para que un logo luzca sobre la cabecera oscura, súbelo en **PNG con
+  > fondo transparente**. Un JPEG lleva su propio fondo y se ve como una
+  > calcomanía pegada encima.
 - **Motivos de carrera:** bandera a cuadros, franja tricolor, líneas de velocidad diagonales, números de sucursal grandes al fondo.
 - Funciona en celular, tablet y computador.
 - Respeta la preferencia de *reducir movimiento* del sistema operativo.
