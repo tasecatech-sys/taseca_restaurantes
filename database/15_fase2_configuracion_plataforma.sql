@@ -429,12 +429,23 @@ BEGIN
         CALL api.sp_guardar_tema_empresa(p_empresa_id, p_usuario_id, p_datos -> 'tema');
     END IF;
 
-    -- Lo que toda empresa necesita para operar desde el primer día
+    -- Lo que toda empresa necesita para operar desde el primer día.
+    --
+    -- Las TRES BILLETERAS van encendidas y la transferencia genérica
+    -- apagada. Aquí sólo estaban efectivo, datáfono y «transferencia»
+    -- -la que la migración 29 desactivó al partirla en Nequi, Daviplata y
+    -- Bre-B-, así que toda empresa creada después de la 29 nacía sin
+    -- ninguna billetera y con un método muerto encendido. Lo arregló la
+    -- migración 36; aquí queda para que una instalación NUEVA nazca bien.
     INSERT INTO core.empresa_metodos_pago (empresa_id, metodo_pago_id, activo, descripcion, orden)
-    SELECT p_empresa_id, mp.id, TRUE, x.descripcion, x.orden
-      FROM (VALUES ('efectivo', 'Le pagas al domiciliario cuando recibas.', 1),
-                   ('datafono', 'El domiciliario lleva datáfono. Tarjeta débito o crédito.', 2),
-                   ('transferencia', 'Transfieres ahora y despachamos apenas confirmemos el pago.', 3)) AS x (metodo, descripcion, orden)
+    SELECT p_empresa_id, mp.id, x.activo, x.descripcion, x.orden
+      FROM (VALUES ('efectivo',      TRUE,  'Le pagas al domiciliario cuando recibas.', 1),
+                   ('datafono',      TRUE,  'El domiciliario lleva datáfono. Tarjeta débito o crédito.', 2),
+                   ('nequi',         TRUE,  'Transfieres por Nequi y despachamos apenas confirmemos el pago.', 3),
+                   ('daviplata',     TRUE,  'Transfieres por Daviplata y despachamos apenas confirmemos el pago.', 4),
+                   ('breb',          TRUE,  'Pagas con tu llave Bre-B desde cualquier banco.', 5),
+                   ('transferencia', FALSE, 'Transfieres ahora y despachamos apenas confirmemos el pago.', 6)
+           ) AS x (metodo, activo, descripcion, orden)
       JOIN core.metodos_pago mp ON mp.codigo = x.metodo
     ON CONFLICT (empresa_id, metodo_pago_id) DO NOTHING;
 
