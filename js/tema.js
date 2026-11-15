@@ -138,47 +138,9 @@ NASCAR.Tema = (function () {
     });
   }
 
-  /**
-   * El color de acento, pero legible sobre fondo claro.
-   *
-   * El acento se elige mirando el tema oscuro: un azul luminoso que
-   * brilla sobre negro. Ese mismo azul sobre blanco da un contraste de
-   * 2,8 — por debajo de lo que se lee. Y el acento se usa como TEXTO en
-   * bastantes sitios (el precio de un plato, los estados).
-   *
-   * Se oscurece hasta que contrasta, conservando el tono: sigue siendo
-   * su azul, sólo que el que se puede leer. No se toca el color
-   * guardado; esto es sólo cómo se pinta en modo claro.
-   */
-  function paraFondoClaro(hex) {
-    const v = String(hex || '').replace('#', '');
-    if (v.length !== 6) return hex;
-
-    let r = parseInt(v.slice(0, 2), 16),
-        g = parseInt(v.slice(2, 4), 16),
-        b = parseInt(v.slice(4, 6), 16);
-
-    /* Luminancia relativa, que es como se mide el contraste de verdad.
-       Se baja en pasos hasta llegar al objetivo; 0.18 deja alrededor de
-       4,5 contra blanco, que es el mínimo para texto normal. */
-    const luz = () => {
-      const f = (c) => {
-        c /= 255;
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    };
-
-    let vueltas = 0;
-    while (luz() > 0.18 && vueltas++ < 24) {
-      r = Math.round(r * 0.9);
-      g = Math.round(g * 0.9);
-      b = Math.round(b * 0.9);
-    }
-
-    const dos = (n) => ('0' + n.toString(16)).slice(-2);
-    return '#' + dos(r) + dos(g) + dos(b);
-  }
+  /* Vive en el almacén (NASCAR.Store) porque la vista previa del panel
+     de Taseca también la necesita, y esa página no carga tema.js. */
+  const paraFondoClaro = (hex) => S.paraFondoClaro(hex);
 
   /* #rrggbb -> rgba(r,g,b,a). Si el color no es hexadecimal se devuelve
      tal cual: normalizarTheme() ya garantiza que lo sea, pero mejor no

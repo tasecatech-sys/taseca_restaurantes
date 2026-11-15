@@ -811,6 +811,52 @@ NASCAR.Store = (function () {
   /* El icono que la empresa pone en sus botones principales. La bandera
      a cuadros es de la carrera, no de todos los negocios: los demás
      motivos no ponen ninguno. */
+  /**
+   * El color de acento, pero legible sobre fondo claro.
+   *
+   * El acento se elige mirando el tema oscuro: un color luminoso que
+   * brilla sobre negro. Ese mismo sobre blanco puede dar un contraste de
+   * 2,8 —por debajo de lo que se lee—, y el acento se usa como TEXTO en
+   * bastantes sitios: el precio de un plato, los estados.
+   *
+   * Se oscurece a pasos conservando el tono: sigue siendo su color, sólo
+   * que el que se puede leer. NO se toca el color guardado; esto es sólo
+   * cómo se pinta en modo claro.
+   *
+   * Está aquí y no en js/tema.js porque la vista previa del panel de
+   * Taseca también tiene que enseñarlo bien, y esa página no carga
+   * tema.js. Dos copias se habrían separado a la primera.
+   */
+  function paraFondoClaro(hex) {
+    const v = String(hex || '').replace('#', '');
+    if (v.length !== 6) return hex;
+
+    let r = parseInt(v.slice(0, 2), 16),
+        g = parseInt(v.slice(2, 4), 16),
+        b = parseInt(v.slice(4, 6), 16);
+
+    /* Luminancia relativa, que es como se mide el contraste de verdad.
+       Se baja en pasos hasta el objetivo; 0.18 deja alrededor de 4,5
+       contra blanco, el mínimo para texto normal. */
+    const luz = () => {
+      const f = (c) => {
+        c /= 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+
+    let vueltas = 0;
+    while (luz() > 0.18 && vueltas++ < 24) {
+      r = Math.round(r * 0.9);
+      g = Math.round(g * 0.9);
+      b = Math.round(b * 0.9);
+    }
+
+    const dos = (n) => ('0' + n.toString(16)).slice(-2);
+    return '#' + dos(r) + dos(g) + dos(b);
+  }
+
   function emblema(empresaId) {
     const p = patron(getTheme(empresaId).patron);
     return p ? p.emblema || '' : '';
@@ -5619,6 +5665,7 @@ NASCAR.Store = (function () {
     tipografia: tipografia,
     patron: patron,
     emblema: emblema,
+    paraFondoClaro: paraFondoClaro,
 
     // --- Cruce de información / caja de la jornada ---
     getBases: getBases,

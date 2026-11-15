@@ -901,30 +901,31 @@
       if (!nodo) return;
       const t = b.theme;
       const familia = S.familiaTipografica(t.fontFamily);
+      const c = coloresDe(t);
       const marca = t.logo
         ? '<img src="' + t.logo + '" alt="" style="height:26px;display:block">'
         : '<span style="font-weight:800;font-size:19px;letter-spacing:.04em">' +
           U.esc(t.logoTexto || b.nombre || 'Tu empresa') +
-          (t.logoAcento ? '<span style="color:' + t.accent + '">' + U.esc(t.logoAcento) + '</span>' : '') +
+          (t.logoAcento ? '<span style="color:' + c.acento + '">' + U.esc(t.logoAcento) + '</span>' : '') +
           '</span>';
 
       nodo.innerHTML =
         '<div style="border-radius:12px;overflow:hidden;border:1px solid var(--platform-border-soft);' +
-        'background:' + t.background + ';font-family:' + familia + ';color:#e8ecf2">' +
+        'background:' + c.fondo + ';font-family:' + familia + ';color:' + c.texto + '">' +
 
         // La banda del motivo, arriba del todo
         '<div style="' + estiloPatron(t) + '"></div>' +
 
         // Cabecera + menú
         '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' +
-        'border-bottom:1px solid rgba(255,255,255,.09)">' + marca +
+        'border-bottom:1px solid ' + c.borde + '">' + marca +
         '<div style="flex:1"></div>' +
         '<span style="background:' + t.primary + ';color:#fff;border-radius:999px;' +
         'padding:4px 12px;font-size:11px">Admin</span></div>' +
 
         '<div style="display:flex;gap:16px;padding:10px 16px;font-size:12px;' +
-        'border-bottom:1px solid rgba(255,255,255,.09)">' +
-        '<span style="color:' + t.accent + ';border-bottom:2px solid ' + t.secondary + ';padding-bottom:6px">Pedidos</span>' +
+        'border-bottom:1px solid ' + c.borde + '">' +
+        '<span style="color:' + c.acento + ';border-bottom:2px solid ' + t.secondary + ';padding-bottom:6px">Pedidos</span>' +
         '<span style="opacity:.6">Pagos</span><span style="opacity:.6">Carta</span>' +
         '<span style="opacity:.6">Ventas</span></div>' +
 
@@ -932,12 +933,12 @@
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px">' +
         [
           ['Pedidos del día', '12', t.primary],
-          ['Vendido hoy', '$ 840.000', t.accent],
+          ['Vendido hoy', '$ 840.000', c.acento],
           ['Por cobrar', '$ 120.000', t.secondary],
         ]
           .map(
             (k) =>
-              '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);' +
+              '<div style="background:' + c.velo + ';border:1px solid ' + c.borde + ';' +
               'border-left:3px solid ' + k[2] + ';border-radius:8px;padding:10px 12px">' +
               '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.65">' +
               k[0] + '</div>' +
@@ -1149,6 +1150,39 @@
      Taseca no es de ninguna empresa, así que no lleva `data-patron` y no
      puede aprovechar css/styles.css: aquí se repite el dibujo en línea,
      con los colores del tema que se esté editando. */
+  /**
+   * Con qué colores se pinta la maqueta de la vista previa.
+   *
+   * Las dos vistas previas pintaban SIEMPRE en oscuro: fondo del tema,
+   * texto `#e8ecf2` y bordes blancos translúcidos. O sea que elegir
+   * «Claro» enseñaba una maqueta oscura —justo lo que una vista previa
+   * existe para evitar—.
+   *
+   * Los valores son los mismos que el bloque [data-tema='claro'] de
+   * css/styles.css: lo que se ve aquí es lo que verá el cliente.
+   */
+  function coloresDe(t) {
+    if (t.modo !== 'claro')
+      return {
+        fondo: t.background,
+        texto: '#e8ecf2',
+        borde: 'rgba(255,255,255,.09)',
+        velo: 'rgba(255,255,255,.04)',
+        acento: t.accent,
+      };
+    return {
+      /* En claro el color de fondo de la empresa no se usa: es una
+         elección del modo oscuro. Manda la rampa clara. */
+      fondo: '#f4f6f9',
+      texto: '#0e1420',
+      borde: 'rgba(14,20,32,.12)',
+      velo: 'rgba(14,20,32,.04)',
+      /* El acento se elige mirando el fondo oscuro; sobre blanco hay que
+         oscurecerlo o no se lee. La misma cuenta que hace la página. */
+      acento: S.paraFondoClaro(t.accent),
+    };
+  }
+
   function estiloPatron(t) {
     switch (t.patron) {
       case 'diagonales':
@@ -1260,6 +1294,16 @@
       titulo: 'Tema de ' + e.nombre,
       ancho: 640,
       contenido:
+        /* Va antes de los colores porque es lo que más cambia la cara de
+           todo: elegir rojo sobre negro no es lo mismo que sobre blanco.
+           Faltaba aquí -sólo estaba en el asistente de crear empresa-,
+           así que una vez creada la empresa no había forma de cambiarlo. */
+        '<label class="campo"><span>Modo</span><select class="select" id="tModo">' +
+        '<option value="oscuro"' + (t.modo === 'claro' ? '' : ' selected') + '>🌙 Oscuro</option>' +
+        '<option value="claro"' + (t.modo === 'claro' ? ' selected' : '') + '>☀️ Claro</option>' +
+        '</select><span class="mini tenue">Lo ven así todos los clientes de esta empresa. ' +
+        'El color de fondo sólo se usa en el modo oscuro.</span></label>' +
+
         '<div class="rejilla-2">' +
         colorCampo('tPrim', 'Color principal', t.primary) +
         colorCampo('tSec', 'Color secundario', t.secondary) +
@@ -1298,6 +1342,7 @@
 
     const leer = function () {
       const v = (id) => U.$('#' + id, m.raiz).value;
+      t.modo = v('tModo');
       t.primary = v('tPrim');
       t.secondary = v('tSec');
       t.accent = v('tAcc');
@@ -1312,14 +1357,15 @@
 
     const preview = function () {
       const familia = S.familiaTipografica(t.fontFamily);
+      const c = coloresDe(t);
       const marca = t.logo
         ? '<img src="' + t.logo + '" alt="" style="height:26px;display:block">'
         : '<span style="font-weight:800;font-size:19px">' + U.esc(t.logoTexto || e.nombre) +
-          (t.logoAcento ? '<span style="color:' + t.accent + '">' + U.esc(t.logoAcento) + '</span>' : '') +
+          (t.logoAcento ? '<span style="color:' + c.acento + '">' + U.esc(t.logoAcento) + '</span>' : '') +
           '</span>';
       U.$('#tPreview', m.raiz).innerHTML =
         '<div style="border-radius:12px;border:1px solid var(--platform-border-soft);overflow:hidden;' +
-        'background:' + t.background + ';font-family:' + familia + ';color:#e8ecf2">' +
+        'background:' + c.fondo + ';font-family:' + familia + ';color:' + c.texto + '">' +
         '<div style="' + estiloPatron(t) + '"></div>' +
         '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px">' + marca +
         '<div style="flex:1"></div>' +
@@ -1333,7 +1379,7 @@
     ['#tPrim', '#tSec', '#tAcc', '#tBg', '#tFuente', '#tPatron', '#tLogoTexto', '#tLogoAcento', '#tLema'].forEach(
       (sel) => U.$(sel, m.raiz).addEventListener('input', () => { leer(); preview(); })
     );
-    ['#tFuente', '#tPatron'].forEach((sel) =>
+    ['#tModo', '#tFuente', '#tPatron'].forEach((sel) =>
       U.$(sel, m.raiz).addEventListener('change', () => { leer(); preview(); })
     );
 

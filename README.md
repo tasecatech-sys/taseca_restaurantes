@@ -1838,6 +1838,31 @@ vendido de cada uno. Un producto que no se venda directamente lleva
 
 ---
 
+## Claro u oscuro: dónde se cambia
+
+En el **portal de plataforma** (`taseca-admin.html`), no en el panel de la
+empresa: el modo es parte de la identidad del negocio, como el logo o los
+colores, y lo configura Taseca.
+
+> Empresas → **Ver** la empresa → **Administrar tema** → primer campo, **Modo**.
+
+Se elige entre 🌙 Oscuro y ☀️ Claro, la vista previa de abajo se repinta al
+instante, y con **Guardar tema** queda. Lo ven así todos los clientes de esa
+empresa: no es una preferencia de quien mira, por eso vive en
+`core.empresas.modo` y no en el navegador de nadie.
+
+> **El color de fondo sólo se usa en el modo oscuro.** En claro manda la rampa
+> clara de `css/styles.css`; el fondo de la empresa es un azul casi negro
+> precioso sobre el que se lee en blanco, y en claro no sirve.
+
+El acento de la marca se oscurece solo cuando hace falta: un color elegido
+para brillar sobre negro puede quedar en 2,8 de contraste sobre blanco, y el
+acento se usa como texto (el precio de un plato, los estados). Lo hace
+`S.paraFondoClaro()`, que vive en `js/store.js` porque la vista previa del
+panel de Taseca también lo necesita y esa página no carga `js/tema.js`.
+
+---
+
 ## Que ninguna empresa enseñe la marca de otra
 
 Al refrescar, una empresa veía la identidad de NASCAR durante unas décimas:
