@@ -498,7 +498,7 @@ NASCAR.Caja = (function () {
       '<div class="fila mt-8" style="gap:8px">' +
       (enCola
         ? '<button class="btn btn--fantasma btn--sm crece" data-caja-rechazar="' + U.esc(p.id) + '" ' +
-          'style="border-color:var(--rojo);color:var(--rojo-claro)">✕ Rechazar pago</button>'
+          'style="border-color:var(--peligro);color:var(--peligro-claro)">✕ Rechazar pago</button>'
         : '') +
       '<button class="btn btn--fantasma btn--sm' + (enCola ? '' : ' crece') +
       '" data-caja-ver="' + U.esc(p.id) + '">Ver pedido</button>' +

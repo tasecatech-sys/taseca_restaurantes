@@ -811,50 +811,180 @@ NASCAR.Store = (function () {
   /* El icono que la empresa pone en sus botones principales. La bandera
      a cuadros es de la carrera, no de todos los negocios: los demás
      motivos no ponen ninguno. */
-  /**
-   * El color de acento, pero legible sobre fondo claro.
-   *
-   * El acento se elige mirando el tema oscuro: un color luminoso que
-   * brilla sobre negro. Ese mismo sobre blanco puede dar un contraste de
-   * 2,8 —por debajo de lo que se lee—, y el acento se usa como TEXTO en
-   * bastantes sitios: el precio de un plato, los estados.
-   *
-   * Se oscurece a pasos conservando el tono: sigue siendo su color, sólo
-   * que el que se puede leer. NO se toca el color guardado; esto es sólo
-   * cómo se pinta en modo claro.
-   *
-   * Está aquí y no en js/tema.js porque la vista previa del panel de
-   * Taseca también tiene que enseñarlo bien, y esa página no carga
-   * tema.js. Dos copias se habrían separado a la primera.
-   */
-  function paraFondoClaro(hex) {
-    const v = String(hex || '').replace('#', '');
-    if (v.length !== 6) return hex;
+  /* ===============================================================
+     LA PALETA SALE DE UN SOLO COLOR
+     ---------------------------------------------------------------
+     Pedirle cuatro colores sueltos a quien no es diseñador es pedirle
+     que acierte una combinación entre millones. Y encima a ciegas: el
+     formulario no decía qué pintaba cada uno.
 
-    let r = parseInt(v.slice(0, 2), 16),
-        g = parseInt(v.slice(2, 4), 16),
-        b = parseInt(v.slice(4, 6), 16);
+     Aquí se le pide UNO —el de su marca, el del logo— y los otros tres
+     se calculan a partir de él. No es sólo comodidad: así no existe la
+     posibilidad de que choquen, porque todos son el mismo tono.
 
-    /* Luminancia relativa, que es como se mide el contraste de verdad.
-       Se baja en pasos hasta el objetivo; 0.18 deja alrededor de 4,5
-       contra blanco, el mínimo para texto normal. */
-    const luz = () => {
-      const f = (c) => {
-        c /= 255;
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    };
+     Y se calculan MIRANDO EL CONTRASTE, que es lo que de verdad hace
+     que una página se vea mal:
+       · el principal lleva texto blanco encima  → tiene que ser oscuro
+         suficiente para que ese blanco se lea;
+       · el acento se usa como TEXTO sobre el fondo → tiene que
+         destacar contra él, y eso cambia entre claro y oscuro;
+       · el fondo oscuro lleva el tono de la marca, pero tan apagado
+         que sobre él se lee en blanco.
+     =============================================================== */
 
-    let vueltas = 0;
-    while (luz() > 0.18 && vueltas++ < 24) {
-      r = Math.round(r * 0.9);
-      g = Math.round(g * 0.9);
-      b = Math.round(b * 0.9);
-    }
+  /* --- Conversiones de color, lo mínimo para trabajar con tonos --- */
 
-    const dos = (n) => ('0' + n.toString(16)).slice(-2);
+  function aRgb(hex) {
+    const v = String(hex || '').replace('#', '').trim();
+    const l = v.length === 3 ? v.split('').map((c) => c + c).join('') : v;
+    if (!/^[0-9a-f]{6}$/i.test(l)) return null;
+    return [parseInt(l.slice(0, 2), 16), parseInt(l.slice(2, 4), 16), parseInt(l.slice(4, 6), 16)];
+  }
+
+  function aHex(r, g, b) {
+    const dos = (n) => ('0' + Math.max(0, Math.min(255, Math.round(n))).toString(16)).slice(-2);
     return '#' + dos(r) + dos(g) + dos(b);
+  }
+
+  /* Luminancia relativa: así se mide el contraste de verdad, no «a ojo».
+     Es la misma cuenta que usan las normas de accesibilidad. */
+  function luz(hex) {
+    const c = aRgb(hex);
+    if (!c) return 0;
+    const f = (x) => {
+      x /= 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+
+  /** Cuánto contrasta un color con otro. 4.5 es el mínimo para texto. */
+  function contraste(a, b) {
+    const la = luz(a), lb = luz(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function aHsl(hex) {
+    const c = aRgb(hex);
+    if (!c) return null;
+    const r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return { h: 0, s: 0, l: l };
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s: s, l: l };
+  }
+
+  function deHsl(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(1, s));
+    l = Math.max(0, Math.min(1, l));
+    if (s === 0) return aHex(l * 255, l * 255, l * 255);
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const tramo = (t) => {
+      t = ((t % 1) + 1) % 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    return aHex(tramo(h / 360 + 1 / 3) * 255, tramo(h / 360) * 255, tramo(h / 360 - 1 / 3) * 255);
+  }
+
+  /* Aclara u oscurece conservando el TONO hasta que contrase lo pedido
+     contra `fondo`. Mover la luminosidad y no el tono es lo que hace que
+     siga siendo «su» color. */
+  function hastaContrastar(hex, fondo, minimo, haciaArriba) {
+    const c = aHsl(hex);
+    if (!c) return hex;
+    let l = c.l;
+    for (let i = 0; i < 40; i++) {
+      const cand = deHsl(c.h, c.s, l);
+      if (contraste(cand, fondo) >= minimo) return cand;
+      l += haciaArriba ? 0.025 : -0.025;
+      if (l <= 0 || l >= 1) break;
+    }
+    return deHsl(c.h, c.s, haciaArriba ? 0.95 : 0.08);
+  }
+
+  /** El color de acento legible sobre fondo claro. Se mantiene por
+      compatibilidad: js/tema.js y el panel de Taseca ya lo usaban. */
+  function paraFondoClaro(hex) {
+    return hastaContrastar(hex, '#f4f6f9', 4.5, false);
+  }
+
+  /** Y su espejo: legible sobre el fondo oscuro. */
+  function paraFondoOscuro(hex) {
+    return hastaContrastar(hex, '#0f1217', 4.5, true);
+  }
+
+  /** Un color sobre el que se pueda leer TEXTO BLANCO: los botones
+      llevan el texto en blanco en los dos modos. */
+  function paraTextoBlanco(hex) {
+    return hastaContrastar(hex, '#ffffff', 4.5, false);
+  }
+
+  /**
+   * Los cuatro colores del tema, a partir del de la marca.
+   *
+   * `modo` es 'claro' u 'oscuro': el acento cambia según sobre qué
+   * fondo va a leerse, y el fondo de la empresa sólo se usa en oscuro.
+   */
+  function paletaDesde(marca, modo) {
+    const base = aHsl(marca);
+    if (!base) return null;
+    const claro = modo === 'claro';
+
+    /* El principal es el de la marca, con el ajuste justo para que el
+       texto blanco de sus botones se lea. */
+    const primary = paraTextoBlanco(marca);
+
+    /* El secundario es el OTRO botón de acción. Mismo tono, un punto
+       más profundo: se distingue del principal sin pelearse con él.
+       (El color de lo que destruye no sale de aquí: es fijo del
+       sistema, --peligro, y ninguna empresa lo cambia.) */
+    const secundario = deHsl(base.h, Math.min(1, base.s + 0.06), Math.max(0.12, aHsl(primary).l - 0.1));
+
+    return {
+      primary: primary,
+      secondary: paraTextoBlanco(secundario),
+      /* El acento se usa como TEXTO -el precio de un plato, los
+         estados- así que se ajusta contra el fondo que va a tener. */
+      accent: claro ? paraFondoClaro(marca) : paraFondoOscuro(marca),
+      /* El fondo lleva el tono de la marca, pero tan apagado que sigue
+         siendo casi negro y en él se lee en blanco. Sólo se usa en
+         modo oscuro; se calcula igual por si la empresa cambia. */
+      background: deHsl(base.h, Math.min(0.3, base.s), 0.055),
+    };
+  }
+
+  /**
+   * Qué hay de malo en una paleta, en palabras.
+   *
+   * Devuelve una lista de avisos; vacía si todo se lee bien. Se usa en
+   * el panel de Taseca para no dejar guardar a ciegas algo ilegible.
+   */
+  function avisosDePaleta(tema, modo) {
+    const claro = modo === 'claro';
+    const fondo = claro ? '#f4f6f9' : (tema.background || '#0f1217');
+    const avisos = [];
+
+    if (contraste(tema.primary || '#000', '#ffffff') < 4.5)
+      avisos.push('El color principal es tan claro que el texto blanco de sus botones no se lee.');
+    if (contraste(tema.secondary || '#000', '#ffffff') < 4.5)
+      avisos.push('El color secundario es tan claro que el texto blanco de sus botones no se lee.');
+    if (contraste(tema.accent || '#000', fondo) < 4.5)
+      avisos.push('El acento no se distingue del fondo: los precios y los estados quedan difíciles de leer.');
+    if (!claro && luz(tema.background || '#000') > 0.12)
+      avisos.push('El fondo es demasiado claro para el modo oscuro: el texto blanco encima no se leería.');
+
+    return avisos;
   }
 
   function emblema(empresaId) {
@@ -5764,6 +5894,10 @@ NASCAR.Store = (function () {
     patron: patron,
     emblema: emblema,
     paraFondoClaro: paraFondoClaro,
+    paraFondoOscuro: paraFondoOscuro,
+    paletaDesde: paletaDesde,
+    avisosDePaleta: avisosDePaleta,
+    contraste: contraste,
     /* Los usa js/remoto.js: en la nube el pedido no pasa por
        crearPedido() de aquí, así que los topes hay que aplicarlos
        también allí. Una sola implementación, dos caminos. */

@@ -104,6 +104,22 @@
   --verde: #12b76a;
   --ambar: #f5a524;
 
+  /* ── EL COLOR DE PELIGRO NO ES DE NADIE ─────────────────────────────
+     Anular una factura y guardar un plato se pintaban con el MISMO
+     color: el «secundario» que elige cada empresa. 59 botones lo usan y
+     sólo 4 son destructivos, así que la empresa estaba atrapada: con un
+     rojo fuerte, cada «Guardar» gritaba peligro; con un pastel, «Anular
+     factura» dejaba de avisar.
+
+     Esto es señal de seguridad, no identidad. Un botón de anular tiene
+     que verse igual de peligroso en Gusti que en NASCAR, así que no sale
+     del tema y ninguna empresa lo cambia. --rojo se queda como lo que de
+     verdad es: el color de acción de la marca.
+     ──────────────────────────────────────────────────────────────── */
+  --peligro: #c62828;
+  --peligro-claro: #e04a4a;
+  --peligro-glow: rgba(198, 40, 40, 0.35);
+
   --borde: rgba(255, 255, 255, 0.09);
   --borde-fuerte: rgba(255, 255, 255, 0.18);
 
@@ -240,6 +256,10 @@
   --rojo-claro: #c4001f;
   --verde: #0e9355;
   --ambar: #a86100;
+  /* Sobre fondo claro el rojo tiene que ser más profundo para que el
+     texto blanco de encima siga leyéndose. */
+  --peligro: #b3261e;
+  --peligro-claro: #8c1d18;
 }
 
 /* ========================= 02. RESET Y BASE ============================== */
@@ -617,6 +637,19 @@ textarea {
 .btn--rojo:hover:not(:disabled) {
   box-shadow: 0 8px 26px var(--rojo-glow);
   background: var(--rojo-claro);
+}
+
+/* El botón de lo que destruye: anular, borrar, rechazar. Su color NO
+   sale del tema de la empresa, a propósito. */
+.btn--peligro {
+  --bg: var(--peligro);
+  --fg: var(--blanco-puro);
+  border-color: var(--peligro);
+}
+.btn--peligro:hover:not(:disabled) {
+  box-shadow: 0 8px 26px var(--peligro-glow);
+  background: var(--peligro-claro);
+  border-color: var(--peligro-claro);
 }
 
 .btn--azul {

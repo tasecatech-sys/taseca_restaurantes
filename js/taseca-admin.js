@@ -796,15 +796,17 @@
         '</div>' +
 
         '<div class="rejilla-2">' +
-        colorCampo('wPrim', 'Color principal', t.primary) +
-        colorCampo('wSec', 'Color secundario', t.secondary) +
-        colorCampo('wAcc', 'Color de acento', t.accent) +
-        colorCampo('wBg', 'Color de fondo', t.background) +
+        colorCampo('wPrim', 'Principal', t.primary, AYUDA_COLOR.primary) +
+        colorCampo('wSec', 'Acción', t.secondary, AYUDA_COLOR.secondary) +
+        colorCampo('wAcc', 'Acento', t.accent, AYUDA_COLOR.accent) +
+        colorCampo('wBg', 'Fondo', t.background, AYUDA_COLOR.background) +
         '</div>' +
 
         /* Claro u oscuro. Va antes de los colores de marca porque es lo
            que más cambia la cara de todo: elegir rojo sobre negro no es lo
            mismo que elegir rojo sobre blanco. */
+        bloqueMarca('w', t.primary) +
+
         '<label class="campo"><span>Modo</span><select class="select" id="wModo">' +
         '<option value="oscuro"' + (t.modo === 'claro' ? '' : ' selected') + '>🌙 Oscuro</option>' +
         '<option value="claro"' + (t.modo === 'claro' ? ' selected' : '') + '>☀️ Claro</option>' +
@@ -988,10 +990,17 @@
         ['#wPrim', '#wSec', '#wAcc', '#wBg', '#wModo', '#wFuente', '#wPatron', '#wLogoTexto', '#wLogoAcento', '#wLema'].forEach(
           function (sel) {
             const el = U.$(sel, raiz);
-            if (el) el.addEventListener('input', () => { leerTema(); pintarPreview(); });
-            if (el) el.addEventListener('change', () => { leerTema(); pintarPreview(); });
+            if (el) el.addEventListener('input', () => { leerTema(); pintarPreview(); pintarAvisosPaleta('w', raiz); });
+            if (el) el.addEventListener('change', () => { leerTema(); pintarPreview(); pintarAvisosPaleta('w', raiz); });
           }
         );
+
+        const derivaW = U.$('#wDerivar', raiz);
+        if (derivaW)
+          derivaW.addEventListener('click', function () {
+            derivarPaleta('w', raiz, function () { leerTema(); pintarPreview(); pintarAvisosPaleta('w', raiz); });
+          });
+        pintarAvisosPaleta('w', raiz);
 
         cargarImagen('#wLogo', 'logo');
         cargarImagen('#wFavicon', 'favicon');
@@ -1118,12 +1127,81 @@
     pintar();
   }
 
-  function colorCampo(id, etiqueta, valor) {
+  /* Un color del tema, DICIENDO QUÉ PINTA.
+
+     Antes eran cuatro cuadritos con una etiqueta de dos palabras:
+     «Color secundario» no le dice a nadie que ese color es el de 59
+     botones del panel. Elegir a ciegas es lo que hacía que las páginas
+     salieran feas, no el mal gusto de quien elegía. */
+  function colorCampo(id, etiqueta, valor, ayuda) {
     return (
       '<label class="campo"><span>' + U.esc(etiqueta) + '</span>' +
       '<input class="input" type="color" id="' + id + '" value="' + U.esc(valor) + '" ' +
-      'style="height:44px;padding:4px"></label>'
+      'style="height:44px;padding:4px">' +
+      (ayuda ? '<small class="mini tenue">' + U.esc(ayuda) + '</small>' : '') +
+      '</label>'
     );
+  }
+
+  /* Qué hace cada color, medido en el CSS, no supuesto. */
+  const AYUDA_COLOR = {
+    primary: 'Botones principales, enlaces y el borde de lo activo.',
+    secondary: 'El otro botón de acción: Guardar, Agregar, Enviar. Es el más repetido del panel.',
+    accent: 'Se usa como TEXTO: el precio de un plato, los estados. Tiene que leerse sobre el fondo.',
+    background: 'El fondo de la página. Sólo se usa en el modo OSCURO; en claro no hace nada.',
+  };
+
+  /**
+   * El bloque de «un color y ya».
+   *
+   * Pedir cuatro colores sueltos a quien no es diseñador es pedirle que
+   * acierte entre millones de combinaciones. Pidiendo UNO y derivando
+   * los demás del mismo tono, no existe la posibilidad de que choquen.
+   * Los cuatro campos siguen debajo para quien quiera afinar.
+   */
+  function bloqueMarca(pre, valor) {
+    return (
+      '<div class="campo">' +
+      '<span>Color de la marca</span>' +
+      '<div class="fila" style="gap:10px;align-items:center">' +
+      '<input class="input" type="color" id="' + pre + 'Marca" value="' + U.esc(valor || '#3b6ea5') + '" ' +
+      'style="height:44px;padding:4px;max-width:90px">' +
+      '<button type="button" class="btn btn--azul btn--sm" id="' + pre + 'Derivar">Calcular la paleta</button>' +
+      '</div>' +
+      '<small class="mini tenue">El color del logo, o el de la marca. Con él se calculan los cuatro ' +
+      'de abajo con el contraste ya comprobado. Después puedes retocarlos.</small>' +
+      '<div id="' + pre + 'Avisos" class="mini"></div>' +
+      '</div>'
+    );
+  }
+
+  /* Calcula la paleta y la escribe en los cuatro campos. */
+  function derivarPaleta(pre, raiz, despues) {
+    const marca = U.$('#' + pre + 'Marca', raiz).value;
+    const modo = U.$('#' + pre + 'Modo', raiz) ? U.$('#' + pre + 'Modo', raiz).value : 'oscuro';
+    const p = S.paletaDesde(marca, modo);
+    if (!p) return U.toast('Ese color no se entiende.', 'error');
+    U.$('#' + pre + 'Prim', raiz).value = p.primary;
+    U.$('#' + pre + 'Sec', raiz).value = p.secondary;
+    U.$('#' + pre + 'Acc', raiz).value = p.accent;
+    U.$('#' + pre + 'Bg', raiz).value = p.background;
+    if (despues) despues();
+    U.toast('Paleta calculada a partir de tu color.');
+  }
+
+  /* Avisa de lo que no se va a leer. Mejor decirlo aquí que descubrirlo
+     con la página publicada. */
+  function pintarAvisosPaleta(pre, raiz) {
+    const caja = U.$('#' + pre + 'Avisos', raiz);
+    if (!caja) return;
+    const v = (id) => (U.$('#' + pre + id, raiz) ? U.$('#' + pre + id, raiz).value : '');
+    const avisos = S.avisosDePaleta(
+      { primary: v('Prim'), secondary: v('Sec'), accent: v('Acc'), background: v('Bg') },
+      U.$('#' + pre + 'Modo', raiz) ? U.$('#' + pre + 'Modo', raiz).value : 'oscuro'
+    );
+    caja.innerHTML = avisos.length
+      ? avisos.map((a) => '<div class="ambar" style="margin-top:6px">⚠ ' + U.esc(a) + '</div>').join('')
+      : '<div class="verde" style="margin-top:6px">✓ Todo se lee bien.</div>';
   }
 
   /* El motivo de marca: la banda que corta la portada y las fichas que
@@ -1304,11 +1382,13 @@
         '</select><span class="mini tenue">Lo ven así todos los clientes de esta empresa. ' +
         'El color de fondo sólo se usa en el modo oscuro.</span></label>' +
 
+        bloqueMarca('t', t.primary) +
+
         '<div class="rejilla-2">' +
-        colorCampo('tPrim', 'Color principal', t.primary) +
-        colorCampo('tSec', 'Color secundario', t.secondary) +
-        colorCampo('tAcc', 'Color de acento', t.accent) +
-        colorCampo('tBg', 'Color de fondo', t.background) +
+        colorCampo('tPrim', 'Principal', t.primary, AYUDA_COLOR.primary) +
+        colorCampo('tSec', 'Acción', t.secondary, AYUDA_COLOR.secondary) +
+        colorCampo('tAcc', 'Acento', t.accent, AYUDA_COLOR.accent) +
+        colorCampo('tBg', 'Fondo', t.background, AYUDA_COLOR.background) +
         '</div>' +
         '<label class="campo"><span>Tipografía</span><select class="select" id="tFuente">' +
         (NASCAR.TIPOGRAFIAS || [])
@@ -1377,10 +1457,15 @@
     };
 
     ['#tPrim', '#tSec', '#tAcc', '#tBg', '#tFuente', '#tPatron', '#tLogoTexto', '#tLogoAcento', '#tLema'].forEach(
-      (sel) => U.$(sel, m.raiz).addEventListener('input', () => { leer(); preview(); })
+      (sel) => U.$(sel, m.raiz).addEventListener('input', () => { leer(); preview(); pintarAvisosPaleta('t', m.raiz); })
     );
+
+    U.$('#tDerivar', m.raiz).addEventListener('click', function () {
+      derivarPaleta('t', m.raiz, function () { leer(); preview(); pintarAvisosPaleta('t', m.raiz); });
+    });
+    pintarAvisosPaleta('t', m.raiz);
     ['#tModo', '#tFuente', '#tPatron'].forEach((sel) =>
-      U.$(sel, m.raiz).addEventListener('change', () => { leer(); preview(); })
+      U.$(sel, m.raiz).addEventListener('change', () => { leer(); preview(); pintarAvisosPaleta('t', m.raiz); })
     );
 
     U.$('#tLogo', m.raiz).addEventListener('change', function () {

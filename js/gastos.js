@@ -565,7 +565,7 @@ NASCAR.Gastos = (function () {
         '<textarea class="textarea" id="anMotivo" placeholder="Ej. Se registró dos veces por error"></textarea></label>' +
         '<div class="fila fila--fin">' +
         '<button class="btn btn--fantasma" id="anNo">Cancelar</button>' +
-        '<button class="btn btn--rojo" id="anSi">Anular gasto</button></div>',
+        '<button class="btn btn--peligro" id="anSi">Anular gasto</button></div>',
     });
 
     U.$('#anNo', m.raiz).onclick = m.cerrar;

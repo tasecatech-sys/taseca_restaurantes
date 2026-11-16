@@ -903,7 +903,7 @@
         /* Anular es sólo del Admin: es echar atrás una venta hecha y
            devolver mercancía al inventario. */
         (p.estado !== 'cancelado' && p.estado !== 'anulado' && A.puede('pedidos_anular')
-          ? '<button class="btn btn--rojo btn--sm" id="detAnular">❌ Anular factura</button>'
+          ? '<button class="btn btn--peligro btn--sm" id="detAnular">❌ Anular factura</button>'
           : '') +
         '</div>';
 
@@ -1037,7 +1037,7 @@
 
         '<div class="fila fila--fin mt-16">' +
         '<button class="btn btn--fantasma" data-no>Cancelar</button>' +
-        '<button class="btn btn--rojo" data-si>❌ Anular factura</button></div>',
+        '<button class="btn btn--peligro" data-si>❌ Anular factura</button></div>',
     });
 
     U.$('[data-no]', m.raiz).onclick = m.cerrar;
@@ -2307,7 +2307,7 @@
         '<p class="mini tenue">No se puede deshacer. Los cierres, gastos, stock y menús no se tocan.</p>' +
         '<label class="campo"><span>Escribe BORRAR para confirmar</span>' +
         '<input class="input" id="bfConfirma" autocomplete="off" style="text-transform:uppercase"></label>' +
-        '<button class="btn btn--rojo btn--bloque" id="bfOk" disabled>Borrar facturas</button>',
+        '<button class="btn btn--peligro btn--bloque" id="bfOk" disabled>Borrar facturas</button>',
     });
     const input = U.$('#bfConfirma', m.raiz);
     const ok = U.$('#bfOk', m.raiz);
