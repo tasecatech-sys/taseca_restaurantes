@@ -4645,6 +4645,30 @@ tr.fila--sin td {
   border-radius: var(--r-sm);
 }
 
+/* EL LOGO, UNA SOLA VEZ.
+
+   La barra lateral tiene dos huecos de marca: el isotipo pequeño y, al
+   lado, el logotipo grande con el nombre. Con un logo de IMAGEN los dos
+   enseñaban la misma imagen, así que el logo salía dos veces, uno al
+   lado del otro.
+
+   El isotipo sólo tiene sentido cuando la barra está encogida: ahí es lo
+   único que queda a la vista. Desplegada, sobra. */
+[data-logo='imagen'] .app-shell:not(.is-colapsado) .app-side__iso {
+  display: none;
+}
+
+/* Y más grande. En el panel el logo es lo único de la marca que se ve en
+   toda la pantalla -no compite con un menú, como en la cabecera del
+   portal- así que puede permitirse el sitio. */
+.app-side__marca {
+  min-height: 56px;
+}
+.app-side .logo__img {
+  height: 52px;
+  max-width: 100%;
+}
+
 /* El botón de salir vive en el pie de la barra: se comporta como los
    demás elementos del menú. */
 .admin .app-side__pie .btn {

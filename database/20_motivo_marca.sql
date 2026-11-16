@@ -124,6 +124,14 @@ BEGIN
     IF NULLIF(p_tema ->> 'patron', '') IS NOT NULL AND (p_tema ->> 'patron') !~ '^[a-z0-9_-]{1,20}$' THEN
         RAISE EXCEPTION 'Motivo de marca no válido.';
     END IF;
+    /* El modo lo añadió la 31 a core.empresas, pero se le enseñó al
+       procedimiento EQUIVOCADO (sp_guardar_tema, que el panel no usa).
+       Éste es el que llama rest.guardar_tema_empresa, o sea el que de
+       verdad recibe el tema al crear y al editar una empresa. Lo arregló
+       la migración 38; aquí queda para una instalación nueva. */
+    IF NULLIF(p_tema ->> 'modo', '') IS NOT NULL AND (p_tema ->> 'modo') NOT IN ('claro', 'oscuro') THEN
+        RAISE EXCEPTION 'El modo sólo puede ser claro u oscuro.';
+    END IF;
 
     UPDATE core.empresas
        SET color_primario   = COALESCE(NULLIF(p_tema ->> 'primary', ''), color_primario),
@@ -132,6 +140,7 @@ BEGIN
            color_fondo      = COALESCE(NULLIF(p_tema ->> 'background', ''), color_fondo),
            tipografia       = COALESCE(NULLIF(p_tema ->> 'fontFamily', ''), tipografia),
            patron           = COALESCE(NULLIF(p_tema ->> 'patron', ''), patron),
+           modo             = COALESCE(NULLIF(p_tema ->> 'modo', ''), modo),
            logo_texto       = core.fn_texto(p_tema ->> 'logoTexto', 24),
            logo_acento      = core.fn_texto(p_tema ->> 'logoAcento', 24),
            iniciales        = upper(core.fn_texto(p_tema ->> 'iniciales', 3)),
