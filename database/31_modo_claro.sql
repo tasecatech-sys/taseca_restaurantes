@@ -131,6 +131,22 @@ SELECT v.empresa_id, v.codigo, v.nombre_comercial, v.eslogan, v.telefono, v.what
 GRANT SELECT ON rest.empresas TO taseca_anon, taseca_app;
 
 
+/* Y la que lee el PANEL DE TASECA.
+
+   Se escapó la primera vez, y costó caro: el panel guardaba el modo pero
+   al volver a abrir «Administrar tema» mostraba el de antes, porque lo
+   leía de aquí. Y al guardar cualquier otra cosa, mandaba el modo que
+   estaba viendo y deshacía el cambio sin avisar.
+
+   La 20 la crea con `SELECT v.*`, que se expande AL CREARLA: añadir la
+   columna a la ficha no basta, hay que volver a crear esta vista para
+   que la vea. */
+CREATE OR REPLACE VIEW rest.plataforma_empresas AS
+SELECT v.*
+  FROM api.v_empresa_ficha v
+ WHERE api.fn_tiene_permiso(core.fn_jwt_usuario(), 'plataforma');
+
+
 /* ============================================================================
    3. GUARDARLO
 
