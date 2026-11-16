@@ -1140,6 +1140,9 @@ textarea {
   overflow: hidden;
   background: radial-gradient(1100px 600px at 78% 8%, rgba(11, 95, 255, 0.2), transparent 62%),
     radial-gradient(900px 520px at 12% 92%, rgba(228, 0, 43, 0.16), transparent 62%),
+    var(--negro-900); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: radial-gradient(1100px 600px at 78% 8%, color-mix(in srgb, var(--azul) 20%, transparent), transparent 62%),
+    radial-gradient(900px 520px at 12% 92%, color-mix(in srgb, var(--rojo) 16%, transparent), transparent 62%),
     var(--negro-900);
 }
 
@@ -1210,9 +1213,14 @@ textarea {
 .hero h1 .linea-rojo {
   color: var(--rojo);
 }
+/* La palabra que remata el titular va en contorno. El trazo iba fijo en
+   2px mientras la letra es fluida de 46 a 92px, asi que salia al doble de
+   grueso en el telefono que en el escritorio. En em acompana a la letra:
+   son los mismos ~2px del telefono y 4px en el escritorio, donde antes se
+   deshilachaba. */
 .hero h1 .linea-contorno {
   color: transparent;
-  -webkit-text-stroke: 2px var(--blanco);
+  -webkit-text-stroke: 0.045em var(--blanco);
 }
 
 .hero__texto {
@@ -1472,8 +1480,10 @@ textarea {
   padding: 16px 22px;
   margin-bottom: 30px;
   border-radius: var(--r);
-  background: linear-gradient(90deg, rgba(228, 0, 43, 0.16), transparent 70%);
-  border: 1px solid rgba(228, 0, 43, 0.32);
+  background: linear-gradient(90deg, rgba(228, 0, 43, 0.16), transparent 70%); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--rojo) 16%, transparent), transparent 70%);
+  border: 1px solid rgba(228, 0, 43, 0.32); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--rojo) 32%, transparent);
 }
 /* La barra de «¿dónde quieres pedir?» ya no cuelga de la sección del menú
    del día, así que se separa ella sola del hero. */
@@ -2239,7 +2249,8 @@ textarea {
 }
 .op:has(input:checked) {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.09);
+  background: rgba(228, 0, 43, 0.09); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 9%, transparent);
 }
 
 /* Lista de casillas dentro de un formulario: muchas opciones cortas en poco
@@ -2358,7 +2369,8 @@ textarea {
   white-space: nowrap;
 }
 .lista-check__fila:has(input:checked) {
-  background: rgba(228, 0, 43, 0.1);
+  background: rgba(228, 0, 43, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
 }
 .lista-check__fila:has(input:checked) b {
   color: var(--blanco);
@@ -2630,16 +2642,20 @@ textarea {
   align-items: center;
   padding: 16px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(11, 95, 255, 0.18), rgba(11, 95, 255, 0.04));
-  border: 1px solid rgba(11, 95, 255, 0.35);
+  background: linear-gradient(135deg, rgba(11, 95, 255, 0.18), rgba(11, 95, 255, 0.04)); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--azul) 18%, transparent), color-mix(in srgb, var(--azul) 4%, transparent));
+  border: 1px solid rgba(11, 95, 255, 0.35); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--azul) 35%, transparent);
 }
 .seg-actual--verde {
   background: linear-gradient(135deg, rgba(18, 183, 106, 0.2), rgba(18, 183, 106, 0.04));
   border-color: rgba(18, 183, 106, 0.45);
 }
 .seg-actual--rojo {
-  background: linear-gradient(135deg, rgba(228, 0, 43, 0.2), rgba(228, 0, 43, 0.04));
-  border-color: rgba(228, 0, 43, 0.45);
+  background: linear-gradient(135deg, rgba(228, 0, 43, 0.2), rgba(228, 0, 43, 0.04)); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--rojo) 20%, transparent), color-mix(in srgb, var(--rojo) 4%, transparent));
+  border-color: rgba(228, 0, 43, 0.45); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border-color: color-mix(in srgb, var(--rojo) 45%, transparent);
 }
 .seg-actual__ico {
   flex: 0 0 56px;
@@ -2656,10 +2672,12 @@ textarea {
 @keyframes seg-pulso {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(11, 95, 255, 0.45);
+    box-shadow: 0 0 0 0 rgba(11, 95, 255, 0.45); /* respaldo: Safari < 16.2 no conoce color-mix */
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--azul) 45%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(11, 95, 255, 0);
+    box-shadow: 0 0 0 10px rgba(11, 95, 255, 0); /* respaldo: Safari < 16.2 no conoce color-mix */
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--azul) 0%, transparent);
   }
 }
 .seg-actual__kicker {
@@ -2752,7 +2770,8 @@ textarea {
   filter: none;
   opacity: 1;
   transform: scale(1.12);
-  box-shadow: 0 0 0 5px rgba(11, 95, 255, 0.25);
+  box-shadow: 0 0 0 5px rgba(11, 95, 255, 0.25); /* respaldo: Safari < 16.2 no conoce color-mix */
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--azul) 25%, transparent);
 }
 .seg-paso.is-actual .seg-paso__txt {
   color: var(--blanco);
@@ -3691,7 +3710,8 @@ body.cierre {
 }
 .inv-area.is-activa {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.12);
+  background: rgba(228, 0, 43, 0.12); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 12%, transparent);
   color: var(--blanco);
 }
 
@@ -3861,7 +3881,8 @@ body.cierre {
   color: var(--ambar);
 }
 .df--faltante {
-  background: rgba(228, 0, 43, 0.18);
+  background: rgba(228, 0, 43, 0.18); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 18%, transparent);
   color: var(--rojo-claro);
 }
 .df--sin {
@@ -3938,8 +3959,10 @@ tr.fila--sin td {
   border-color: rgba(18, 183, 106, 0.45);
 }
 .inv-veredicto--dif {
-  background: rgba(228, 0, 43, 0.1);
-  border-color: rgba(228, 0, 43, 0.45);
+  background: rgba(228, 0, 43, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
+  border-color: rgba(228, 0, 43, 0.45); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border-color: color-mix(in srgb, var(--rojo) 45%, transparent);
 }
 .inv-veredicto--vacio {
   background: var(--negro-700);
@@ -4085,7 +4108,8 @@ tr.fila--sin td {
 }
 .mesa-btn--ocupada {
   border-color: var(--azul);
-  background: rgba(11, 95, 255, 0.14);
+  background: rgba(11, 95, 255, 0.14); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--azul) 14%, transparent);
 }
 .mesa-btn--ocupada span {
   color: var(--azul-claro);
@@ -4199,8 +4223,10 @@ tr.fila--sin td {
   margin-top: 9px;
   padding: 11px 14px;
   border-radius: var(--r-sm);
-  background: rgba(228, 0, 43, 0.12);
-  border: 1px solid rgba(228, 0, 43, 0.3);
+  background: rgba(228, 0, 43, 0.12); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 12%, transparent);
+  border: 1px solid rgba(228, 0, 43, 0.3); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--rojo) 30%, transparent);
 }
 .op-cobro--ok {
   background: rgba(18, 183, 106, 0.1);
@@ -4249,7 +4275,8 @@ tr.fila--sin td {
   gap: 5px;
   padding: 3px 9px;
   border-radius: 4px;
-  background: rgba(11, 95, 255, 0.16);
+  background: rgba(11, 95, 255, 0.16); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--azul) 16%, transparent);
   color: var(--azul-claro);
   font-family: var(--f-cond);
   font-size: 12px;
@@ -4257,7 +4284,8 @@ tr.fila--sin td {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  border: 1px solid rgba(11, 95, 255, 0.4);
+  border: 1px solid rgba(11, 95, 255, 0.4); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--azul) 40%, transparent);
 }
 .comprobante-chip:hover {
   background: var(--azul);
@@ -4276,7 +4304,8 @@ tr.fila--sin td {
 }
 .adjunto:hover {
   border-color: var(--azul-claro);
-  background: rgba(11, 95, 255, 0.06);
+  background: rgba(11, 95, 255, 0.06); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--azul) 6%, transparent);
 }
 .adjunto i {
   font-style: normal;
@@ -4848,8 +4877,10 @@ tr.fila--sin td {
 }
 .armado__op:has(input:checked) {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.1);
-  background: rgba(228, 0, 43, 0.12); /* Safari < 16.2 no conoce color-mix */
+  background: rgba(228, 0, 43, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
+  background: rgba(228, 0, 43, 0.12); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 12%, transparent); /* Safari < 16.2 no conoce color-mix */
   background: color-mix(in srgb, var(--rojo) 12%, transparent);
 }
 .armado__op:has(input:focus-visible) {
@@ -4868,7 +4899,8 @@ tr.fila--sin td {
 }
 .armado__cat.is-falta {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.06);
+  background: rgba(228, 0, 43, 0.06); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 6%, transparent);
 }
 .armado__cat.is-falta .armado__falta {
   display: block;
