@@ -3940,6 +3940,37 @@ NASCAR.Store = (function () {
       throw new Error('El pago de la factura ' + p.codigo + ' ya fue confirmado.');
   }
 
+  /**
+   * Cobrar VARIOS pedidos de una vez.
+   *
+   * En modo local no gana nada -todo pasa en memoria- pero existe para
+   * que la pantalla de caja llame a lo mismo en los dos modos. Lo que de
+   * verdad cambia es en la nube: allí cada cobro es un viaje de ~460 ms
+   * a Virginia, y veinte cobros eran veinte viajes, con el navegador
+   * congelado en cada uno. Ver rest.confirmar_pagos (migración 37).
+   *
+   * CADA PEDIDO CONSERVA SU MÉTODO: en la cola hay efectivo, Nequi y
+   * Daviplata mezclados, y forzarles uno común falsearía la caja.
+   *
+   * UNO QUE FALLE NO TUMBA A LOS DEMÁS: se devuelve el parte de qué se
+   * cobró y qué no, con el porqué de cada fallo.
+   */
+  function confirmarPagos(ids, referencia, quien) {
+    const ok = [];
+    const mal = [];
+    (ids || []).forEach(function (id) {
+      try {
+        confirmarPago(id, referencia, quien);
+        const p = getPedido(id);
+        ok.push({ id: id, codigo: p ? p.codigo : String(id) });
+      } catch (e) {
+        const p = getPedido(id);
+        mal.push({ id: id, codigo: p ? p.codigo : String(id), motivo: e.message });
+      }
+    });
+    return { cobrados: ok.length, fallidos: mal.length, ok: ok, mal: mal };
+  }
+
   function confirmarPago(pedidoId, referencia, quien, metodo) {
     const nombre = quien && quien.usuarioNombre ? quien.usuarioNombre : null;
     const actual = getPedido(pedidoId);
@@ -5856,6 +5887,7 @@ NASCAR.Store = (function () {
     estadoDeExistencia: estadoDeExistencia,
     existenciasDeSucursal: existenciasDeSucursal,
     confirmarPago: confirmarPago,
+    confirmarPagos: confirmarPagos,
     rechazarPago: rechazarPago,
     reportarPago: reportarPago,
     // ventas

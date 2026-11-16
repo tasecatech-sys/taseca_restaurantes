@@ -196,6 +196,11 @@
       rechazar: rechazarPago,
       verComprobante: verComprobante,
       ver: verDetallePedido,
+      /* Para el cobro en lote: quien cobra queda registrado -en modo
+         local, porque en la nube sale del token- y al terminar se
+         repinta el panel entero, que los contadores cambian. */
+      firma: A.firma,
+      alCobrar: refrescarTodo,
     });
 
     montajeListo = true;

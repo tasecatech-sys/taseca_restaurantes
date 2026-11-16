@@ -705,6 +705,85 @@ textarea {
   background: var(--azul-glow);
 }
 
+/* La barra de cobrar en lote, encima de la cola de «Por cobrar».
+
+   Se queda pegada arriba: con veinte pedidos en la lista, si la barra se
+   fuera con el scroll habría que subir para cobrar lo que se acaba de
+   marcar abajo. */
+.lote-barra {
+  /* La lista de pagos es una rejilla: sin esto la barra se mete como una
+     tarjeta mas y queda del ancho de una columna. */
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-3);
+  margin-bottom: var(--e-3);
+  padding: var(--e-3) var(--e-4);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--r);
+  background: var(--negro-700);
+  box-shadow: var(--elev-1);
+}
+.lote-barra__todos {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  cursor: pointer;
+  font-family: var(--f-cond);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+.lote-barra__todos input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--verde);
+  flex-shrink: 0;
+}
+.lote-barra__cuenta {
+  margin-right: auto;
+  font-size: var(--txt-base);
+  font-weight: 600;
+  color: var(--blanco);
+}
+.lote-barra__btn {
+  min-height: 40px;
+  background: var(--verde);
+  border-color: var(--verde);
+  color: #04220f;
+}
+.lote-barra__btn:disabled {
+  background: var(--velo-fuerte);
+  border-color: var(--borde-fuerte);
+  color: var(--gris-osc);
+}
+
+/* La casilla de cada tarjeta de la cola. */
+.pago-check {
+  width: 20px;
+  height: 20px;
+  margin-right: var(--e-2);
+  accent-color: var(--verde);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .lote-barra__cuenta {
+    flex: 1 0 100%;
+    margin-right: 0;
+    order: 3;
+  }
+  .lote-barra__btn {
+    margin-left: auto;
+  }
+}
+
 /* Chips (filtros de categoría) */
 .chip {
   padding: 9px 18px;

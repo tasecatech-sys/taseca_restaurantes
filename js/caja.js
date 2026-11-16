@@ -42,6 +42,11 @@ NASCAR.Caja = (function () {
      está abierta: una venta a medias no se guarda en ninguna parte. */
   let ticket = [];
   let vista = 'vender';        // 'vender' | 'cobrar'
+
+  /* Los pedidos marcados para cobrar de una vez. Vive aquí y no en el
+     DOM porque la lista se repinta sola cada pocos segundos y la marca
+     tiene que sobrevivir a eso. */
+  const marcados = new Set();
   let categoria = 'todas';
   let busqueda = '';
   let metodo = '';
@@ -69,6 +74,11 @@ NASCAR.Caja = (function () {
       rechazar: opciones.rechazar || function () {},
       verComprobante: opciones.verComprobante || function () {},
       ver: opciones.ver || function () {},
+      /* Para el cobro en lote: quién cobra -queda en el historial del
+         pedido en modo local; en la nube sale del token- y qué repintar
+         al terminar, que los contadores del panel cambian. */
+      firma: opciones.firma || function () { return null; },
+      alCobrar: opciones.alCobrar || function () {},
     };
     if (!$('[data-panel="caja"]')) return;
 
@@ -119,6 +129,22 @@ NASCAR.Caja = (function () {
     });
 
     $('#cajaPorCobrar').addEventListener('click', function (e) {
+      const marca = e.target.closest('[data-caja-marcar]');
+      if (marca) {
+        const id = marca.dataset.cajaMarcar;
+        marca.checked ? marcados.add(id) : marcados.delete(id);
+        return refrescarBarraLote();
+      }
+
+      if (e.target.id === 'cajaLoteTodos') {
+        const cobrables = listaPagos().filter((p) => p.estadoPago !== 'confirmado');
+        if (e.target.checked) cobrables.forEach((p) => marcados.add(String(p.id)));
+        else marcados.clear();
+        return pintarPorCobrar(); // cambian TODAS las casillas
+      }
+
+      if (e.target.closest('#cajaLoteCobrar')) return cobrarLote();
+
       const b = e.target.closest('[data-caja-cobrar]');
       if (b) return ctx.cobrar(b.dataset.cajaCobrar, refrescar);
 
@@ -432,6 +458,13 @@ NASCAR.Caja = (function () {
     return (
       '<div class="op-card op-card--' + p.estado + '">' +
       '<div class="op-card__top">' +
+      /* La casilla sólo en la COLA: en el histórico no hay nada que
+         cobrar y una casilla ahí sólo confundiría. */
+      (enCola
+        ? '<input class="pago-check" type="checkbox" data-caja-marcar="' + U.esc(p.id) + '"' +
+          (marcados.has(String(p.id)) ? ' checked' : '') +
+          ' aria-label="Marcar ' + U.esc(p.codigo) + ' para cobrar en lote">'
+        : '') +
       '<span class="op-card__codigo">' + U.esc(p.codigo) + '</span>' +
       (BADGE_PAGO[p.estadoPago] || BADGE_PAGO.pendiente) +
       '</div>' +
@@ -474,6 +507,100 @@ NASCAR.Caja = (function () {
     );
   }
 
+  /* ---------------------------------------------------------------
+     COBRAR VARIOS DE UNA VEZ
+
+     Confirmar un pago cuesta unos 460 ms, y casi todo es el viaje a la
+     base: el trabajo del servidor son ~16 ms. Veinte cobros de uno en
+     uno eran veinte viajes con el navegador congelado en cada uno. Esto
+     los manda juntos, en una sola llamada.
+     --------------------------------------------------------------- */
+  function barraLote(lista, modo) {
+    if (modo !== 'por-confirmar') return '';
+    const cobrables = lista.filter((p) => p.estadoPago !== 'confirmado');
+    if (cobrables.length < 2) return ''; // con uno solo no hay lote que valga
+
+    const sel = cobrables.filter((p) => marcados.has(String(p.id)));
+    const monto = sel.reduce((s, p) => s + p.total, 0);
+    const todos = sel.length === cobrables.length;
+
+    return (
+      '<div class="lote-barra" id="cajaLoteBarra">' +
+      '<label class="lote-barra__todos">' +
+      '<input type="checkbox" id="cajaLoteTodos"' + (todos ? ' checked' : '') + '>' +
+      '<span>' + (todos ? 'Quitar todos' : 'Marcar los ' + cobrables.length) + '</span></label>' +
+      '<span class="lote-barra__cuenta" id="cajaLoteCuenta">' +
+      (sel.length
+        ? sel.length + ' marcado' + (sel.length === 1 ? '' : 's') + ' · ' + U.money(monto)
+        : 'Marca los que ya recibiste') +
+      '</span>' +
+      '<button class="btn btn--sm lote-barra__btn" id="cajaLoteCobrar"' +
+      (sel.length ? '' : ' disabled') + '>💵 Cobrar ' +
+      (sel.length ? 'los ' + sel.length : 'marcados') + '</button>' +
+      '</div>'
+    );
+  }
+
+  /* Sólo cambia el texto y el botón: repintar la lista entera en cada
+     clic haría perder el scroll justo cuando se está marcando. */
+  function refrescarBarraLote() {
+    const barra = $('#cajaLoteBarra');
+    if (!barra) return;
+    const cobrables = listaPagos().filter((p) => p.estadoPago !== 'confirmado');
+    const sel = cobrables.filter((p) => marcados.has(String(p.id)));
+    const monto = sel.reduce((s, p) => s + p.total, 0);
+
+    $('#cajaLoteCuenta').textContent = sel.length
+      ? sel.length + ' marcado' + (sel.length === 1 ? '' : 's') + ' · ' + U.money(monto)
+      : 'Marca los que ya recibiste';
+
+    const btn = $('#cajaLoteCobrar');
+    btn.disabled = !sel.length;
+    btn.innerHTML = '💵 Cobrar ' + (sel.length ? 'los ' + sel.length : 'marcados');
+
+    const todos = $('#cajaLoteTodos');
+    todos.checked = sel.length === cobrables.length && cobrables.length > 0;
+    todos.nextElementSibling.textContent = todos.checked
+      ? 'Quitar todos'
+      : 'Marcar los ' + cobrables.length;
+  }
+
+  function cobrarLote() {
+    const cobrables = listaPagos().filter((p) => p.estadoPago !== 'confirmado');
+    const sel = cobrables.filter((p) => marcados.has(String(p.id)));
+    if (!sel.length) return false;
+
+    const monto = sel.reduce((s, p) => s + p.total, 0);
+
+    /* Se pregunta antes: cobrar es irreversible desde la pantalla, y
+       marcar veinte casillas es fácil de hacer sin querer. */
+    U.confirmar(
+      'Vas a dar por recibidos ' + U.money(monto) + ' de ' + sel.length +
+      ' pedido' + (sel.length === 1 ? '' : 's') + '. Cada uno se cobra con SU método ' +
+      'de pago, el que dijo el cliente.',
+      function () {
+        let r;
+        try {
+          r = S.confirmarPagos(sel.map((p) => p.id), null, ctx.firma ? ctx.firma() : null);
+        } catch (e) {
+          return U.toast(e.message, 'error');
+        }
+        marcados.clear();
+        refrescar();
+        if (ctx.alCobrar) ctx.alCobrar();
+
+        if (r.fallidos) {
+          U.toast('Cobrados ' + r.cobrados + '. No se pudo con ' + r.fallidos + ': ' +
+                  (r.mal[0] ? r.mal[0].codigo + ' · ' + r.mal[0].motivo : ''), 'error');
+        } else {
+          U.toast('Cobrados ' + r.cobrados + ' pedidos · ' + U.money(monto) + '.');
+        }
+      },
+      'Sí, cobrar los ' + sel.length
+    );
+    return false;
+  }
+
   function pintarPorCobrar() {
     const modo = modoPago();
     const lista = listaPagos();
@@ -510,8 +637,14 @@ NASCAR.Caja = (function () {
           + 'el rango de arriba sólo filtra el histórico.'
         : '';
 
+    /* Al repintar, se olvidan las marcas de lo que ya no está en la
+       lista: si un pedido se cobró o se filtró, su marca no puede
+       quedarse viva e invisible. */
+    const visibles = new Set(lista.map((p) => String(p.id)));
+    Array.from(marcados).forEach((id) => { if (!visibles.has(id)) marcados.delete(id); });
+
     $('#cajaPorCobrar').innerHTML = lista.length
-      ? lista.map(tarjetaPago).join('')
+      ? barraLote(lista, modo) + lista.map(tarjetaPago).join('')
       : '<div class="vacio"><div class="vacio__ico">' +
         (modo === 'por-confirmar' ? '✅' : '🔎') + '</div>' +
         '<h3>' + (modo === 'por-confirmar' ? 'Nada por cobrar' : 'Nada en este rango') + '</h3>' +

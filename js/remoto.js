@@ -1007,6 +1007,24 @@ NASCAR.Remoto = (function () {
       return ponerPedido(aPedido(rpc('confirmar_pago', args)));
     },
 
+    /* Varios cobros en UN viaje. Lo caro no es el trabajo -la base
+       tarda unos 16 ms- sino la ida y vuelta, que ronda el medio
+       segundo. Veinte cobros de uno en uno eran ~9 s con la pantalla
+       congelada; así es un solo viaje.
+
+       La respuesta trae los pedidos YA actualizados, así que se meten en
+       memoria aquí mismo y el panel no tiene que volver a preguntar. */
+    confirmarPagos: function (ids, referencia) {
+      const r = rpc('confirmar_pagos', {
+        p_pedidos: (ids || []).map(idBase),
+        p_referencia: referencia || null,
+      });
+      (r && r.pedidos ? r.pedidos : []).forEach(function (x) {
+        ponerPedido(aPedido(x));
+      });
+      return r;
+    },
+
     rechazarPago: function (pedidoId, motivo) {
       return ponerPedido(aPedido(rpc('rechazar_pago', { p_pedido_id: idBase(pedidoId), p_motivo: motivo || null })));
     },
