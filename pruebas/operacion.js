@@ -582,6 +582,91 @@
     );
   }
 
+  /* =================================================================
+     8 · CON CUÁNTO DIJO QUE PAGABA
+
+     El cliente lo declara en el checkout para que el domiciliario salga
+     con las vueltas contadas. El dato viaja hasta core.pedidos.paga_con y
+     vuelve con el pedido; aquí se prueba que no se pierda ni se
+     desborde por el camino.
+     ================================================================= */
+  function pruebasPagaCon() {
+    grupo('8 · Con cuánto dijo que pagaba');
+
+    /* --- Lo que se escribe, como número que la base aguanta -------- */
+    const lecturas = [
+      ['50000', 50000, 'tecleado a secas'],
+      ['$ 50.000', 50000, 'con el formato que pone el propio campo'],
+      ['', '', 'vacío es «no lo dijo», no «dijo cero»'],
+      ['abc', '', 'letras no son dinero'],
+      ['0', 0, 'cero sí es un valor: lo dijo y dijo cero'],
+    ];
+    lecturas.forEach(function (c) {
+      probar(
+        'Lee «' + c[0] + '» como ' + (c[1] === '' ? 'nada' : c[1]),
+        S.montoPagaCon(c[0]) === c[1],
+        c[2] + ' — salió ' + JSON.stringify(S.montoPagaCon(c[0]))
+      );
+    });
+
+    probar(
+      'Veinte dígitos se topan en lo que cabe en la columna',
+      S.montoPagaCon('99999999999999999999') === S.TOPES.pagaCon,
+      'core.pedidos.paga_con es NUMERIC(12,2): sin tope, un dedo apoyado en ' +
+        'una tecla tumbaba el pedido entero por un campo opcional'
+    );
+
+    /* --- Viaja con el pedido -------------------------------------- */
+    const p = S.crearPedido(unPedido({
+      clave: 'pc-' + Date.now(),
+      metodoPago: 'efectivo',
+      cliente: {
+        nombre: 'Cliente de prueba',
+        telefono: '3001234567',
+        direccion: 'Calle 123 # 45-67, apto 801',
+        zona: '',
+        notas: '',
+        pagaCon: '150000',
+      },
+    }));
+    probar(
+      'Lo declarado queda guardado en el pedido',
+      p.cliente.pagaCon === 150000,
+      'quedó ' + JSON.stringify(p.cliente.pagaCon) + ' (' + typeof p.cliente.pagaCon + ')'
+    );
+
+    const desbordado = S.crearPedido(unPedido({
+      clave: 'pc-tope-' + Date.now(),
+      metodoPago: 'efectivo',
+      cliente: {
+        nombre: 'Cliente de prueba',
+        telefono: '3001234567',
+        direccion: 'Calle 123 # 45-67, apto 801',
+        pagaCon: '99999999999999999999',
+      },
+    }));
+    probar(
+      'Un pedido con una cifra absurda SE CREA igual, topada',
+      desbordado && desbordado.cliente.pagaCon === S.TOPES.pagaCon,
+      'el pedido no puede perderse por un campo que era opcional'
+    );
+
+    const sinDecir = S.crearPedido(unPedido({ clave: 'pc-sin-' + Date.now(), metodoPago: 'efectivo' }));
+    probar(
+      'No decirlo no rompe nada',
+      sinDecir.cliente.pagaCon === '' || sinDecir.cliente.pagaCon === undefined,
+      'quedó ' + JSON.stringify(sinDecir.cliente.pagaCon)
+    );
+
+    /* --- Y la caja lo puede usar ---------------------------------- */
+    probar(
+      'Con lo declarado y el total, las vueltas salen solas',
+      Math.max(0, p.cliente.pagaCon - p.total) === 150000 - p.total,
+      'declaró ' + p.cliente.pagaCon + ', total ' + p.total +
+        ' → devuelve ' + (150000 - p.total)
+    );
+  }
+
   function arrancar() {
     if (!S) {
       marcador.textContent = 'No se cargó NASCAR.Store. ¿Están los /js/*.js en su sitio?';
@@ -605,7 +690,7 @@
     PLATO = S.getCarta({ sucursalId: UNIDAD }).filter((p) => Number(p.precio) > 0)[0];
 
     const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes,
-                     pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo];
+                     pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo, pruebasPagaCon];
     bloques.forEach(function (fn) {
       try {
         fn();

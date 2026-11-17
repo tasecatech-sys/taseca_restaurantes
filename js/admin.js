@@ -1267,6 +1267,12 @@
     if (!p) return;
     const comp = S.getComprobante(pedidoId);
 
+    /* Lo que el cliente anunció en el checkout («pago con 50.000»). Viaja
+       desde index.html hasta core.pedidos.paga_con y vuelve en el pedido;
+       hasta ahora llegaba aquí y nadie lo miraba, así que la caja volvía a
+       preguntarlo con el cliente delante. */
+    const declarado = Number(p.cliente && p.cliente.pagaCon) || 0;
+
     /* Con qué pagó de verdad: los métodos activos de la empresa. Si el del
        pedido ya no está activo, igual se ofrece para poder dejarlo como está. */
     const metodos = (S.getConfig().metodosPago || []).filter((x) => x.activo || x.id === p.metodoPago);
@@ -1284,6 +1290,12 @@
         '<div class="linea"><span class="tenue">Pedido</span><b>' + U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + '</b></div>' +
         (p.comprobante
           ? '<div class="linea"><span class="tenue">Ref. del cliente</span><b>' + U.esc(p.comprobante) + '</b></div>'
+          : '') +
+        /* Lo que el cliente dijo al pedir. Es una DECLARACIÓN suya, no un
+           hecho: la caja la ve, y la cambia si llega con otro billete. */
+        (declarado
+          ? '<div class="linea"><span class="tenue">Dijo que pagaba con</span><b>' +
+            U.money(declarado) + '</b></div>'
           : '') +
         '<div class="linea"><span class="tenue">Total a recibir</span><b id="cpTotal">' +
         U.money(p.total) + '</b></div>' +
@@ -1343,8 +1355,11 @@
       return BASE + (Number(S.recargoDeMetodo(met, BASE, p.empresaId)) || 0);
     }
 
-    /* Se reasigna cada vez que se rearma el bloque. */
-    let leerCambio = function () { return { recibido: null, cambio: 0, falta: 0 }; };
+    /* Se reasigna cada vez que se rearma el bloque. Arranca con lo que el
+       cliente declaró, si lo declaró: la caja no tiene que volver a
+       preguntar algo que ya está escrito en el pedido. */
+    let ultimoRecibido = declarado || null;
+    let leerCambio = function () { return { recibido: ultimoRecibido, cambio: 0, falta: 0 }; };
 
     function pintarMetodo() {
       const met = selMetodo.value;
@@ -1364,6 +1379,7 @@
       /* Lo que la caja ya hubiera escrito no se pierde al cambiar de
          método; el cambio se recalcula contra el total nuevo. */
       const escrito = leerCambio().recibido;
+      ultimoRecibido = escrito;
       marcoCambio.innerHTML = U.bloqueCambio(tot, 'cp', escrito);
       leerCambio = U.montarCambio(marcoCambio, tot, 'cp');
       U.$('#cpCaja', marcoCambio).classList.toggle('oculto', met !== 'efectivo');

@@ -834,6 +834,16 @@
     return S.recargoDeMetodo(borrador.metodoPago, carrito.subtotal() + costoDomicilio());
   }
 
+  /* El total del pedido que se está armando, en UN solo sitio: el aviso
+     de las vueltas y la línea «Total» de abajo tienen que decir lo mismo
+     o el cliente ve dos números distintos en la misma pantalla.
+
+     No hace falta descontar el domicilio de quien recoge: zonaActual() ya
+     devuelve null en ese caso, y costoDomicilio() sale 0. */
+  function totalPedido() {
+    return carrito.subtotal() + costoDomicilio() + recargoPago();
+  }
+
   function pintarTotales(sel) {
     const cont = $(sel);
     if (!cont) return;
@@ -860,7 +870,7 @@
         ? '<div><span>Recargo' + (metodo ? ' · ' + U.esc(metodo.nombre) : '') + '</span>' +
           '<span class="num">' + U.money(rec) + '</span></div>'
         : '') +
-      '<div class="total"><span>Total</span><span class="num">' + U.money(sub + dom + rec) + '</span></div>';
+      '<div class="total"><span>Total</span><span class="num">' + U.money(totalPedido()) + '</span></div>';
   }
 
   function revisarMinimo() {
@@ -969,12 +979,62 @@
         });
         conectarAdjunto();
       } else if (borrador.metodoPago === 'efectivo') {
+        /* Decirlo aquí es lo que hace que el domiciliario salga con las
+           vueltas contadas. Es opcional: quien no lo sepa aún, lo deja
+           en blanco y paga igual. */
         d.innerHTML =
           '<label class="campo"><span>¿Con cuánto vas a pagar?</span>' +
-          '<input class="input" id="fPagaCon" inputmode="numeric" placeholder="Ej. 100000 (para llevar tus vueltas)" value="' + U.esc(borrador.pagaCon) + '"></label>';
+          '<input class="input" id="fPagaCon" inputmode="numeric" autocomplete="off" ' +
+          'placeholder="Ej. 100000 (para llevar tus vueltas)" value="' + U.esc(borrador.pagaCon) + '">' +
+          '<small class="mini tenue">Opcional. Así el domiciliario sale con tus vueltas listas.</small>' +
+          '<div class="mini" id="avisoPagaCon"></div></label>';
+
+        /* Cuánto va a devolver, o que no alcanza. El cliente lo ve ANTES
+           de confirmar, que es cuando todavía puede corregirlo; si no, se
+           entera en la puerta y con el domiciliario delante. */
+        function avisarPagaCon() {
+          const caja = $('#avisoPagaCon');
+          if (!caja) return;
+          const dado = borrador.pagaCon === '' ? null : Number(borrador.pagaCon);
+          const tot = totalPedido();
+          if (dado === null) {
+            caja.innerHTML = '';
+          } else if (dado < tot) {
+            caja.innerHTML =
+              '<span class="ambar">Con ' + U.money(dado) + ' no alcanza: el total es ' +
+              U.money(tot) + '.</span>';
+          } else if (dado === tot) {
+            caja.innerHTML = '<span class="tenue">Pagas justo, no hay vueltas.</span>';
+          } else {
+            caja.innerHTML =
+              '<span class="tenue">Te devolvemos ' + U.money(dado - tot) + '.</span>';
+          }
+        }
+
         $('#fPagaCon').addEventListener('input', function () {
-          borrador.pagaCon = this.value.replace(/\D/g, '');
+          /* El tope es el de core.pedidos.paga_con: sin él, un dedo
+             apoyado en una tecla tumbaba el pedido entero.
+
+             Y el campo se reescribe SIEMPRE con lo que de verdad quedó
+             guardado: si no, quien escribe letras las sigue viendo ahí
+             mientras el pedido viaja sin ellas, y cree que dijo algo que
+             no dijo. */
+          borrador.pagaCon = S.montoPagaCon(this.value);
+          const limpio = String(borrador.pagaCon);
+          if (this.value !== limpio) {
+            const alFinal = this.selectionStart === this.value.length;
+            this.value = limpio;
+            if (alFinal) {
+              try {
+                this.setSelectionRange(limpio.length, limpio.length);
+              } catch (e) {
+                /* algunos navegadores no dejan mover el cursor aquí */
+              }
+            }
+          }
+          avisarPagaCon();
         });
+        avisarPagaCon();
       } else {
         d.innerHTML =
           '<div class="caja-datos"><p class="mini" style="margin:0">El domiciliario llega con datáfono. ' +

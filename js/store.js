@@ -1756,7 +1756,22 @@ NASCAR.Store = (function () {
     indicaciones: 300, // core.pedidos.indicaciones
     notaItem: 200, // core.pedido_items.notas
     detalle: 400,
+    /* Éste NO es un largo de texto: es el valor máximo de
+       core.pedidos.paga_con, que es NUMERIC(12,2) y por tanto aguanta
+       diez dígitos enteros. Un dedo apoyado en una tecla mandaba veinte,
+       la base rechazaba el INSERT entero y el cliente veía «no se pudo
+       crear el pedido» por un campo que era opcional. */
+    pagaCon: 9999999999,
   };
+
+  /** Lo que el cliente dice que va a pagar, como número que la base
+      aguanta. Vacío o sin cifras devuelve '' -no 0-, porque «no lo dijo»
+      y «dijo cero» no son lo mismo. */
+  function montoPagaCon(valor) {
+    const d = String(valor == null ? '' : valor).replace(/\D/g, '');
+    if (!d) return '';
+    return Math.min(Number(d), TOPES.pagaCon);
+  }
 
   function recortar(valor, tope) {
     return String(valor == null ? '' : valor).slice(0, tope);
@@ -1770,6 +1785,9 @@ NASCAR.Store = (function () {
     x.direccion = recortar(x.direccion, TOPES.direccion);
     x.zona = recortar(x.zona, TOPES.zona);
     x.notas = recortar(x.notas, TOPES.indicaciones);
+    /* No es texto, pero viene del mismo formulario y tiene el mismo
+       problema: lo que escriba el cliente tiene que caber en su columna. */
+    x.pagaCon = montoPagaCon(x.pagaCon);
     return x;
   }
 
@@ -5929,6 +5947,7 @@ NASCAR.Store = (function () {
        crearPedido() de aquí, así que los topes hay que aplicarlos
        también allí. Una sola implementación, dos caminos. */
     recortar: recortar,
+    montoPagaCon: montoPagaCon,
     TOPES: TOPES,
 
     // --- Cruce de información / caja de la jornada ---

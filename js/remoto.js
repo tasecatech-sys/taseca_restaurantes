@@ -834,7 +834,11 @@ NASCAR.Remoto = (function () {
         p_direccion: S.recortar(cliente.direccion, S.TOPES.direccion) || null,
         p_indicaciones: S.recortar(cliente.notas, S.TOPES.indicaciones) || null,
         p_zona_id: zona ? zona.id : null,
-        p_paga_con: cliente.pagaCon ? Number(cliente.pagaCon) : null,
+        /* Por el mismo motivo que los recortes de arriba: remoto REEMPLAZA
+           crearPedido() del store, así que el tope de store.js no llega
+           hasta aquí solo. Sin esto, veinte dígitos reventaban el INSERT
+           y el pedido entero se perdía por un campo opcional. */
+        p_paga_con: S.montoPagaCon(cliente.pagaCon) || null,
         // Si este mismo envío ya entró, la base devuelve aquel pedido
         p_clave: datos.clave || null,
       });
