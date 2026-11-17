@@ -4111,8 +4111,35 @@ NASCAR.Store = (function () {
     }
     return _mutar(pedidoId, function (p) {
       if (metodo && metodo !== p.metodoPago) {
+        /* EL RECARGO SIGUE AL MÉTODO.
+
+           El recargo es el precio de pagar ASÍ: son los $500 de Nequi, no
+           un cargo del pedido. Si el cliente termina pagando en efectivo,
+           esos $500 dejan de existir y el total baja; si entró como
+           efectivo y paga por Nequi, suben y el total sube. Dejarlo quieto
+           le cobraba de más al cliente en un sentido y se los comía el
+           negocio en el otro.
+
+           Espejo de api.sp_actualizar_pago (migración 40). La base es la
+           misma que usa crearPedido: subtotal + domicilio. El recargo no
+           se recarga a sí mismo. */
+        const base = (Number(p.subtotal) || 0) + (Number(p.domicilio) || 0);
+        const recargoAntes = Number(p.recargo) || 0;
+        const recargoNuevo = recargoDeMetodo(metodo, base, p.empresaId);
+
         p.historial.push({ ts: new Date().toISOString(), texto: 'Método de pago: ' + p.metodoPago + ' → ' + metodo });
         p.metodoPago = metodo;
+
+        if (recargoNuevo !== recargoAntes) {
+          p.recargo = recargoNuevo;
+          p.total = base + recargoNuevo;
+          p.historial.push({
+            ts: new Date().toISOString(),
+            texto:
+              'Recargo del pago: ' + recargoAntes + ' → ' + recargoNuevo +
+              ' · lo cobrado cambia en ' + (recargoNuevo - recargoAntes),
+          });
+        }
       }
       p.estadoPago = 'confirmado';
       p.referenciaPago = referencia || '';

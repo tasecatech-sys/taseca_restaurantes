@@ -76,6 +76,11 @@ PARTES = [
     ('32_recoger_en_sitio.sql',              'Recoger el pedido en el local'),
     ('34_reportar_pago_con_billeteras.sql',  'Reportar el pago desde Nequi, Daviplata y Bre-B'),
     ('35_avanzar_desde_donde_se_ve.sql',     'Avanzar un pedido solo desde donde se esta viendo'),
+    # La 40 esta aqui, y no corregida en la 16, por lo mismo que la 34 y la
+    # 35: arregla api.sp_actualizar_pago, que nace en la 16, pero necesita
+    # core.fn_recargo_pago, que no existe hasta la 30. No hay donde
+    # corregirla antes.
+    ('40_el_recargo_sigue_al_metodo.sql',    'Si caja cambia el metodo de pago, el recargo lo sigue'),
 
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
 ]

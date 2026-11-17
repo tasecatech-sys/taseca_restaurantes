@@ -2511,6 +2511,11 @@ textarea {
 .cambio {
   margin: 4px 0 12px;
 }
+/* El aviso del recargo sólo existe cuando el método cambia el total. Vacío
+   dejaría su margen ocupando un hueco en el modal. */
+#cpAvisoRecargo:empty {
+  display: none;
+}
 .cambio__monto {
   font-family: var(--f-cond);
   font-size: var(--txt-xl);

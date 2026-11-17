@@ -1285,8 +1285,10 @@
         (p.comprobante
           ? '<div class="linea"><span class="tenue">Ref. del cliente</span><b>' + U.esc(p.comprobante) + '</b></div>'
           : '') +
-        '<div class="linea"><span class="tenue">Total a recibir</span><b>' + U.money(p.total) + '</b></div>' +
+        '<div class="linea"><span class="tenue">Total a recibir</span><b id="cpTotal">' +
+        U.money(p.total) + '</b></div>' +
         '</div>' +
+        '<p class="mini" id="cpAvisoRecargo"></p>' +
 
         (comp
           ? '<div class="comprobante-visor mb-16">' +
@@ -1302,9 +1304,10 @@
           .join('') +
         '</select></label>' +
 
-        /* Sólo el efectivo deja cambio. Se pinta siempre y se muestra u
-           oculta según el método, para no rearmar el modal a cada rato. */
-        U.bloqueCambio(p.total, 'cp') +
+        /* Sólo el efectivo deja cambio. Va dentro de un marco propio
+           porque al cambiar de método cambia el TOTAL, y el bloque tiene
+           que rearmarse contra el número nuevo. */
+        '<div id="cpCajaMarco"></div>' +
 
         '<p class="mini ambar">Confirma sólo con el dinero en la mano, el voucher del datáfono o la transferencia ' +
         'vista en el banco. Esta acción marca el pedido como cobrado y ya no se puede cambiar.</p>' +
@@ -1320,16 +1323,53 @@
 
     U.$('#cpNo', m.raiz).onclick = m.cerrar;
 
-    /* La calculadora de cambio sólo tiene sentido con efectivo: lo que
-       entra por datáfono, transferencia o billetera entra exacto. */
+    /* ------------------------------------------------------------------
+       EL MÉTODO MANDA SOBRE EL TOTAL
+
+       El recargo es el precio de pagar ASÍ -los $500 de Nequi- y no un
+       cargo del pedido. Si caja cambia el método, lo que hay que cobrar
+       cambia, y tiene que verse AQUÍ, antes de confirmar: si no, la caja
+       cobra el número viejo y el cambio sale mal.
+
+       La cuenta es la misma que hace la base en api.sp_actualizar_pago
+       (migración 40): subtotal + domicilio + el recargo del método nuevo.
+       ------------------------------------------------------------------ */
     const selMetodo = U.$('#cpMetodo', m.raiz);
-    const cajaCambio = U.$('#cpCaja', m.raiz);
-    const leerCambio = U.montarCambio(m.raiz, p.total, 'cp');
-    function seguirMetodo() {
-      cajaCambio.classList.toggle('oculto', selMetodo.value !== 'efectivo');
+    const marcoCambio = U.$('#cpCajaMarco', m.raiz);
+    const avisoRecargo = U.$('#cpAvisoRecargo', m.raiz);
+    const BASE = (Number(p.subtotal) || 0) + (Number(p.domicilio) || 0);
+
+    function totalCon(met) {
+      return BASE + (Number(S.recargoDeMetodo(met, BASE, p.empresaId)) || 0);
     }
-    selMetodo.addEventListener('change', seguirMetodo);
-    seguirMetodo();
+
+    /* Se reasigna cada vez que se rearma el bloque. */
+    let leerCambio = function () { return { recibido: null, cambio: 0, falta: 0 }; };
+
+    function pintarMetodo() {
+      const met = selMetodo.value;
+      const tot = totalCon(met);
+      const dif = tot - p.total;
+
+      U.$('#cpTotal', m.raiz).textContent = U.money(tot);
+      avisoRecargo.className = 'mini' + (dif === 0 ? '' : ' ambar');
+      avisoRecargo.textContent =
+        dif === 0
+          ? ''
+          : dif > 0
+            ? 'Pagar con ' + nombreCorto(metodos.find((x) => x.id === met) || { id: met }) +
+              ' recarga ' + U.money(dif) + ': el total sube.'
+            : 'Se quita el recargo del método anterior: el total baja ' + U.money(-dif) + '.';
+
+      /* Lo que la caja ya hubiera escrito no se pierde al cambiar de
+         método; el cambio se recalcula contra el total nuevo. */
+      const escrito = leerCambio().recibido;
+      marcoCambio.innerHTML = U.bloqueCambio(tot, 'cp', escrito);
+      leerCambio = U.montarCambio(marcoCambio, tot, 'cp');
+      U.$('#cpCaja', marcoCambio).classList.toggle('oculto', met !== 'efectivo');
+    }
+    selMetodo.addEventListener('change', pintarMetodo);
+    pintarMetodo();
 
     U.unaVez(U.$('#cpSi', m.raiz), '⏳ Confirmando…', function () {
       if (!A.exigir('pagos')) return false;
@@ -1355,6 +1395,7 @@
       U.toast(
         'Pago de ' + p.codigo + ' confirmado · ' +
         nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) +
+        ' · ' + U.money(totalCon(metodo)) +
         (efectivo && efectivo.cambio > 0 ? ' · devuelve ' + U.money(efectivo.cambio) : '') + '.'
       );
       if (alTerminar) alTerminar();

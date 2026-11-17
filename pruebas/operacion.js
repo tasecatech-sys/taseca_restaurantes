@@ -501,6 +501,87 @@
     marco.remove();
   }
 
+  /* =================================================================
+     7 · EL RECARGO SIGUE AL MÉTODO
+
+     El recargo es el precio de pagar ASÍ -los $500 de Nequi-, no un cargo
+     del pedido. Cuando caja cambia el método al confirmar, el recargo del
+     método anterior deja de aplicar. Dejarlo quieto le cobraba de más al
+     cliente en un sentido y se lo comía el negocio en el otro.
+
+     Espejo de database/40_pruebas_recargo.sql, que prueba lo mismo contra
+     la base de verdad.
+     ================================================================= */
+  function pruebasRecargoSigueAlMetodo() {
+    grupo('7 · El recargo sigue al método');
+
+    const cfg = S.getConfig();
+    const metodos = (cfg.metodosPago || []).map(function (m) {
+      if (m.id === 'nequi') return Object.assign({}, m, { recargo: 500, recargoTipo: 'fijo', activo: true });
+      if (m.id === 'efectivo') return Object.assign({}, m, { recargo: 0, activo: true });
+      return m;
+    });
+    S.guardarConfig({ metodosPago: metodos });
+
+    if (S.recargoDeMetodo('nequi', 10000) !== 500) {
+      probar('Se puede configurar un recargo de 500 en Nequi', false,
+             'salió ' + S.recargoDeMetodo('nequi', 10000) + ' — sin esto el resto no prueba nada');
+      return;
+    }
+
+    const quien = { usuarioId: null, usuarioNombre: 'Prueba' };
+
+    /* --- A · entra con recargo y paga sin él: el total BAJA ------- */
+    const a = S.crearPedido(unPedido({ clave: 'rec-a-' + Date.now(), metodoPago: 'nequi' }));
+    probar('Un pedido por Nequi nace con los 500 dentro del total', a.recargo === 500,
+           'subtotal ' + a.subtotal + ' + recargo ' + a.recargo + ' = ' + a.total);
+
+    const a2 = S.confirmarPago(a.id, '', quien, 'efectivo');
+    probar(
+      'Pagado en efectivo, se le quitan los 500 de Nequi',
+      a2.recargo === 0 && a2.total === a.total - 500,
+      'total ' + a.total + ' → ' + a2.total
+    );
+    probar(
+      'Y queda escrito en el historial por qué cambió el total',
+      a2.historial.some((h) => h.texto.indexOf('Recargo del pago') === 0),
+      'mover una factura en silencio es peor que no moverla'
+    );
+
+    /* --- B · entra sin recargo y paga con él: el total SUBE ------- */
+    const b = S.crearPedido(unPedido({ clave: 'rec-b-' + Date.now(), metodoPago: 'efectivo' }));
+    const b2 = S.confirmarPago(b.id, '', quien, 'nequi');
+    probar(
+      'Pagado por Nequi, se le ponen los 500 que el negocio si no pagaría',
+      b2.recargo === 500 && b2.total === b.total + 500,
+      'total ' + b.total + ' → ' + b2.total
+    );
+
+    /* --- C · sin cambio de método, nada se mueve ------------------ */
+    const c = S.crearPedido(unPedido({ clave: 'rec-c-' + Date.now(), metodoPago: 'nequi' }));
+    const c2 = S.confirmarPago(c.id, '', quien, 'nequi');
+    probar(
+      'Confirmar con el MISMO método no mueve la factura',
+      c2.total === c.total && c2.recargo === c.recargo,
+      'reconfirmar no puede cobrar de más — total ' + c2.total
+    );
+
+    const d = S.crearPedido(unPedido({ clave: 'rec-d-' + Date.now(), metodoPago: 'nequi' }));
+    const d2 = S.confirmarPago(d.id, '', quien);
+    probar(
+      'Confirmar SIN decir método tampoco la mueve',
+      d2.total === d.total && d2.recargo === d.recargo,
+      'total ' + d2.total
+    );
+
+    /* --- E · el recargo no se recarga a sí mismo ------------------ */
+    probar(
+      'El recargo se calcula sobre subtotal + domicilio, no sobre el total',
+      b2.total === b2.subtotal + b2.domicilio + b2.recargo,
+      b2.subtotal + ' + ' + b2.domicilio + ' + ' + b2.recargo + ' = ' + b2.total
+    );
+  }
+
   function arrancar() {
     if (!S) {
       marcador.textContent = 'No se cargó NASCAR.Store. ¿Están los /js/*.js en su sitio?';
@@ -523,7 +604,8 @@
     UNIDAD = conCarta[0].id;
     PLATO = S.getCarta({ sucursalId: UNIDAD }).filter((p) => Number(p.precio) > 0)[0];
 
-    const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes, pruebasDinero, pruebasCambio];
+    const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes,
+                     pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo];
     bloques.forEach(function (fn) {
       try {
         fn();
