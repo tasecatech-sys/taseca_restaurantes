@@ -79,8 +79,24 @@
 :root {
   color-scheme: dark;
 
+  /* ── LA PALETA POR DEFECTO ES NEUTRA, A PROPÓSITO ──────────────────
+     Aquí estaban el azul y el rojo de NASCAR. No como ejemplo: como
+     valores de la plataforma. O sea que cualquier restaurante enseñaba
+     la identidad de NASCAR en el instante entre que llega el HTML y
+     js/tema.js aplica la suya —y, al refrescar, eso es justo lo que se
+     ve—.
+
+     Ahora son grises con una pizca de azul: no son de nadie. NASCAR
+     recibe los suyos por el mismo camino que todos, desde su tema.
+
+     El rojo sigue siendo rojo porque además de ser el secundario de la
+     marca es el color de lo que destruye —anular, cancelar—, y ahí tiene
+     que leerse como peligro. Lo que cambia es que es un rojo cualquiera
+     y no el rojo de la carrera.
+     ──────────────────────────────────────────────────────────────── */
+
   /* Paleta */
-  --negro-900: #06080c;
+  --negro-900: #0f1217;
   --negro-800: #0b0f16;
   --negro-700: #121824;
   --negro-600: #1a2130;
@@ -96,15 +112,15 @@
   --velo: rgba(255, 255, 255, 0.04);
   --velo-fuerte: rgba(255, 255, 255, 0.09);
 
-  --azul: #0b5fff;
-  --azul-claro: #4d8cff;
-  --azul-osc: #04309b;
-  --azul-glow: rgba(11, 95, 255, 0.35);
+  --azul: #3b6ea5;
+  --azul-claro: #7ba7d9;
+  --azul-osc: #27496b;
+  --azul-glow: rgba(59, 110, 165, 0.35);
 
-  --rojo: #e4002b;
-  --rojo-claro: #ff3355;
-  --rojo-osc: #a30020;
-  --rojo-glow: rgba(228, 0, 43, 0.35);
+  --rojo: #b4323f;
+  --rojo-claro: #d14a57;
+  --rojo-osc: #7e212b;
+  --rojo-glow: rgba(180, 50, 63, 0.35);
 
   --blanco: #ffffff;
   --humo: #e8ecf2;
@@ -113,6 +129,22 @@
 
   --verde: #12b76a;
   --ambar: #f5a524;
+
+  /* ── EL COLOR DE PELIGRO NO ES DE NADIE ─────────────────────────────
+     Anular una factura y guardar un plato se pintaban con el MISMO
+     color: el «secundario» que elige cada empresa. 59 botones lo usan y
+     sólo 4 son destructivos, así que la empresa estaba atrapada: con un
+     rojo fuerte, cada «Guardar» gritaba peligro; con un pastel, «Anular
+     factura» dejaba de avisar.
+
+     Esto es señal de seguridad, no identidad. Un botón de anular tiene
+     que verse igual de peligroso en Gusti que en NASCAR, así que no sale
+     del tema y ninguna empresa lo cambia. --rojo se queda como lo que de
+     verdad es: el color de acción de la marca.
+     ──────────────────────────────────────────────────────────────── */
+  --peligro: #c62828;
+  --peligro-claro: #e04a4a;
+  --peligro-glow: rgba(198, 40, 40, 0.35);
 
   --borde: rgba(255, 255, 255, 0.09);
   --borde-fuerte: rgba(255, 255, 255, 0.18);
@@ -124,12 +156,59 @@
 
   /* Medidas */
   --ancho: 1200px;
+  /* Lo usan la cabecera pegajosa y todo lo que tenga que quedarse
+     justo debajo de ella. Escrito dos veces se desincroniza. */
+  --alto-cabecera: 74px;
+  /* El aire a los lados de .contenedor. Lo compensan con margen
+     negativo las barras que tienen que llegar de borde a borde. */
+  --pad-contenedor: 24px;
   --r-sm: 6px;
   --r: 10px;
   --r-lg: 16px;
   --sombra: 0 10px 30px rgba(0, 0, 0, 0.45);
   --sombra-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
   --t: 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ── ESCALA DE TEXTO ────────────────────────────────────────────────
+     Antes había 29 tamaños de letra distintos escritos a mano por todo
+     el archivo (14.5px, 15px, 16px, 17px…). Diferencias que nadie ve
+     pero que se notan juntas: la página parece desalineada sin que se
+     sepa por qué.
+
+     Esto es una escala: cada paso es ~1,2 veces el anterior, así que la
+     diferencia entre dos tamaños SIEMPRE se lee como intencionada.
+     ──────────────────────────────────────────────────────────────── */
+  --txt-xs: 12px;
+  --txt-sm: 13.5px;
+  --txt-base: 15px;
+  --txt-md: 16.5px;
+  --txt-lg: 19px;
+  --txt-xl: 23px;
+  --txt-2xl: 28px;
+  --txt-3xl: 34px;
+
+  /* ── ESCALA DE ESPACIO ──────────────────────────────────────────────
+     Y 77 valores de relleno distintos. Múltiplos de 4: el ojo percibe
+     el ritmo aunque no sepa contarlo.
+     ──────────────────────────────────────────────────────────────── */
+  --e-1: 4px;
+  --e-2: 8px;
+  --e-3: 12px;
+  --e-4: 16px;
+  --e-5: 20px;
+  --e-6: 24px;
+  --e-8: 32px;
+  --e-10: 40px;
+  --e-12: 48px;
+
+  /* ── RELIEVE ────────────────────────────────────────────────────────
+     Dos alturas y nada más. El borde de 1px marca el contorno; la
+     sombra dice a qué distancia está del fondo. Una tarjeta en reposo
+     lleva --elev-1; al pasar por encima sube a --elev-2.
+     ──────────────────────────────────────────────────────────────── */
+  --r-xl: 20px;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.24);
+  --elev-2: 0 2px 6px rgba(0, 0, 0, 0.34), 0 14px 32px rgba(0, 0, 0, 0.36);
 
   /* El velo que oscurece el fondo detrás de un cuadro emergente. */
   --fondo-modal: rgba(0, 0, 0, 0.66);
@@ -189,6 +268,10 @@
   --velo-fuerte: rgba(14, 20, 32, 0.08);
 
   --sombra: 0 6px 20px rgba(14, 20, 32, 0.1);
+  /* Sobre fondo claro una sombra negra fuerte se ve sucia, no elevada:
+     lo que separa una tarjeta del fondo aquí es sobre todo el borde. */
+  --elev-1: 0 1px 2px rgba(14, 20, 32, 0.06), 0 4px 14px rgba(14, 20, 32, 0.07);
+  --elev-2: 0 2px 6px rgba(14, 20, 32, 0.09), 0 14px 32px rgba(14, 20, 32, 0.12);
   --sombra-lg: 0 18px 44px rgba(14, 20, 32, 0.16);
   --fondo-modal: rgba(14, 20, 32, 0.45);
   --fondo-barra: rgba(248, 250, 252, 0.88);
@@ -199,6 +282,10 @@
   --rojo-claro: #c4001f;
   --verde: #0e9355;
   --ambar: #a86100;
+  /* Sobre fondo claro el rojo tiene que ser más profundo para que el
+     texto blanco de encima siga leyéndose. */
+  --peligro: #b3261e;
+  --peligro-claro: #8c1d18;
 }
 
 /* ========================= 02. RESET Y BASE ============================== */
@@ -238,6 +325,10 @@ a:hover {
   color: var(--blanco);
 }
 
+/* El peso va en variable porque depende de la familia: Archivo Black ya
+   es negra de serie y pide 400, pero Inter o Poppins en 400 saldrían
+   finas donde debería haber un titular. Lo escribe js/tema.js junto con
+   la familia. */
 h1,
 h2,
 h3,
@@ -245,7 +336,7 @@ h4 {
   margin: 0 0 0.4em;
   line-height: 1.08;
   font-family: var(--f-display);
-  font-weight: 400;
+  font-weight: var(--f-display-peso, 400);
   letter-spacing: -0.01em;
 }
 
@@ -292,7 +383,7 @@ textarea {
   width: 100%;
   max-width: var(--ancho);
   margin-inline: auto;
-  padding-inline: 24px;
+  padding-inline: var(--pad-contenedor);
 }
 
 .fila {
@@ -574,6 +665,19 @@ textarea {
   background: var(--rojo-claro);
 }
 
+/* El botón de lo que destruye: anular, borrar, rechazar. Su color NO
+   sale del tema de la empresa, a propósito. */
+.btn--peligro {
+  --bg: var(--peligro);
+  --fg: var(--blanco-puro);
+  border-color: var(--peligro);
+}
+.btn--peligro:hover:not(:disabled) {
+  box-shadow: 0 8px 26px var(--peligro-glow);
+  background: var(--peligro-claro);
+  border-color: var(--peligro-claro);
+}
+
 .btn--azul {
   --bg: var(--azul);
   --fg: var(--blanco-puro);
@@ -616,6 +720,127 @@ textarea {
 }
 .btn--bloque {
   width: 100%;
+}
+
+/* Domicilio o recoger: los dos botones del paso de datos.
+
+   Dos tarjetas en vez de un desplegable o dos radios: es la primera
+   decisión del paso y cambia el formulario entero, así que tiene que
+   verse de lejos cuál está elegida. */
+.entrega {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--e-2);
+}
+.entrega__op {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--e-3);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--r);
+  background: var(--velo);
+  color: var(--gris);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t), background var(--t);
+}
+.entrega__op b {
+  font-family: var(--f-body);
+  font-size: var(--txt-base);
+  font-weight: 600;
+  color: var(--blanco);
+}
+.entrega__ico {
+  font-size: 20px;
+  line-height: 1;
+}
+.entrega__op:hover {
+  border-color: var(--blanco);
+}
+.entrega__op.is-activo {
+  border-color: var(--azul);
+  background: var(--azul-glow);
+}
+
+/* La barra de cobrar en lote, encima de la cola de «Por cobrar».
+
+   Se queda pegada arriba: con veinte pedidos en la lista, si la barra se
+   fuera con el scroll habría que subir para cobrar lo que se acaba de
+   marcar abajo. */
+.lote-barra {
+  /* La lista de pagos es una rejilla: sin esto la barra se mete como una
+     tarjeta mas y queda del ancho de una columna. */
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-3);
+  margin-bottom: var(--e-3);
+  padding: var(--e-3) var(--e-4);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--r);
+  background: var(--negro-700);
+  box-shadow: var(--elev-1);
+}
+.lote-barra__todos {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  cursor: pointer;
+  font-family: var(--f-cond);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris);
+}
+.lote-barra__todos input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--verde);
+  flex-shrink: 0;
+}
+.lote-barra__cuenta {
+  margin-right: auto;
+  font-size: var(--txt-base);
+  font-weight: 600;
+  color: var(--blanco);
+}
+.lote-barra__btn {
+  min-height: 40px;
+  background: var(--verde);
+  border-color: var(--verde);
+  color: #04220f;
+}
+.lote-barra__btn:disabled {
+  background: var(--velo-fuerte);
+  border-color: var(--borde-fuerte);
+  color: var(--gris-osc);
+}
+
+/* La casilla de cada tarjeta de la cola. */
+.pago-check {
+  width: 20px;
+  height: 20px;
+  margin-right: var(--e-2);
+  accent-color: var(--verde);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .lote-barra__cuenta {
+    flex: 1 0 100%;
+    margin-right: 0;
+    order: 3;
+  }
+  .lote-barra__btn {
+    margin-left: auto;
+  }
 }
 
 /* Chips (filtros de categoría) */
@@ -768,7 +993,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 24px;
-  height: 74px;
+  height: var(--alto-cabecera);
 }
 
 .logo {
@@ -792,12 +1017,44 @@ textarea {
   font-style: normal;
   color: var(--rojo);
 }
+/* Con un logo de imagen sobra el subtítulo.
+
+   El HTML trae «Restaurante» escrito a mano -lo mismo para toda empresa,
+   sea restaurante, bar o arepera-. Debajo de un logo que ya lleva el
+   nombre del negocio es relleno, y como va con 0.28em de espaciado
+   acababa midiendo MÁS ANCHO que el propio logo: una imagen pequeña con
+   un pie más grande que ella. Eso es lo que se veía desproporcionado. */
+[data-logo='imagen'] .logo__sub {
+  display: none;
+}
+
 .logo__cuadros {
   width: 26px;
   height: 26px;
   border-radius: 3px;
   transform: skewX(-10deg);
 }
+/* El logotipo cuando la empresa subió una imagen.
+
+   Antes se escribía `height:30px` en línea desde js/tema.js. Treinta
+   píxeles en una barra de 74 se veían perdidos, y si el logo llevaba el
+   nombre dentro -que es lo normal- quedaba ilegible. Peor: por ir en
+   línea, ninguna regla del CSS podía tocarlo.
+
+   El alto sale ahora de la barra, así que es proporcional por
+   construcción y no un número que haya que recordar cambiar.
+
+   El ancho máximo es para los logos muy apaisados, que si no empujan el
+   menú; y `min(…, 40vw)` para que en el móvil le dejen sitio al botón
+   de pedido. */
+.logo__img {
+  display: block;
+  height: calc(var(--alto-cabecera) * 0.6);
+  width: auto;
+  max-width: min(220px, 40vw);
+  object-fit: contain;
+}
+
 .logo__sub {
   display: block;
   font-family: var(--f-cond);
@@ -909,6 +1166,9 @@ textarea {
   overflow: hidden;
   background: radial-gradient(1100px 600px at 78% 8%, rgba(11, 95, 255, 0.2), transparent 62%),
     radial-gradient(900px 520px at 12% 92%, rgba(228, 0, 43, 0.16), transparent 62%),
+    var(--negro-900); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: radial-gradient(1100px 600px at 78% 8%, color-mix(in srgb, var(--azul) 20%, transparent), transparent 62%),
+    radial-gradient(900px 520px at 12% 92%, color-mix(in srgb, var(--rojo) 16%, transparent), transparent 62%),
     var(--negro-900);
 }
 
@@ -979,9 +1239,14 @@ textarea {
 .hero h1 .linea-rojo {
   color: var(--rojo);
 }
+/* La palabra que remata el titular va en contorno. El trazo iba fijo en
+   2px mientras la letra es fluida de 46 a 92px, asi que salia al doble de
+   grueso en el telefono que en el escritorio. En em acompana a la letra:
+   son los mismos ~2px del telefono y 4px en el escritorio, donde antes se
+   deshilachaba. */
 .hero h1 .linea-contorno {
   color: transparent;
-  -webkit-text-stroke: 2px var(--blanco);
+  -webkit-text-stroke: 0.045em var(--blanco);
 }
 
 .hero__texto {
@@ -1241,8 +1506,10 @@ textarea {
   padding: 16px 22px;
   margin-bottom: 30px;
   border-radius: var(--r);
-  background: linear-gradient(90deg, rgba(228, 0, 43, 0.16), transparent 70%);
-  border: 1px solid rgba(228, 0, 43, 0.32);
+  background: linear-gradient(90deg, rgba(228, 0, 43, 0.16), transparent 70%); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--rojo) 16%, transparent), transparent 70%);
+  border: 1px solid rgba(228, 0, 43, 0.32); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--rojo) 32%, transparent);
 }
 /* La barra de «¿dónde quieres pedir?» ya no cuelga de la sección del menú
    del día, así que se separa ella sola del hero. */
@@ -1384,33 +1651,148 @@ textarea {
 }
 
 /* ============================ 10. CARTA ================================= */
+/* =======================================================================
+   LA CARTA · PILOTO DE DISENO
+   -----------------------------------------------------------------------
+   Esta seccion es la PRIMERA escrita con las escalas de arriba
+   (--txt-*, --e-*, --elev-*) en vez de con medidas puestas a ojo. El
+   resto de la pagina sigue igual a proposito: asi las dos se pueden
+   comparar en la misma pantalla antes de propagar nada.
+
+   CUATRO DECISIONES QUE SE VEN
+
+   1. Los nombres de los platos ya NO van en mayusculas condensadas.
+      <<HAMBURGUESA DOBLE CON TOCINETA>> se lee peor y ademas grita. Y la
+      condensada estaba clavada para TODAS las empresas: un restaurante
+      de comida casera llevaba la tipografia de carreras en sus platos.
+      Ahora van en --f-body, la que elige cada empresa.
+
+   2. El boton de agregar es un boton de verdad: relleno, del color de la
+      marca y de 44px de alto -el minimo con el que un dedo acierta sin
+      apuntar-. Era un contorno fino de 28px que no parecia pulsable.
+
+   3. Manda la foto. Ocupa 4:3 arriba de la tarjeta y debajo se ordena
+      todo lo demas. En una carta la gente decide mirando.
+
+   4. El contorno duro de 1px que cambiaba a azul al pasar por encima se
+      cambia por relieve: borde discreto y sombra. Lo que separa la
+      tarjeta del fondo es la distancia, no una raya.
+   ===================================================================== */
+
+/* La barra de categorias.
+
+   En el movil es UNA fila que se desliza con el dedo. Antes se partia en
+   varias lineas: con ocho categorias, tres filas de botones se comian la
+   pantalla y la primera foto de comida caia por debajo del pliegue. El
+   que entra a pedir tiene que ver comida, no filtros.
+
+   Y se queda pegada bajo la cabecera: al tercer plato la barra ya no se
+   veia y habia que subir hasta arriba para cambiar de categoria.
+
+   Los margenes negativos + el relleno igual son para que el fondo de la
+   barra llegue de borde a borde de la pantalla cuando esta pegada; sin
+   eso se ve una tira flotando con huecos a los lados. Compensan el
+   padding-inline de .contenedor. */
 .filtros {
+  position: sticky;
+  top: var(--alto-cabecera);
+  z-index: 20;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 32px;
+  gap: var(--e-2);
+  margin: 0 calc(var(--pad-contenedor) * -1) var(--e-6);
+  padding: var(--e-3) var(--pad-contenedor);
+  background: var(--fondo-barra);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  overflow-x: auto;
+  /* El deslizamiento se para en un boton, no a mitad de uno. */
+  scroll-snap-type: x proximity;
+  /* La barra de desplazamiento sobra: se desliza con el dedo, y el boton
+     cortado a la derecha ya avisa de que hay mas. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filtros::-webkit-scrollbar {
+  display: none;
 }
 
+/* Los botones de categoria. Se estilan desde .filtros y no en .chip a
+   secas porque .chip se usa tambien en el panel (los emojis del menu del
+   dia, entre otros) y el piloto no debe salirse de la carta. */
+.filtros .chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-1);
+  min-height: 38px;
+  padding: 0 var(--e-4);
+  border-color: transparent;
+  background: var(--velo);
+  color: var(--humo);
+  font-family: var(--f-body);
+  font-size: var(--txt-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.filtros .chip:hover {
+  border-color: var(--borde-fuerte);
+  background: var(--velo-fuerte);
+  color: var(--blanco);
+}
+.filtros .chip.is-activo {
+  border-color: var(--azul);
+  background: var(--azul);
+  /* Sobre el azul saturado de la marca el texto es blanco en los dos
+     modos: --blanco en claro es casi negro y no se leeria. */
+  color: var(--blanco-puro);
+  box-shadow: 0 2px 12px var(--azul-glow);
+}
+
+/* La rejilla.
+
+   330px de minimo dejaba tarjetas anchisimas y pocas columnas; con foto
+   se ven mejor mas estrechas y mas juntas. El min(100%, ...) es para que
+   en una pantalla de menos de 272px la tarjeta se encoja en vez de
+   desbordar y sacar barra horizontal. */
 .carta {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 272px), 1fr));
+  gap: var(--e-5);
 }
 
+/* La tarjeta.
+
+   SIN RELLENO PROPIO, a diferencia de antes. El relleno vive un nivel
+   mas adentro, en .plato__cuerpo, y asi la foto llega hasta el borde sin
+   margenes negativos que compensen a mano un padding -que era justo lo
+   que hacia fragil esto: cambiar el relleno descolocaba la foto.
+
+   `overflow: hidden` es lo que recorta la esquina de la foto con el
+   radio de la tarjeta. */
 .plato {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 20px;
+  overflow: hidden;
   border: 1px solid var(--borde);
-  border-radius: var(--r);
+  border-radius: var(--r-lg);
   background: var(--negro-700);
-  transition: border-color var(--t), transform var(--t), background var(--t);
+  box-shadow: var(--elev-1);
+  transition: transform var(--t), box-shadow var(--t), border-color var(--t);
 }
-.plato:hover {
-  border-color: var(--azul);
-  transform: translateY(-3px);
-  background: var(--negro-600);
+
+/* Solo donde hay un raton de verdad. En un movil el :hover se queda
+   pegado despues de tocar y la tarjeta se queda levantada. */
+@media (hover: hover) {
+  .plato:hover {
+    transform: translateY(-4px);
+    border-color: var(--borde-fuerte);
+    box-shadow: var(--elev-2);
+  }
+  .plato:hover .plato__foto {
+    transform: scale(1.05);
+  }
 }
 /* El bloque de la foto en el editor de un producto: lo que hay ahora y
    los botones para cambiarlo. */
@@ -1439,70 +1821,218 @@ textarea {
   min-width: 0;
 }
 
-/* La foto del plato, cuando el producto tiene una.
+/* El marco de la foto.
 
-   Sangra hasta el borde de la tarjeta: los márgenes negativos compensan
-   exactamente el padding de .plato, así que si ese padding cambia hay
-   que cambiarlos aquí. Sin foto no se pinta nada y la tarjeta queda
-   igual que siempre. */
-.plato__foto {
-  display: block;
-  width: calc(100% + 40px);
-  /* La regla global `img { max-width: 100% }` recortaría la sangría y la
-     foto quedaría corrida hacia la izquierda. */
-  max-width: none;
-  height: 170px;
-  margin: -20px -20px 2px;
-  object-fit: cover;
-  border-radius: var(--r) var(--r) 0 0;
-  /* Mientras carga, el hueco es del color de la tarjeta y no un vacío
-     blanco que parpadea. */
+   4:3 en vez de un alto fijo de 170px: la foto crece con la columna, asi
+   que en el movil -una sola columna- se ve grande, y en el escritorio no
+   queda una franja aplastada.
+
+   El fondo es para mientras carga: un hueco del color de la tarjeta, no
+   un blanco que parpadea. */
+.plato__marco {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
   background: var(--negro-800);
 }
-.no-disp .plato__foto {
-  filter: grayscale(1);
-  opacity: 0.5;
+/* El hueco de los platos sin foto: el emoji de su categoría, grande y
+   apagado, sobre un tinte del color de la marca. Lo que había antes era
+   un rectángulo vacío estirado a la altura de las tarjetas con foto, que
+   se lee como una imagen que no cargó. */
+.plato__marco--vacio {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, var(--velo-fuerte), var(--velo));
+}
+.plato__icono {
+  font-size: 56px;
+  line-height: 1;
+  opacity: 0.4;
+  filter: saturate(0.75);
 }
 
-.plato__top {
+.plato__foto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* El ancho lo manda el marco, no la regla global `img { max-width }`. */
+  max-width: none;
+  object-fit: cover;
+  transition: transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* La etiqueta (<<El mas pedido>>, <<Nuevo>>...).
+
+   Sobre la foto, arriba a la izquierda. Lleva sombra propia porque
+   detras puede haber una foto clara y el badge se perderia. */
+.plato__marco .plato__sello {
+  position: absolute;
+  top: var(--e-3);
+  left: var(--e-3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+/* Sin foto no hay donde ponerla encima, asi que entra en el cuerpo como
+   una linea mas. La etiqueta es informacion, no adorno: no puede
+   desaparecer porque al producto le falte la imagen. */
+.plato__cuerpo .plato__sello {
+  align-self: flex-start;
+}
+
+.plato__cuerpo {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 14px;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--e-2);
+  padding: var(--e-4);
 }
-.plato h3 {
+/* Sin foto Y sin emoji de categoría —una carta recién creada— no hay
+   marco ninguno, así que el cuerpo respira un poco más. */
+.plato--sin-foto .plato__cuerpo {
+  padding: var(--e-5);
+}
+
+/* El nombre del plato. En --f-body (la tipografia de la empresa) y en
+   minusculas: ver la decision 1 arriba. */
+.plato__nombre {
   margin: 0;
-  font-family: var(--f-cond);
-  font-size: 21px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--txt-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.25;
   color: var(--blanco);
-  line-height: 1.15;
 }
-.plato__precio {
-  font-family: var(--f-display);
-  font-size: 19px;
-  color: var(--azul-claro);
-  white-space: nowrap;
-}
+
+/* La descripcion, cortada a dos lineas.
+
+   Sin cortarla, un plato con descripcion larga estiraba su tarjeta y
+   empujaba el precio y el boton de TODA la fila hacia abajo. Dos lineas
+   y puntos suspensivos: las tarjetas de una fila quedan parejas. */
 .plato__desc {
   margin: 0;
-  font-size: 14.5px;
+  font-size: var(--txt-sm);
+  line-height: 1.45;
   color: var(--gris);
-  line-height: 1.5;
-  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+
+/* Precio a la izquierda, boton a la derecha.
+
+   `margin-top: auto` lo empuja al fondo de la tarjeta: con descripciones
+   de distinto largo, los botones de una fila quedan todos a la misma
+   altura en vez de a tres alturas distintas. */
 .plato__pie {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 4px;
+  gap: var(--e-3);
+  margin-top: auto;
+  padding-top: var(--e-2);
 }
+
+/* El precio en el color del texto, no en el de acento. El acento se lo
+   queda ahora el boton: si el precio y el boton van los dos de color, la
+   vista no sabe que mirar primero. */
+.plato__precio {
+  font-family: var(--f-body);
+  font-size: var(--txt-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--blanco);
+  white-space: nowrap;
+}
+
+/* 44px de alto: el minimo con el que un dedo acierta sin apuntar. */
+.plato__add {
+  min-height: 44px;
+  padding: 0 var(--e-5);
+  border-radius: 999px;
+  font-family: var(--f-body);
+  font-size: var(--txt-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+/* Agotado: gris y apagada, pero legible. Antes el gris se aplicaba dos
+   veces -a la tarjeta y otra vez a la foto- y la foto quedaba casi
+   invisible. */
 .plato.no-disp {
-  opacity: 0.45;
+  opacity: 0.5;
   filter: grayscale(1);
+}
+.plato.no-disp:hover {
+  transform: none;
+}
+
+/* -----------------------------------------------------------------------
+   EN EL TELEFONO, DOS COLUMNAS
+   -----------------------------------------------------------------------
+   Con una sola columna la tarjeta ocupaba casi la pantalla entera: un
+   plato a la vez y 58 productos por delante. Nadie baja hasta el final
+   de eso; se pide lo primero que se ve, o se cierra la pagina.
+
+   Con dos caben cuatro o seis platos de golpe, que es como se mira una
+   carta de verdad -de un vistazo, comparando- y la foto sigue siendo lo
+   primero que entra por los ojos.
+
+   La tarjeta se queda en unos 160px de ancho, asi que el precio y el
+   boton ya no caben uno al lado del otro: se apilan, y el boton pasa a
+   ocupar todo el ancho, que ademas es mas facil de acertar con el pulgar.
+   --------------------------------------------------------------------- */
+@media (max-width: 599px) {
+  .carta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e-3);
+  }
+  .plato__cuerpo {
+    gap: var(--e-1);
+    padding: var(--e-3);
+  }
+  .plato__nombre {
+    font-size: var(--txt-base);
+  }
+  .plato__desc {
+    font-size: var(--txt-xs);
+  }
+  .plato__pie {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--e-2);
+    padding-top: var(--e-2);
+  }
+  .plato__precio {
+    font-size: var(--txt-md);
+  }
+  .plato__add {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 var(--e-2);
+  }
+  .plato__icono {
+    font-size: 38px;
+  }
+  .plato__marco .plato__sello {
+    top: var(--e-2);
+    left: var(--e-2);
+  }
+}
+
+/* A quien pide que se mueva menos, no se le mueve nada. */
+@media (prefers-reduced-motion: reduce) {
+  .plato,
+  .plato__foto {
+    transition: none;
+  }
+  .plato:hover,
+  .plato:hover .plato__foto {
+    transform: none;
+  }
 }
 
 /* ==================== 11. CARRITO Y CHECKOUT ============================ */
@@ -1713,7 +2243,17 @@ textarea {
 .op:hover {
   border-color: var(--azul-claro);
 }
-.op input {
+/* LA CASILLA de una opcion, no cualquier campo que haya dentro.
+
+   Decia `.op input`, a secas. Una opcion que ademas lleva un campo para
+   escribir -el recargo de un metodo de pago- se encontraba con que ese
+   campo tambien media 18x18: un circulo diminuto imposible de usar, y
+   con mas peso en la cascada (0,1,1) que la clase del propio campo.
+
+   Acotarlo al checkbox hace que cualquier control que se meta manana en
+   una opcion se dimensione solo. */
+.op > input[type='checkbox'],
+.op > input[type='radio'] {
   margin-top: 4px;
   accent-color: var(--rojo);
   width: 18px;
@@ -1735,7 +2275,8 @@ textarea {
 }
 .op:has(input:checked) {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.09);
+  background: rgba(228, 0, 43, 0.09); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 9%, transparent);
 }
 
 /* Lista de casillas dentro de un formulario: muchas opciones cortas en poco
@@ -1784,30 +2325,56 @@ textarea {
 .lista-check__cant i {
   margin-left: 0; /* el auto es de la caja, no del texto de dentro */
 }
+/* Campos pequeños para meter una cifra en una fila de lista: la cantidad
+   de un insumo en una receta, el recargo de un método de pago.
+
+   PEQUEÑOS NO ES DIMINUTOS. Estaban en 68px de ancho, 13px de letra y
+   5px de relleno: unos 27px de alto, por debajo de lo que un dedo
+   acierta. Ahora van a 40px, que es lo mínimo razonable, y con la
+   tipografía del texto —no la condensada— porque aquí se escriben
+   NÚMEROS y la condensada los junta. */
 .input--xs {
-  width: 68px;
-  padding: 5px 8px;
-  font-size: 13px;
+  width: 96px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-family: var(--f-body);
+  font-size: 15px;
   text-align: right;
 }
 .select--xs {
-  padding: 5px 8px;
-  font-size: 13px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-family: var(--f-body);
+  font-size: 14px;
   width: auto;
 }
 
 /* El recargo de un método de pago, dentro de su propia fila: es una
-   propiedad del método, no una configuración aparte. */
+   propiedad del método, no una configuración aparte.
+
+   La etiqueta ocupa la línea ENTERA y los campos van debajo. Con el
+   texto y los dos campos en una sola fila no cabía nada: el campo del
+   número es un elemento flexible, se encogía hasta quedar en un círculo
+   de 20px y no había forma de escribir en él. */
 .metodo-recargo {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  gap: var(--e-2);
+  margin-top: var(--e-3);
   font-family: var(--f-cond);
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--gris-osc);
+}
+.metodo-recargo__et {
+  flex: 1 0 100%;
+}
+/* Y que no se vuelvan a encoger: esto es lo que faltaba. */
+.metodo-recargo .input--xs,
+.metodo-recargo .select--xs {
+  flex: 0 0 auto;
 }
 .input--xs:disabled {
   opacity: 0.35;
@@ -1828,7 +2395,8 @@ textarea {
   white-space: nowrap;
 }
 .lista-check__fila:has(input:checked) {
-  background: rgba(228, 0, 43, 0.1);
+  background: rgba(228, 0, 43, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
 }
 .lista-check__fila:has(input:checked) b {
   color: var(--blanco);
@@ -1942,6 +2510,51 @@ textarea {
   border-top: 1px solid var(--borde-fuerte);
   background: var(--negro-700);
 }
+/* El total de lo cobrado por recargo, debajo de las barras por método.
+   Es dinero que entró y que no es comida vendida, así que se separa con
+   una línea en vez de confundirse con una barra más. */
+.recargo-resumen {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--borde);
+  font-size: var(--txt-sm);
+  color: var(--gris);
+}
+.recargo-resumen > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.recargo-resumen > b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-lg);
+  color: var(--ambar);
+  /* La cifra no se parte: una cantidad de dinero cortada en dos líneas
+     se lee mal y se confunde con dos cifras. */
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* El recargo del método, encima del total. Discreto pero legible: es
+   dinero que el cliente va a pagar y que no estaba en la carta. */
+.caja-ticket__recargo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: var(--txt-sm);
+  color: var(--gris);
+}
+.caja-ticket__recargo b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-md);
+  color: var(--ambar);
+}
+
 .caja-ticket__total {
   display: flex;
   align-items: baseline;
@@ -1959,6 +2572,85 @@ textarea {
   font-size: 30px;
   color: var(--blanco);
 }
+/* ── EL CAMBIO EN EFECTIVO ───────────────────────────────────────────
+   El número que de verdad importa aquí es cuánto devolver, y se mira de
+   pie, de lejos y con prisa. Por eso va en grande y en verde: a un metro
+   del mostrador tiene que leerse sin acercarse. Lo que falta va en
+   --peligro, que es el color de las señales del sistema y no cambia de
+   una empresa a otra.
+   ─────────────────────────────────────────────────────────────────── */
+.cambio {
+  margin: 4px 0 12px;
+}
+/* El aviso del recargo sólo existe cuando el método cambia el total. Vacío
+   dejaría su margen ocupando un hueco en el modal. */
+#cpAvisoRecargo:empty {
+  display: none;
+}
+.cambio__monto {
+  font-family: var(--f-cond);
+  font-size: var(--txt-xl);
+  letter-spacing: 0.02em;
+}
+.cambio__rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cambio__rapidos .btn {
+  flex: 1 1 auto;
+  min-width: 62px;
+}
+.cambio__resultado:empty {
+  display: none;
+}
+.cambio__devolver,
+.cambio__justo,
+.cambio__falta {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+}
+.cambio__devolver {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-color: var(--verde);
+  background: rgba(18, 183, 106, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--verde) 11%, transparent);
+}
+.cambio__devolver span {
+  font-size: var(--txt-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gris-osc);
+}
+.cambio__devolver b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-2xl);
+  line-height: 1;
+  color: var(--verde);
+}
+.cambio__justo {
+  font-size: var(--txt-sm);
+  color: var(--gris);
+  border-color: var(--borde);
+}
+.cambio__falta {
+  font-size: var(--txt-sm);
+  color: var(--peligro-claro);
+  border-color: var(--peligro);
+  background: rgba(198, 40, 40, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--peligro) 11%, transparent);
+}
+.cambio__falta b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-lg);
+}
+
 .caja-ticket__cobrar {
   background: var(--verde);
   border-color: var(--verde);
@@ -2100,16 +2792,20 @@ textarea {
   align-items: center;
   padding: 16px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(11, 95, 255, 0.18), rgba(11, 95, 255, 0.04));
-  border: 1px solid rgba(11, 95, 255, 0.35);
+  background: linear-gradient(135deg, rgba(11, 95, 255, 0.18), rgba(11, 95, 255, 0.04)); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--azul) 18%, transparent), color-mix(in srgb, var(--azul) 4%, transparent));
+  border: 1px solid rgba(11, 95, 255, 0.35); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--azul) 35%, transparent);
 }
 .seg-actual--verde {
   background: linear-gradient(135deg, rgba(18, 183, 106, 0.2), rgba(18, 183, 106, 0.04));
   border-color: rgba(18, 183, 106, 0.45);
 }
 .seg-actual--rojo {
-  background: linear-gradient(135deg, rgba(228, 0, 43, 0.2), rgba(228, 0, 43, 0.04));
-  border-color: rgba(228, 0, 43, 0.45);
+  background: linear-gradient(135deg, rgba(228, 0, 43, 0.2), rgba(228, 0, 43, 0.04)); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--rojo) 20%, transparent), color-mix(in srgb, var(--rojo) 4%, transparent));
+  border-color: rgba(228, 0, 43, 0.45); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border-color: color-mix(in srgb, var(--rojo) 45%, transparent);
 }
 .seg-actual__ico {
   flex: 0 0 56px;
@@ -2126,10 +2822,12 @@ textarea {
 @keyframes seg-pulso {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(11, 95, 255, 0.45);
+    box-shadow: 0 0 0 0 rgba(11, 95, 255, 0.45); /* respaldo: Safari < 16.2 no conoce color-mix */
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--azul) 45%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(11, 95, 255, 0);
+    box-shadow: 0 0 0 10px rgba(11, 95, 255, 0); /* respaldo: Safari < 16.2 no conoce color-mix */
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--azul) 0%, transparent);
   }
 }
 .seg-actual__kicker {
@@ -2222,7 +2920,8 @@ textarea {
   filter: none;
   opacity: 1;
   transform: scale(1.12);
-  box-shadow: 0 0 0 5px rgba(11, 95, 255, 0.25);
+  box-shadow: 0 0 0 5px rgba(11, 95, 255, 0.25); /* respaldo: Safari < 16.2 no conoce color-mix */
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--azul) 25%, transparent);
 }
 .seg-paso.is-actual .seg-paso__txt {
   color: var(--blanco);
@@ -3161,7 +3860,8 @@ body.cierre {
 }
 .inv-area.is-activa {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.12);
+  background: rgba(228, 0, 43, 0.12); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 12%, transparent);
   color: var(--blanco);
 }
 
@@ -3331,7 +4031,8 @@ body.cierre {
   color: var(--ambar);
 }
 .df--faltante {
-  background: rgba(228, 0, 43, 0.18);
+  background: rgba(228, 0, 43, 0.18); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 18%, transparent);
   color: var(--rojo-claro);
 }
 .df--sin {
@@ -3408,8 +4109,10 @@ tr.fila--sin td {
   border-color: rgba(18, 183, 106, 0.45);
 }
 .inv-veredicto--dif {
-  background: rgba(228, 0, 43, 0.1);
-  border-color: rgba(228, 0, 43, 0.45);
+  background: rgba(228, 0, 43, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
+  border-color: rgba(228, 0, 43, 0.45); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border-color: color-mix(in srgb, var(--rojo) 45%, transparent);
 }
 .inv-veredicto--vacio {
   background: var(--negro-700);
@@ -3555,7 +4258,8 @@ tr.fila--sin td {
 }
 .mesa-btn--ocupada {
   border-color: var(--azul);
-  background: rgba(11, 95, 255, 0.14);
+  background: rgba(11, 95, 255, 0.14); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--azul) 14%, transparent);
 }
 .mesa-btn--ocupada span {
   color: var(--azul-claro);
@@ -3669,8 +4373,10 @@ tr.fila--sin td {
   margin-top: 9px;
   padding: 11px 14px;
   border-radius: var(--r-sm);
-  background: rgba(228, 0, 43, 0.12);
-  border: 1px solid rgba(228, 0, 43, 0.3);
+  background: rgba(228, 0, 43, 0.12); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 12%, transparent);
+  border: 1px solid rgba(228, 0, 43, 0.3); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--rojo) 30%, transparent);
 }
 .op-cobro--ok {
   background: rgba(18, 183, 106, 0.1);
@@ -3719,7 +4425,8 @@ tr.fila--sin td {
   gap: 5px;
   padding: 3px 9px;
   border-radius: 4px;
-  background: rgba(11, 95, 255, 0.16);
+  background: rgba(11, 95, 255, 0.16); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--azul) 16%, transparent);
   color: var(--azul-claro);
   font-family: var(--f-cond);
   font-size: 12px;
@@ -3727,7 +4434,8 @@ tr.fila--sin td {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  border: 1px solid rgba(11, 95, 255, 0.4);
+  border: 1px solid rgba(11, 95, 255, 0.4); /* respaldo: Safari < 16.2 no conoce color-mix */
+  border: 1px solid color-mix(in srgb, var(--azul) 40%, transparent);
 }
 .comprobante-chip:hover {
   background: var(--azul);
@@ -3746,7 +4454,8 @@ tr.fila--sin td {
 }
 .adjunto:hover {
   border-color: var(--azul-claro);
-  background: rgba(11, 95, 255, 0.06);
+  background: rgba(11, 95, 255, 0.06); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--azul) 6%, transparent);
 }
 .adjunto i {
   font-style: normal;
@@ -3821,8 +4530,8 @@ tr.fila--sin td {
 }
 
 @media (max-width: 860px) {
-  .contenedor {
-    padding-inline: 18px;
+  :root {
+    --pad-contenedor: 18px;
   }
   .seccion {
     padding: 62px 0;
@@ -3904,9 +4613,9 @@ tr.fila--sin td {
 }
 
 @media (max-width: 560px) {
-  .carta {
-    grid-template-columns: 1fr;
-  }
+  /* La carta ya no pasa a una sola columna aqui: con foto, una columna
+     deja un plato por pantalla. Las dos columnas del telefono se definen
+     arriba, con el resto del diseno de la carta. */
 
   /* Barra de total compacta: cabe en una sola línea en el celular */
   .barra-total {
@@ -4148,6 +4857,30 @@ tr.fila--sin td {
   border-radius: var(--r-sm);
 }
 
+/* EL LOGO, UNA SOLA VEZ.
+
+   La barra lateral tiene dos huecos de marca: el isotipo pequeño y, al
+   lado, el logotipo grande con el nombre. Con un logo de IMAGEN los dos
+   enseñaban la misma imagen, así que el logo salía dos veces, uno al
+   lado del otro.
+
+   El isotipo sólo tiene sentido cuando la barra está encogida: ahí es lo
+   único que queda a la vista. Desplegada, sobra. */
+[data-logo='imagen'] .app-shell:not(.is-colapsado) .app-side__iso {
+  display: none;
+}
+
+/* Y más grande. En el panel el logo es lo único de la marca que se ve en
+   toda la pantalla -no compite con un menú, como en la cabecera del
+   portal- así que puede permitirse el sitio. */
+.app-side__marca {
+  min-height: 56px;
+}
+.app-side .logo__img {
+  height: 52px;
+  max-width: 100%;
+}
+
 /* El botón de salir vive en el pie de la barra: se comporta como los
    demás elementos del menú. */
 .admin .app-side__pie .btn {
@@ -4294,8 +5027,10 @@ tr.fila--sin td {
 }
 .armado__op:has(input:checked) {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.1);
-  background: rgba(228, 0, 43, 0.12); /* Safari < 16.2 no conoce color-mix */
+  background: rgba(228, 0, 43, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 10%, transparent);
+  background: rgba(228, 0, 43, 0.12); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 12%, transparent); /* Safari < 16.2 no conoce color-mix */
   background: color-mix(in srgb, var(--rojo) 12%, transparent);
 }
 .armado__op:has(input:focus-visible) {
@@ -4314,7 +5049,8 @@ tr.fila--sin td {
 }
 .armado__cat.is-falta {
   border-color: var(--rojo);
-  background: rgba(228, 0, 43, 0.06);
+  background: rgba(228, 0, 43, 0.06); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--rojo) 6%, transparent);
 }
 .armado__cat.is-falta .armado__falta {
   display: block;
@@ -7185,40 +7921,63 @@ NASCAR.MODULOS_POR_DEFECTO = { basico: true, stock: true, cierre: true };
    personalización tiene que ser controlada, así que no se admite CSS ni
    fuentes arbitrarias. Cada entrada dice qué familia usar y, si hace
    falta, de dónde cargarla. */
+/* `familia` es el texto corrido. `titular` es la de los títulos grandes y
+   `peso` el grueso con el que esa familia se ve como un titular: Archivo
+   Black ya es negra y pide 400; Inter o Poppins en 400 saldrían finas.
+
+   POR QUÉ ESTO ESTÁ AQUÍ Y NO CLAVADO EN EL CSS
+
+   `--f-display` valía 'Archivo Black' para TODAS las empresas. Archivo
+   Black es la letra de los titulares de NASCAR, así que una arepera o un
+   asadero de pollo llevaban tipografía de carreras en sus títulos sin
+   haberlo pedido y sin poder quitarla. Ahora sale de la tipografía que la
+   empresa eligió: quien elige Barlow sigue teniendo Archivo Black -es la
+   pareja de siempre y NASCAR no cambia-, y quien elige cualquier otra
+   lleva la suya. */
 NASCAR.TIPOGRAFIAS = [
   {
     id: 'barlow',
     nombre: 'Barlow',
     muestra: 'Deportiva y compacta',
     familia: "'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-    google: 'Barlow:wght@400;500;600',
+    titular: "'Archivo Black', 'Arial Black', 'Impact', sans-serif",
+    peso: 400,
+    google: 'Barlow:wght@400;500;600&family=Archivo+Black',
   },
   {
     id: 'inter',
     nombre: 'Inter',
     muestra: 'Neutra y muy legible',
     familia: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
-    google: 'Inter:wght@400;500;600;700',
+    titular: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    peso: 800,
+    google: 'Inter:wght@400;500;600;700;800',
   },
   {
     id: 'poppins',
     nombre: 'Poppins',
     muestra: 'Redonda y amable',
     familia: "'Poppins', system-ui, 'Segoe UI', sans-serif",
-    google: 'Poppins:wght@400;500;600;700',
+    titular: "'Poppins', system-ui, 'Segoe UI', sans-serif",
+    peso: 700,
+    google: 'Poppins:wght@400;500;600;700;800',
   },
   {
     id: 'lora',
     nombre: 'Lora',
     muestra: 'Con serifa, más clásica',
     familia: "'Lora', Georgia, 'Times New Roman', serif",
-    google: 'Lora:wght@400;500;600',
+    titular: "'Lora', Georgia, 'Times New Roman', serif",
+    peso: 700,
+    google: 'Lora:wght@400;500;600;700',
   },
   {
     id: 'sistema',
     nombre: 'Del sistema',
     muestra: 'La del dispositivo, sin descargar nada',
     familia: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    titular: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    peso: 800,
     google: '',
   },
 ];
@@ -8892,6 +9651,182 @@ NASCAR.Store = (function () {
   /* El icono que la empresa pone en sus botones principales. La bandera
      a cuadros es de la carrera, no de todos los negocios: los demás
      motivos no ponen ninguno. */
+  /* ===============================================================
+     LA PALETA SALE DE UN SOLO COLOR
+     ---------------------------------------------------------------
+     Pedirle cuatro colores sueltos a quien no es diseñador es pedirle
+     que acierte una combinación entre millones. Y encima a ciegas: el
+     formulario no decía qué pintaba cada uno.
+
+     Aquí se le pide UNO —el de su marca, el del logo— y los otros tres
+     se calculan a partir de él. No es sólo comodidad: así no existe la
+     posibilidad de que choquen, porque todos son el mismo tono.
+
+     Y se calculan MIRANDO EL CONTRASTE, que es lo que de verdad hace
+     que una página se vea mal:
+       · el principal lleva texto blanco encima  → tiene que ser oscuro
+         suficiente para que ese blanco se lea;
+       · el acento se usa como TEXTO sobre el fondo → tiene que
+         destacar contra él, y eso cambia entre claro y oscuro;
+       · el fondo oscuro lleva el tono de la marca, pero tan apagado
+         que sobre él se lee en blanco.
+     =============================================================== */
+
+  /* --- Conversiones de color, lo mínimo para trabajar con tonos --- */
+
+  function aRgb(hex) {
+    const v = String(hex || '').replace('#', '').trim();
+    const l = v.length === 3 ? v.split('').map((c) => c + c).join('') : v;
+    if (!/^[0-9a-f]{6}$/i.test(l)) return null;
+    return [parseInt(l.slice(0, 2), 16), parseInt(l.slice(2, 4), 16), parseInt(l.slice(4, 6), 16)];
+  }
+
+  function aHex(r, g, b) {
+    const dos = (n) => ('0' + Math.max(0, Math.min(255, Math.round(n))).toString(16)).slice(-2);
+    return '#' + dos(r) + dos(g) + dos(b);
+  }
+
+  /* Luminancia relativa: así se mide el contraste de verdad, no «a ojo».
+     Es la misma cuenta que usan las normas de accesibilidad. */
+  function luz(hex) {
+    const c = aRgb(hex);
+    if (!c) return 0;
+    const f = (x) => {
+      x /= 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+
+  /** Cuánto contrasta un color con otro. 4.5 es el mínimo para texto. */
+  function contraste(a, b) {
+    const la = luz(a), lb = luz(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function aHsl(hex) {
+    const c = aRgb(hex);
+    if (!c) return null;
+    const r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return { h: 0, s: 0, l: l };
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s: s, l: l };
+  }
+
+  function deHsl(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(1, s));
+    l = Math.max(0, Math.min(1, l));
+    if (s === 0) return aHex(l * 255, l * 255, l * 255);
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const tramo = (t) => {
+      t = ((t % 1) + 1) % 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    return aHex(tramo(h / 360 + 1 / 3) * 255, tramo(h / 360) * 255, tramo(h / 360 - 1 / 3) * 255);
+  }
+
+  /* Aclara u oscurece conservando el TONO hasta que contrase lo pedido
+     contra `fondo`. Mover la luminosidad y no el tono es lo que hace que
+     siga siendo «su» color. */
+  function hastaContrastar(hex, fondo, minimo, haciaArriba) {
+    const c = aHsl(hex);
+    if (!c) return hex;
+    let l = c.l;
+    for (let i = 0; i < 40; i++) {
+      const cand = deHsl(c.h, c.s, l);
+      if (contraste(cand, fondo) >= minimo) return cand;
+      l += haciaArriba ? 0.025 : -0.025;
+      if (l <= 0 || l >= 1) break;
+    }
+    return deHsl(c.h, c.s, haciaArriba ? 0.95 : 0.08);
+  }
+
+  /** El color de acento legible sobre fondo claro. Se mantiene por
+      compatibilidad: js/tema.js y el panel de Taseca ya lo usaban. */
+  function paraFondoClaro(hex) {
+    return hastaContrastar(hex, '#f4f6f9', 4.5, false);
+  }
+
+  /** Y su espejo: legible sobre el fondo oscuro. */
+  function paraFondoOscuro(hex) {
+    return hastaContrastar(hex, '#0f1217', 4.5, true);
+  }
+
+  /** Un color sobre el que se pueda leer TEXTO BLANCO: los botones
+      llevan el texto en blanco en los dos modos. */
+  function paraTextoBlanco(hex) {
+    return hastaContrastar(hex, '#ffffff', 4.5, false);
+  }
+
+  /**
+   * Los cuatro colores del tema, a partir del de la marca.
+   *
+   * `modo` es 'claro' u 'oscuro': el acento cambia según sobre qué
+   * fondo va a leerse, y el fondo de la empresa sólo se usa en oscuro.
+   */
+  function paletaDesde(marca, modo) {
+    const base = aHsl(marca);
+    if (!base) return null;
+    const claro = modo === 'claro';
+
+    /* El principal es el de la marca, con el ajuste justo para que el
+       texto blanco de sus botones se lea. */
+    const primary = paraTextoBlanco(marca);
+
+    /* El secundario es el OTRO botón de acción. Mismo tono, un punto
+       más profundo: se distingue del principal sin pelearse con él.
+       (El color de lo que destruye no sale de aquí: es fijo del
+       sistema, --peligro, y ninguna empresa lo cambia.) */
+    const secundario = deHsl(base.h, Math.min(1, base.s + 0.06), Math.max(0.12, aHsl(primary).l - 0.1));
+
+    return {
+      primary: primary,
+      secondary: paraTextoBlanco(secundario),
+      /* El acento se usa como TEXTO -el precio de un plato, los
+         estados- así que se ajusta contra el fondo que va a tener. */
+      accent: claro ? paraFondoClaro(marca) : paraFondoOscuro(marca),
+      /* El fondo lleva el tono de la marca, pero tan apagado que sigue
+         siendo casi negro y en él se lee en blanco. Sólo se usa en
+         modo oscuro; se calcula igual por si la empresa cambia. */
+      background: deHsl(base.h, Math.min(0.3, base.s), 0.055),
+    };
+  }
+
+  /**
+   * Qué hay de malo en una paleta, en palabras.
+   *
+   * Devuelve una lista de avisos; vacía si todo se lee bien. Se usa en
+   * el panel de Taseca para no dejar guardar a ciegas algo ilegible.
+   */
+  function avisosDePaleta(tema, modo) {
+    const claro = modo === 'claro';
+    const fondo = claro ? '#f4f6f9' : (tema.background || '#0f1217');
+    const avisos = [];
+
+    if (contraste(tema.primary || '#000', '#ffffff') < 4.5)
+      avisos.push('El color principal es tan claro que el texto blanco de sus botones no se lee.');
+    if (contraste(tema.secondary || '#000', '#ffffff') < 4.5)
+      avisos.push('El color secundario es tan claro que el texto blanco de sus botones no se lee.');
+    if (contraste(tema.accent || '#000', fondo) < 4.5)
+      avisos.push('El acento no se distingue del fondo: los precios y los estados quedan difíciles de leer.');
+    if (!claro && luz(tema.background || '#000') > 0.12)
+      avisos.push('El fondo es demasiado claro para el modo oscuro: el texto blanco encima no se leería.');
+
+    return avisos;
+  }
+
   function emblema(empresaId) {
     const p = patron(getTheme(empresaId).patron);
     return p ? p.emblema || '' : '';
@@ -9645,6 +10580,57 @@ NASCAR.Store = (function () {
    * Acepta las dos formas de entrada: la lista de ids de siempre y una
    * de pares {refId, cantidad}, que es como viene de la base.
    */
+  /* Un texto, recortado al tope que aguanta su columna en la base.
+
+     No es cosmética: core.pedido_items.notas es VARCHAR(200),
+     core.pedidos.direccion_entrega VARCHAR(200) e indicaciones
+     VARCHAR(300). Lo que se pase de ahí no se recorta solo, hace fallar
+     el INSERT entero y el pedido no entra. */
+  /* Lo que aguanta cada columna en core.*. Si alguna cambia en la base,
+     se cambia AQUÍ y los dos caminos -local y nube- se enteran. */
+  const TOPES = {
+    nombre: 80,
+    telefono: 20,
+    direccion: 200, // core.pedidos.direccion_entrega
+    zona: 80,
+    indicaciones: 300, // core.pedidos.indicaciones
+    notaItem: 200, // core.pedido_items.notas
+    detalle: 400,
+    /* Éste NO es un largo de texto: es el valor máximo de
+       core.pedidos.paga_con, que es NUMERIC(12,2) y por tanto aguanta
+       diez dígitos enteros. Un dedo apoyado en una tecla mandaba veinte,
+       la base rechazaba el INSERT entero y el cliente veía «no se pudo
+       crear el pedido» por un campo que era opcional. */
+    pagaCon: 9999999999,
+  };
+
+  /** Lo que el cliente dice que va a pagar, como número que la base
+      aguanta. Vacío o sin cifras devuelve '' -no 0-, porque «no lo dijo»
+      y «dijo cero» no son lo mismo. */
+  function montoPagaCon(valor) {
+    const d = String(valor == null ? '' : valor).replace(/\D/g, '');
+    if (!d) return '';
+    return Math.min(Number(d), TOPES.pagaCon);
+  }
+
+  function recortar(valor, tope) {
+    return String(valor == null ? '' : valor).slice(0, tope);
+  }
+
+  /* Los datos del cliente con los mismos topes que la base. */
+  function clienteConTopes(c) {
+    const x = Object.assign({}, c || {});
+    x.nombre = recortar(x.nombre, TOPES.nombre);
+    x.telefono = recortar(x.telefono, TOPES.telefono);
+    x.direccion = recortar(x.direccion, TOPES.direccion);
+    x.zona = recortar(x.zona, TOPES.zona);
+    x.notas = recortar(x.notas, TOPES.indicaciones);
+    /* No es texto, pero viene del mismo formulario y tiene el mismo
+       problema: lo que escriba el cliente tiene que caber en su columna. */
+    x.pagaCon = montoPagaCon(x.pagaCon);
+    return x;
+  }
+
   function normalizarConsumo(p) {
     const ids = [];
     const cantidades = {};
@@ -11308,7 +12294,12 @@ NASCAR.Store = (function () {
     anulado: 'Anulada',
   };
 
-  /* Flujo que le corresponde a un pedido según su tipo. */
+  /* Flujo que le corresponde a un pedido según su tipo.
+
+     «En camino» es sólo del domicilio. Un pedido de mesa, de mostrador o
+     para recoger pasa de listo a entregado: no hay nadie llevándolo a
+     ninguna parte. Es la misma regla que la base aplica con la marca
+     `solo_domicilio` de core.estados_pedido. */
   function flujoEstados(tipo) {
     return tipo === 'domicilio'
       ? ['nuevo', 'preparacion', 'listo', 'camino', 'entregado']
@@ -11431,7 +12422,7 @@ NASCAR.Store = (function () {
   /**
    * Crea un pedido.
    * datos = {
-   *   tipo: 'mesa' | 'domicilio',
+   *   tipo: 'mesa' | 'domicilio' | 'recoger' | 'mostrador',
    *   sucursalId, mesa,
    *   cliente: { nombre, telefono, direccion, zona, notas },
    *   items: [{ refId, nombre, precio, cantidad, notas, origen }],
@@ -11452,17 +12443,34 @@ NASCAR.Store = (function () {
     }
 
     const items = datos.items.map(function (it) {
+      /* El precio TIENE que ser un número. Si llega cualquier otra cosa
+         -texto, undefined- el subtotal salía NaN y el pedido se guardaba
+         con un total que no es un número. Más vale romper aquí, donde se
+         ve, que guardar una factura rota o cobrar cero. */
+      const precio = Number(it.precio);
+      if (!Number.isFinite(precio) || precio < 0)
+        throw new Error('"' + (it.nombre || 'Un producto') + '" llegó sin un precio válido.');
+
+      /* La cantidad, entre 1 y 99. Venía `Number(x) || 1`, que deja pasar
+         los NEGATIVOS -son «verdaderos» para JavaScript- y con ellos un
+         subtotal negativo. El tope de arriba es para que un dedo torpe no
+         mande a la cocina una comanda de 99.999 porciones. */
+      const cantidad = Math.min(99, Math.max(1, Math.round(Number(it.cantidad) || 1)));
+
       const item = {
         refId: it.refId,
         nombre: it.nombre,
-        precio: Number(it.precio),
-        cantidad: Number(it.cantidad) || 1,
-        notas: it.notas || '',
+        precio: precio,
+        cantidad: cantidad,
+        /* 200 es lo que aguanta core.pedido_items.notas. Sin recortarlo
+           aquí la nota no «se corta»: hace FALLAR el pedido entero en la
+           base, con un mensaje que el cliente no entiende. */
+        notas: recortar(it.notas, TOPES.notaItem),
         origen: it.origen || 'carta', // 'carta' | 'dia' | 'armado'
       };
       // Menú armado: lo que eligió el cliente ("Sopa: Sancocho · Proteína: Pollo").
       // Va aparte de las notas para que una nota nunca lo borre.
-      if (it.detalle) item.detalle = String(it.detalle).slice(0, 400);
+      if (it.detalle) item.detalle = recortar(it.detalle, TOPES.detalle);
       return item;
     });
 
@@ -11502,7 +12510,7 @@ NASCAR.Store = (function () {
       // Quién lo tomó (mesero) — null si lo hizo el cliente.
       usuarioId: datos.usuarioId || null,
       usuarioNombre: datos.usuarioNombre || null,
-      cliente: datos.cliente || {},
+      cliente: clienteConTopes(datos.cliente),
       items: items,
       subtotal: subtotal,
       domicilio: domicilio,
@@ -11611,9 +12619,26 @@ NASCAR.Store = (function () {
     });
   }
 
-  function avanzarEstado(pedidoId) {
+  /**
+   * Avanza un pedido al siguiente estado de su flujo.
+   *
+   * `estadoEsperado` es desde dónde creía el usuario que lo estaba
+   * moviendo. Si el pedido ya no está ahí, no se mueve y se avisa.
+   *
+   * Hace falta por dos cosas que pasan a diario:
+   *   · el doble clic: el botón se repinta entre un clic y el siguiente,
+   *     así que deshabilitarlo no basta y el pedido saltaba DOS estados;
+   *   · dos personas a la vez: el mesero y la cocina tocando el mismo
+   *     pedido desde dos pantallas.
+   *
+   * Sin el dato se comporta como siempre, para no romper a quien llame
+   * sin él.
+   */
+  function avanzarEstado(pedidoId, estadoEsperado) {
     const p = getPedido(pedidoId);
     if (!p) return null;
+    if (estadoEsperado && p.estado !== estadoEsperado)
+      throw new Error('Ese pedido ya está en «' + (ETIQUETA_ESTADO[p.estado] || p.estado) + '». Alguien se te adelantó.');
     const siguiente = siguienteEstado(p);
     return siguiente ? cambiarEstado(pedidoId, siguiente) : p;
   }
@@ -11903,6 +12928,37 @@ NASCAR.Store = (function () {
       throw new Error('El pago de la factura ' + p.codigo + ' ya fue confirmado.');
   }
 
+  /**
+   * Cobrar VARIOS pedidos de una vez.
+   *
+   * En modo local no gana nada -todo pasa en memoria- pero existe para
+   * que la pantalla de caja llame a lo mismo en los dos modos. Lo que de
+   * verdad cambia es en la nube: allí cada cobro es un viaje de ~460 ms
+   * a Virginia, y veinte cobros eran veinte viajes, con el navegador
+   * congelado en cada uno. Ver rest.confirmar_pagos (migración 37).
+   *
+   * CADA PEDIDO CONSERVA SU MÉTODO: en la cola hay efectivo, Nequi y
+   * Daviplata mezclados, y forzarles uno común falsearía la caja.
+   *
+   * UNO QUE FALLE NO TUMBA A LOS DEMÁS: se devuelve el parte de qué se
+   * cobró y qué no, con el porqué de cada fallo.
+   */
+  function confirmarPagos(ids, referencia, quien) {
+    const ok = [];
+    const mal = [];
+    (ids || []).forEach(function (id) {
+      try {
+        confirmarPago(id, referencia, quien);
+        const p = getPedido(id);
+        ok.push({ id: id, codigo: p ? p.codigo : String(id) });
+      } catch (e) {
+        const p = getPedido(id);
+        mal.push({ id: id, codigo: p ? p.codigo : String(id), motivo: e.message });
+      }
+    });
+    return { cobrados: ok.length, fallidos: mal.length, ok: ok, mal: mal };
+  }
+
   function confirmarPago(pedidoId, referencia, quien, metodo) {
     const nombre = quien && quien.usuarioNombre ? quien.usuarioNombre : null;
     const actual = getPedido(pedidoId);
@@ -11913,8 +12969,35 @@ NASCAR.Store = (function () {
     }
     return _mutar(pedidoId, function (p) {
       if (metodo && metodo !== p.metodoPago) {
+        /* EL RECARGO SIGUE AL MÉTODO.
+
+           El recargo es el precio de pagar ASÍ: son los $500 de Nequi, no
+           un cargo del pedido. Si el cliente termina pagando en efectivo,
+           esos $500 dejan de existir y el total baja; si entró como
+           efectivo y paga por Nequi, suben y el total sube. Dejarlo quieto
+           le cobraba de más al cliente en un sentido y se los comía el
+           negocio en el otro.
+
+           Espejo de api.sp_actualizar_pago (migración 40). La base es la
+           misma que usa crearPedido: subtotal + domicilio. El recargo no
+           se recarga a sí mismo. */
+        const base = (Number(p.subtotal) || 0) + (Number(p.domicilio) || 0);
+        const recargoAntes = Number(p.recargo) || 0;
+        const recargoNuevo = recargoDeMetodo(metodo, base, p.empresaId);
+
         p.historial.push({ ts: new Date().toISOString(), texto: 'Método de pago: ' + p.metodoPago + ' → ' + metodo });
         p.metodoPago = metodo;
+
+        if (recargoNuevo !== recargoAntes) {
+          p.recargo = recargoNuevo;
+          p.total = base + recargoNuevo;
+          p.historial.push({
+            ts: new Date().toISOString(),
+            texto:
+              'Recargo del pago: ' + recargoAntes + ' → ' + recargoNuevo +
+              ' · lo cobrado cambia en ' + (recargoNuevo - recargoAntes),
+          });
+        }
       }
       p.estadoPago = 'confirmado';
       p.referenciaPago = referencia || '';
@@ -11988,6 +13071,21 @@ NASCAR.Store = (function () {
       topPlatos: [],
       pendientesCobro: 0,
       montoPendiente: 0,
+      /* CUÁNTO ENTRÓ POR RECARGO DEL MÉTODO DE PAGO.
+
+         No es venta de comida: es lo que la empresa le cobra de más a
+         quien paga por un medio que le cuesta. Va aparte porque responde
+         otra pregunta -«¿cuánto me está costando cobrar por Nequi?»- y
+         porque no se reparte como las ventas.
+
+         Ya está dentro de `total` y de `porPago[k].total`; aquí se
+         desglosa, no se vuelve a sumar.
+
+         Se separa lo COBRADO de lo que todavía no ha entrado: «cuánto me
+         ha dejado cobrar por Nequi» es una pregunta sobre dinero en la
+         mano, y un pedido sin confirmar no es dinero en la mano. */
+      recargo: 0,
+      recargoPorCobrar: 0,
     };
 
     const conteoPlatos = {};
@@ -12004,9 +13102,12 @@ NASCAR.Store = (function () {
       /* Por método sólo cuenta lo que caja ya cobró: mientras no se confirme,
          el método no se conoce de verdad (una mesa se toma sin saberlo). */
       const clavePago = p.estadoPago === 'confirmado' ? p.metodoPago : 'por_cobrar';
-      r.porPago[clavePago] = r.porPago[clavePago] || { n: 0, total: 0 };
+      r.porPago[clavePago] = r.porPago[clavePago] || { n: 0, total: 0, recargo: 0 };
       r.porPago[clavePago].n += 1;
       r.porPago[clavePago].total += p.total;
+      r.porPago[clavePago].recargo += Number(p.recargo) || 0;
+      if (p.estadoPago === 'confirmado') r.recargo += Number(p.recargo) || 0;
+      else r.recargoPorCobrar += Number(p.recargo) || 0;
 
       r.porSucursal[p.sucursalId] = r.porSucursal[p.sucursalId] || { n: 0, total: 0 };
       r.porSucursal[p.sucursalId].n += 1;
@@ -13695,6 +14796,17 @@ NASCAR.Store = (function () {
     tipografia: tipografia,
     patron: patron,
     emblema: emblema,
+    paraFondoClaro: paraFondoClaro,
+    paraFondoOscuro: paraFondoOscuro,
+    paletaDesde: paletaDesde,
+    avisosDePaleta: avisosDePaleta,
+    contraste: contraste,
+    /* Los usa js/remoto.js: en la nube el pedido no pasa por
+       crearPedido() de aquí, así que los topes hay que aplicarlos
+       también allí. Una sola implementación, dos caminos. */
+    recortar: recortar,
+    montoPagaCon: montoPagaCon,
+    TOPES: TOPES,
 
     // --- Cruce de información / caja de la jornada ---
     getBases: getBases,
@@ -13813,6 +14925,7 @@ NASCAR.Store = (function () {
     estadoDeExistencia: estadoDeExistencia,
     existenciasDeSucursal: existenciasDeSucursal,
     confirmarPago: confirmarPago,
+    confirmarPagos: confirmarPagos,
     rechazarPago: rechazarPago,
     reportarPago: reportarPago,
     // ventas
@@ -14502,8 +15615,14 @@ NASCAR.Remoto = (function () {
   /* De la aplicación a la base: el ítem del carrito a la línea del pedido. */
   function aLineaBase(it) {
     const ref = String(it.refId || '');
-    const linea = { cantidad: Number(it.cantidad) || 1 };
-    if (it.notas) linea.notas = it.notas;
+    /* Entre 1 y 99, como en el modo local. `Number(x) || 1` dejaba pasar
+       los NEGATIVOS -son «verdaderos» para JavaScript- y con ellos una
+       comanda de -3 pechugas y un subtotal en contra. */
+    const linea = { cantidad: Math.min(99, Math.max(1, Math.round(Number(it.cantidad) || 1))) };
+    /* 200 es lo que aguanta core.pedido_items.notas. Sin recortar aquí la
+       base no «corta» el texto: rechaza el pedido entero con un «value too
+       long for type character varying(200)» que el cliente no entiende. */
+    if (it.notas) linea.notas = S.recortar(it.notas, S.TOPES.notaItem);
 
     if (it.origen === 'armado' || ref.indexOf('armado:') === 0) {
       const partes = ref.split(':'); // armado:m12:mo3.mo7
@@ -14883,6 +16002,11 @@ NASCAR.Remoto = (function () {
       if (pin === undefined) return false; // el ingreso sólo con PIN es del modo local
       const r = rpc('login', { p_usuario: usuario, p_pin: pin }, false);
       if (!r) return false;
+      /* La cuenta está en espera por demasiados PIN errados (migración 41).
+         No es una sesión: se devuelve el aviso como texto para que la
+         pantalla lo muestre tal cual en vez del «usuario o PIN
+         incorrectos» genérico. */
+      if (r.bloqueado) return { bloqueado: true, mensaje: r.mensaje || 'Demasiados intentos. Espera unos minutos.' };
       if (r.alcance === 'plataforma') {
         // SuperAdmin de Taseca: no pertenece a ninguna empresa
         S.establecerSesion({
@@ -14935,12 +16059,19 @@ NASCAR.Remoto = (function () {
         p_metodo_pago: datos.metodoPago || 'efectivo',
         p_items: (datos.items || []).map(aLineaBase),
         p_mesa: datos.tipo === 'mesa' ? String(datos.mesa) : null,
-        p_cliente_nombre: cliente.nombre || null,
-        p_cliente_telefono: cliente.telefono || null,
-        p_direccion: cliente.direccion || null,
-        p_indicaciones: cliente.notas || null,
+        /* Los mismos topes que las columnas de core.pedidos. Esto NO
+           pasa por crearPedido() de store.js -remoto reemplaza ese
+           método-, así que recortarlo allí no servía de nada aquí. */
+        p_cliente_nombre: S.recortar(cliente.nombre, S.TOPES.nombre) || null,
+        p_cliente_telefono: S.recortar(cliente.telefono, S.TOPES.telefono) || null,
+        p_direccion: S.recortar(cliente.direccion, S.TOPES.direccion) || null,
+        p_indicaciones: S.recortar(cliente.notas, S.TOPES.indicaciones) || null,
         p_zona_id: zona ? zona.id : null,
-        p_paga_con: cliente.pagaCon ? Number(cliente.pagaCon) : null,
+        /* Por el mismo motivo que los recortes de arriba: remoto REEMPLAZA
+           crearPedido() del store, así que el tope de store.js no llega
+           hasta aquí solo. Sin esto, veinte dígitos reventaban el INSERT
+           y el pedido entero se perdía por un campo opcional. */
+        p_paga_con: S.montoPagaCon(cliente.pagaCon) || null,
         // Si este mismo envío ya entró, la base devuelve aquel pedido
         p_clave: datos.clave || null,
       });
@@ -15063,8 +16194,18 @@ NASCAR.Remoto = (function () {
       return ponerPedido(aPedido(rpc('cambiar_estado', { p_pedido_id: idBase(pedidoId), p_estado: estado })));
     },
 
-    avanzarEstado: function (pedidoId) {
-      return ponerPedido(aPedido(rpc('avanzar_estado', { p_pedido_id: idBase(pedidoId) })));
+    avanzarEstado: function (pedidoId, estadoEsperado) {
+      /* `p_desde` es el estado que el usuario tenia en PANTALLA. La base lo
+         compara con el real y se niega si alguien se adelanto: su propio
+         segundo clic -el tablero se repinta entre uno y otro, asi que
+         deshabilitar el boton no basta- u otra persona en otra pantalla.
+
+         Sin el dato se llama como siempre, a la variante de un argumento. */
+      return ponerPedido(aPedido(
+        estadoEsperado
+          ? rpc('avanzar_estado', { p_pedido_id: idBase(pedidoId), p_desde: String(estadoEsperado) })
+          : rpc('avanzar_estado', { p_pedido_id: idBase(pedidoId) })
+      ));
     },
 
     cancelarPedido: function (pedidoId, motivo) {
@@ -15101,6 +16242,24 @@ NASCAR.Remoto = (function () {
       const args = { p_pedido_id: idBase(pedidoId), p_referencia: referencia || null };
       if (metodo && (!actual || actual.metodoPago !== metodo)) args.p_metodo = metodo;
       return ponerPedido(aPedido(rpc('confirmar_pago', args)));
+    },
+
+    /* Varios cobros en UN viaje. Lo caro no es el trabajo -la base
+       tarda unos 16 ms- sino la ida y vuelta, que ronda el medio
+       segundo. Veinte cobros de uno en uno eran ~9 s con la pantalla
+       congelada; así es un solo viaje.
+
+       La respuesta trae los pedidos YA actualizados, así que se meten en
+       memoria aquí mismo y el panel no tiene que volver a preguntar. */
+    confirmarPagos: function (ids, referencia) {
+      const r = rpc('confirmar_pagos', {
+        p_pedidos: (ids || []).map(idBase),
+        p_referencia: referencia || null,
+      });
+      (r && r.pedidos ? r.pedidos : []).forEach(function (x) {
+        ponerPedido(aPedido(x));
+      });
+      return r;
     },
 
     rechazarPago: function (pedidoId, motivo) {
@@ -16498,7 +17657,7 @@ NASCAR.UI = (function () {
     return 'e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   }
 
-  /* Cómo se llama un pedido en pantalla. Tres tipos hoy; el día que haya
+  /* Cómo se llama un pedido en pantalla. Cuatro tipos; el día que haya
      otro se añade aquí y no en seis sitios. */
   function etiquetaTipo(p, opciones) {
     const o = opciones || {};
@@ -16506,15 +17665,169 @@ NASCAR.UI = (function () {
     if (!p) return '';
     if (p.tipo === 'mesa') return (o.icono ? '🍽️ ' : '') + (conMesa ? 'Mesa ' + esc(p.mesa) : 'Mesa');
     if (p.tipo === 'mostrador') return (o.icono ? '🧾 ' : '') + 'Mostrador';
+    if (p.tipo === 'recoger') return (o.icono ? '🥡 ' : '') + 'Recoge en el local';
     return (o.icono ? '🛵 ' : '') + 'Domicilio';
   }
 
-  /* El color del distintivo según el tipo. */
+  /* El color del distintivo según el tipo.
+
+     Ámbar para el que recoge porque en el tablero hay que distinguirlo de
+     un domicilio de un vistazo: el rojo quiere decir «sale a la calle» y
+     éste no sale, espera a que vengan por él. */
   function colorTipo(p) {
     if (!p) return 'badge--rojo';
     if (p.tipo === 'mesa') return 'badge--azul';
     if (p.tipo === 'mostrador') return 'badge--verde';
+    if (p.tipo === 'recoger') return 'badge--ambar';
     return 'badge--rojo';
+  }
+
+  /* ---------------------------------------------------------------
+     EL CAMBIO EN EFECTIVO
+
+     Cuando el cliente paga con un billete hay que devolverle, y hasta
+     ahora esa resta se hacía de cabeza, de pie, frente al cliente y con
+     fila detrás. Aquí se escribe con cuánto paga y el cambio se ve en
+     grande ANTES de confirmar, que es cuando todavía se puede corregir.
+
+     Sólo aparece con EFECTIVO: lo que entra por datáfono, transferencia
+     o billetera entra por el valor exacto y no hay nada que devolver.
+
+     No guarda nada. Es una calculadora en el sitio donde hace falta.
+     --------------------------------------------------------------- */
+
+  const fmtMiles = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+
+  /** Puntos de miles para leer la cifra mientras se escribe: 25000 → «25.000». */
+  function conMiles(n) {
+    return fmtMiles.format(Math.round(Number(n) || 0));
+  }
+
+  /** Lo escrito, como número. «$ 25.000» → 25000; vacío o sin cifras → null. */
+  function montoEscrito(texto) {
+    const d = String(texto == null ? '' : texto).replace(/\D/g, '');
+    if (!d) return null;
+    /* Un dedo apoyado en el 9 no puede volverse un número absurdo que
+       rompa la resta. El tope es alto a propósito: cabe cualquier cuenta
+       real y no cabe un error de tecleo infinito. */
+    return Math.min(Number(d), 99999999);
+  }
+
+  /**
+   * Con cuánto suele pagar alguien que debe `total`.
+   *
+   * No son múltiplos arbitrarios: son los redondeos que de verdad se
+   * usan con los billetes que circulan. Para 23.400 → 25.000, 30.000 y
+   * 40.000; para 8.500 → 10.000, 20.000 y 50.000.
+   */
+  function montosProbables(total) {
+    const t = Math.max(0, Math.ceil(Number(total) || 0));
+    const vistos = {};
+    const salida = [];
+    [5000, 10000, 20000, 50000, 100000].forEach(function (paso) {
+      const m = Math.ceil(t / paso) * paso;
+      if (m > t && !vistos[m]) {
+        vistos[m] = 1;
+        salida.push(m);
+      }
+    });
+    return salida.sort((a, b) => a - b).slice(0, 3);
+  }
+
+  /** El HTML del bloque. `pre` prefija los id para poder usarlo dos veces
+      en la misma página sin que choquen. */
+  function bloqueCambio(total, pre, recibidoInicial) {
+    pre = pre || 'cb';
+    const valor = recibidoInicial ? conMiles(recibidoInicial) : '';
+    return (
+      '<div class="cambio" id="' + pre + 'Caja">' +
+      '<label class="campo"><span>¿Con cuánto paga?</span>' +
+      '<input class="input cambio__monto" id="' + pre + 'Recibido" type="text" inputmode="numeric" ' +
+      'autocomplete="off" value="' + esc(valor) + '" placeholder="' + esc(conMiles(total)) + '"></label>' +
+      '<div class="cambio__rapidos">' +
+      '<button type="button" class="btn btn--fantasma btn--xs" data-cambio-monto="' + total + '">Justo</button>' +
+      montosProbables(total)
+        .map(function (m) {
+          return '<button type="button" class="btn btn--fantasma btn--xs" data-cambio-monto="' + m + '">' +
+            esc(conMiles(m)) + '</button>';
+        })
+        .join('') +
+      '</div>' +
+      '<div class="cambio__resultado" id="' + pre + 'Resultado" aria-live="polite"></div>' +
+      '</div>'
+    );
+  }
+
+  /**
+   * Enciende el bloque: los botones rápidos, los puntos de miles y el
+   * cambio en vivo.
+   *
+   * Devuelve una función que dice en qué estado está:
+   *     { recibido, cambio, falta }
+   * `falta > 0` significa que lo recibido NO alcanza: quien llama decide
+   * si eso bloquea el cobro (en caja, sí).
+   */
+  function montarCambio(raiz, total, pre, alCambiar) {
+    pre = pre || 'cb';
+    const vacio = { recibido: null, cambio: 0, falta: 0 };
+    const caja = $('#' + pre + 'Caja', raiz);
+    if (!caja) return function () { return vacio; };
+
+    const campo = $('#' + pre + 'Recibido', caja);
+    const salida = $('#' + pre + 'Resultado', caja);
+    let estado = vacio;
+
+    function pintar(normalizar) {
+      const r = montoEscrito(campo.value);
+
+      /* Reescribir el campo en cada tecla movería el cursor al final y
+         haría imposible corregir una cifra por el medio. Se reescribe
+         sólo si el cursor YA está al final, o al salir del campo. */
+      if (r !== null && (normalizar || campo.selectionStart === campo.value.length)) {
+        const texto = conMiles(r);
+        if (campo.value !== texto) {
+          campo.value = texto;
+          try {
+            campo.setSelectionRange(texto.length, texto.length);
+          } catch (e) {
+            /* input oculto o de un tipo que no deja mover el cursor */
+          }
+        }
+      }
+
+      estado =
+        r === null
+          ? vacio
+          : { recibido: r, cambio: Math.max(0, r - total), falta: Math.max(0, total - r) };
+
+      if (r === null) {
+        salida.innerHTML = '';
+      } else if (estado.falta > 0) {
+        salida.innerHTML =
+          '<div class="cambio__falta">No alcanza · faltan <b>' + esc(money(estado.falta)) + '</b></div>';
+      } else if (estado.cambio === 0) {
+        salida.innerHTML = '<div class="cambio__justo">Pagó justo · no hay que devolver</div>';
+      } else {
+        salida.innerHTML =
+          '<div class="cambio__devolver"><span>Devuelve</span><b>' + esc(money(estado.cambio)) + '</b></div>';
+      }
+
+      if (alCambiar) alCambiar(estado);
+    }
+
+    campo.addEventListener('input', function () { pintar(false); });
+    campo.addEventListener('blur', function () { pintar(true); });
+    caja.addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-cambio-monto]');
+      if (!b) return;
+      ev.preventDefault();
+      campo.value = conMiles(b.dataset.cambioMonto);
+      pintar(true);
+      campo.focus();
+    });
+
+    pintar(true);
+    return function () { return estado; };
   }
 
   function el(tag, attrs, html) {
@@ -16907,8 +18220,95 @@ NASCAR.UI = (function () {
     const src = plato && plato.imagen ? String(plato.imagen).trim() : '';
     if (!src) return '';
     return (
+      '<figure class="plato__marco">' +
       '<img class="plato__foto" src="' + esc(src) + '" alt="" ' +
-      'loading="lazy" decoding="async">'
+      'loading="lazy" decoding="async">' +
+      '</figure>'
+    );
+  }
+
+  /**
+   * LA TARJETA DE UN PLATO, completa.
+   *
+   * Se escribía dos veces —en el portal del cliente y en la pantalla de
+   * mesa— con el mismo marcado copiado. Eran ya dos copias de diez
+   * líneas de HTML en cadenas: cualquier cambio de diseño había que
+   * hacerlo en los dos sitios y acordarse de los dos.
+   *
+   * Qué recibe:
+   *   plato      el producto de la carta
+   *   opciones   .etiqueta  ['badge--rojo', '★ El más pedido'] o nada
+   *              .icono     el emoji de su categoría, si no hay foto
+   *
+   * CÓMO ESTÁ ARMADA, que importa para el CSS:
+   *
+   *   .plato                    sin relleno, recorta lo que sobresale
+   *     .plato__marco           la foto, en 4:3 (sólo si hay foto)
+   *       .plato__foto
+   *       .plato__sello         la etiqueta, encima de la foto
+   *     .plato__cuerpo          aquí vive TODO el relleno
+   *       .plato__sello         la etiqueta, si no hay foto donde ponerla
+   *       h3.plato__nombre
+   *       p.plato__desc
+   *       .plato__pie           precio a la izquierda, botón a la derecha
+   *
+   * La foto no se sangra con márgenes negativos: antes compensaba a mano
+   * el relleno de la tarjeta, así que cambiar ese relleno descolocaba la
+   * foto. Ahora el relleno está un nivel más adentro y la foto no sabe
+   * nada de él.
+   */
+  function tarjetaPlato(plato, opciones) {
+    const o = opciones || {};
+    const et = o.etiqueta;
+    const nombre = esc(plato.nombre);
+
+    /* Sin foto, el emoji de la categoría a tamaño grande y apagado.
+
+       No es un adorno: en una rejilla donde la mayoría de las tarjetas
+       llevan foto, la que no la lleva se estiraba hasta la altura de las
+       demás y quedaba un rectángulo vacío que parece un error de carga.
+       Con el emoji el hueco se lee como lo que es —un plato sin foto
+       todavía— y la rejilla conserva su ritmo.
+
+       El emoji sale de la categoría, que ya lo tiene; no se inventa
+       ninguno ni se pone una foto de relleno que no sea del negocio. */
+    const foto =
+      fotoPlato(plato) ||
+      (o.icono
+        ? '<figure class="plato__marco plato__marco--vacio" aria-hidden="true">' +
+          '<span class="plato__icono">' + esc(o.icono) + '</span>' +
+          '</figure>'
+        : '');
+
+    /* El sello va sobre la foto. Sin foto no hay dónde ponerlo, así que
+       entra en el cuerpo como una línea más: la etiqueta es información
+       («el más pedido»), no decoración, y no puede desaparecer porque al
+       producto le falte la imagen. */
+    const sello = et
+      ? '<span class="plato__sello badge ' + et[0] + '">' + et[1] + '</span>'
+      : '';
+
+    const accion = plato.disponible
+      ? '<button class="btn btn--azul plato__add" data-add-carta="' + plato.id + '"' +
+        ' aria-label="Agregar ' + nombre + '">Agregar</button>'
+      : '<span class="badge badge--gris">Agotado</span>';
+
+    return (
+      '<article class="plato' +
+      (plato.disponible ? '' : ' no-disp') +
+      (foto ? '' : ' plato--sin-foto') +
+      '">' +
+      (foto ? foto.replace('</figure>', sello + '</figure>') : '') +
+      '<div class="plato__cuerpo">' +
+      (foto ? '' : sello) +
+      '<h3 class="plato__nombre">' + nombre + '</h3>' +
+      (plato.desc ? '<p class="plato__desc">' + esc(plato.desc) + '</p>' : '') +
+      '<div class="plato__pie">' +
+      '<span class="plato__precio">' + money(plato.precio) + '</span>' +
+      accion +
+      '</div>' +
+      '</div>' +
+      '</article>'
     );
   }
 
@@ -16924,7 +18324,14 @@ NASCAR.UI = (function () {
       'error',
       function (e) {
         const n = e.target;
-        if (n && n.classList && n.classList.contains('plato__foto')) n.remove();
+        if (!n || !n.classList || !n.classList.contains('plato__foto')) return;
+        /* Se va el MARCO, no sólo la imagen: quitar la <img> dejaba un
+           rectángulo gris de 4:3 vacío, que se ve peor que no tener
+           foto. La tarjeta pasa a verse como las que no la tienen. */
+        const marco = n.closest('.plato__marco');
+        const tarjeta = n.closest('.plato');
+        if (tarjeta) tarjeta.classList.add('plato--sin-foto');
+        (marco || n).remove();
       },
       true
     );
@@ -16951,6 +18358,11 @@ NASCAR.UI = (function () {
 
   return {
     money: money,
+    conMiles: conMiles,
+    montoEscrito: montoEscrito,
+    montosProbables: montosProbables,
+    bloqueCambio: bloqueCambio,
+    montarCambio: montarCambio,
     fechaLarga: fechaLarga,
     hora: hora,
     haceCuanto: haceCuanto,
@@ -16976,6 +18388,7 @@ NASCAR.UI = (function () {
     enlaceWhatsApp: enlaceWhatsApp,
     comprimirImagen: comprimirImagen,
     fotoPlato: fotoPlato,
+    tarjetaPlato: tarjetaPlato,
     paramURL: paramURL,
     iniciarComunes: iniciarComunes,
   };
@@ -18113,7 +19526,10 @@ NASCAR.Inventario = (function () {
       '<button class="btn btn--fantasma btn--sm" id="btnVolver">←<span class="txt-ancho"> Cambiar datos</span></button>' +
       '<div class="crece"></div>' +
       '<button class="btn btn--fantasma btn--sm" id="btnBorrador">💾<span class="txt-ancho"> Guardar</span> borrador</button>' +
-      '<button class="btn btn--rojo" id="btnGuardar">🏁 Guardar<span class="txt-ancho"> cierre</span></button>' +
+      /* El emblema es el del motivo de la empresa, no la bandera a
+         cuadros: la carrera es de NASCAR, no de todos los negocios. */
+      '<button class="btn btn--rojo" id="btnGuardar">' + (S.emblema() ? S.emblema() + ' ' : '') +
+      'Guardar<span class="txt-ancho"> cierre</span></button>' +
       '</div></div>'
     );
   }
@@ -21226,7 +22642,7 @@ NASCAR.Gestion = (function () {
                Va dentro de la misma fila del método porque es una
                propiedad suya, no una configuración aparte. */
             '<span class="metodo-recargo' + (puedeEditar ? '' : ' oculto') + '">' +
-            'Recargo al cliente' +
+            '<span class="metodo-recargo__et">Recargo al cliente</span>' +
             '<input class="input input--xs" type="number" min="0" step="any" ' +
             'data-recargo="' + U.esc(m.id) + '" value="' + valor + '">' +
             '<select class="select select--xs" data-recargo-tipo="' + U.esc(m.id) + '">' +
@@ -21800,7 +23216,11 @@ NASCAR.Operacion = (function () {
     }
 
     function pintarFiltros() {
-      const cats = [{ id: 'todos', nombre: 'Todo', icono: '🏁' }].concat(S.getCategorias({ sucursalId: sucId }));
+      /* El emblema de la empresa, no la bandera a cuadros. Sin motivo
+         propio, un punto: el chip necesita algo delante del texto. */
+      const cats = [{ id: 'todos', nombre: 'Todo', icono: S.emblema() || '•' }].concat(
+        S.getCategorias({ sucursalId: sucId })
+      );
       U.$('#tpFiltros', m.raiz).innerHTML = cats
         .map(
           (c) =>
@@ -21882,7 +23302,8 @@ NASCAR.Operacion = (function () {
             .join('') +
           '<div class="linea" style="border-top:1px solid var(--borde);padding-top:8px;margin-top:6px">' +
           '<span><b>Total (' + n + ')</b></span><b>' + U.money(total) + '</b></div></div>' +
-          '<button class="btn btn--rojo btn--bloque mt-16" id="tpEnviar">🏁 Enviar a cocina</button>'
+          '<button class="btn btn--rojo btn--bloque mt-16" id="tpEnviar">' +
+          (S.emblema() ? S.emblema() + ' ' : '') + 'Enviar a cocina</button>'
         : '<p class="mini tenue centro">Agrega productos para armar el pedido.</p>';
 
       /* El botón acaba de nacer con este repintado, así que el candado se le
@@ -22402,6 +23823,17 @@ NASCAR.Caja = (function () {
      está abierta: una venta a medias no se guarda en ninguna parte. */
   let ticket = [];
   let vista = 'vender';        // 'vender' | 'cobrar'
+
+  /* Con cuánto paga el cliente, en el mostrador. Vive aquí y no dentro de
+     pintarTicket porque el ticket se repinta con cada «+» y lo escrito no
+     puede borrarse por agregar un producto. El cambio se recalcula solo
+     contra el total nuevo. */
+  let recibidoMostrador = null;
+
+  /* Los pedidos marcados para cobrar de una vez. Vive aquí y no en el
+     DOM porque la lista se repinta sola cada pocos segundos y la marca
+     tiene que sobrevivir a eso. */
+  const marcados = new Set();
   let categoria = 'todas';
   let busqueda = '';
   let metodo = '';
@@ -22429,6 +23861,11 @@ NASCAR.Caja = (function () {
       rechazar: opciones.rechazar || function () {},
       verComprobante: opciones.verComprobante || function () {},
       ver: opciones.ver || function () {},
+      /* Para el cobro en lote: quién cobra -queda en el historial del
+         pedido en modo local; en la nube sale del token- y qué repintar
+         al terminar, que los contadores del panel cambian. */
+      firma: opciones.firma || function () { return null; },
+      alCobrar: opciones.alCobrar || function () {},
     };
     if (!$('[data-panel="caja"]')) return;
 
@@ -22479,6 +23916,22 @@ NASCAR.Caja = (function () {
     });
 
     $('#cajaPorCobrar').addEventListener('click', function (e) {
+      const marca = e.target.closest('[data-caja-marcar]');
+      if (marca) {
+        const id = marca.dataset.cajaMarcar;
+        marca.checked ? marcados.add(id) : marcados.delete(id);
+        return refrescarBarraLote();
+      }
+
+      if (e.target.id === 'cajaLoteTodos') {
+        const cobrables = listaPagos().filter((p) => p.estadoPago !== 'confirmado');
+        if (e.target.checked) cobrables.forEach((p) => marcados.add(String(p.id)));
+        else marcados.clear();
+        return pintarPorCobrar(); // cambian TODAS las casillas
+      }
+
+      if (e.target.closest('#cajaLoteCobrar')) return cobrarLote();
+
       const b = e.target.closest('[data-caja-cobrar]');
       if (b) return ctx.cobrar(b.dataset.cajaCobrar, refrescar);
 
@@ -22570,8 +24023,27 @@ NASCAR.Caja = (function () {
     pintarTicket();
   }
 
-  function total() {
+  function subtotalTicket() {
     return ticket.reduce((s, x) => s + x.precio * x.cantidad, 0);
+  }
+
+  /* Lo que el método de pago le cobra encima al cliente. Lo calcula el
+     store, no esta pantalla: la factura y el panel tienen que decir el
+     mismo número. */
+  function recargoTicket() {
+    return S.recargoDeMetodo(metodo, subtotalTicket());
+  }
+
+  /* LO QUE SE LE PIDE AL CLIENTE.
+
+     Esto sumaba sólo los productos. crearPedido SÍ le sumaba el recargo
+     del método, así que con Nequi la caja leía 9.000 en pantalla, le
+     pedía 9.000 al cliente, y el sistema registraba la venta en 9.500:
+     faltaban 500 en el cajón por cada venta con recargo y nada lo
+     avisaba. Encima, el cambio se calculaba contra el número de la
+     pantalla, así que también se devolvía de más. */
+  function total() {
+    return subtotalTicket() + recargoTicket();
   }
 
   function metodosActivos() {
@@ -22627,7 +24099,22 @@ NASCAR.Caja = (function () {
         .join('') +
       '</select></label>' +
 
+      /* El recargo sólo se nombra si lo hay: una línea en cero no informa
+         y hace dudar de si se está cobrando algo de más. Pero si lo hay,
+         tiene que verse, porque es lo que la caja le va a decir al
+         cliente que pague. */
+      (recargoTicket() > 0
+        ? '<div class="caja-ticket__recargo"><span>Recargo · ' +
+          U.esc(nombreCorto(metodosActivos().find((m) => m.id === metodo) || { id: metodo })) +
+          '</span><b>' + U.money(recargoTicket()) + '</b></div>'
+        : '') +
+
       '<div class="caja-ticket__total"><span>Total</span><b>' + U.money(total()) + '</b></div>' +
+
+      /* En el mostrador el cliente paga de frente y casi siempre con un
+         billete. Sin ticket no hay nada que cobrar, así que tampoco hay
+         cambio que calcular. */
+      (ticket.length ? U.bloqueCambio(total(), 'cm', recibidoMostrador) : '') +
 
       '<button class="btn btn--bloque caja-ticket__cobrar" id="cajaCobrar"' +
       (ticket.length ? '' : ' disabled') + '>' +
@@ -22638,7 +24125,27 @@ NASCAR.Caja = (function () {
       '</div>';
 
     const sel = $('#cajaMetodo');
-    if (sel) sel.addEventListener('change', function () { metodo = this.value; });
+
+    /* Sólo el efectivo deja cambio. El bloque se queda montado y se
+       muestra u oculta: así no se pierde lo ya escrito al cambiar de
+       método por error. */
+    const cajaCambio = $('#cmCaja');
+    function seguirMetodo() {
+      if (cajaCambio) cajaCambio.classList.toggle('oculto', metodo !== 'efectivo');
+    }
+    if (sel)
+      sel.addEventListener('change', function () {
+        metodo = this.value;
+        /* Se repinta entero: con el método cambia el RECARGO y por tanto
+           el total, los atajos del cambio y lo que hay que devolver. Lo
+           ya escrito sobrevive en recibidoMostrador. */
+        pintarTicket();
+      });
+
+    leerCambio = ticket.length
+      ? U.montarCambio(caja, total(), 'cm', function (e) { recibidoMostrador = e.recibido; })
+      : null;
+    seguirMetodo();
 
     U.unaVez($('#cajaCobrar'), '⏳ Cobrando…', cobrar);
   }
@@ -22646,9 +24153,20 @@ NASCAR.Caja = (function () {
   /* =================================================================
      COBRAR
      ================================================================= */
+  /* Lo devuelve montarCambio; se rellena en cada repintado del ticket. */
+  let leerCambio = null;
+
   function cobrar() {
     if (!ticket.length) return false;
     if (!A.exigir('pagos')) return false;
+
+    /* La venta de mostrador NACE cobrada: una vez registrada no hay dónde
+       volver a cobrar. Si lo que hay en la mano no alcanza, se para aquí. */
+    const efectivo = metodo === 'efectivo' && leerCambio ? leerCambio() : null;
+    if (efectivo && efectivo.falta > 0) {
+      U.toast('No alcanza: faltan ' + U.money(efectivo.falta) + '.', 'error');
+      return false;
+    }
 
     /* Una clave por intento: si el cobro falla y se vuelve a tocar, va la
        misma y la base no registra dos ventas. */
@@ -22677,8 +24195,10 @@ NASCAR.Caja = (function () {
     const aCocina = ticket.some((x) => x.requierePreparacion);
     ticket = [];
     claveVenta = '';
+    recibidoMostrador = null;   // lo del cliente anterior no es lo del siguiente
     U.toast(
       'Venta ' + venta.codigo + ' cobrada · ' + U.money(venta.total) +
+      (efectivo && efectivo.cambio > 0 ? ' · devuelve ' + U.money(efectivo.cambio) : '') +
       (aCocina ? '. Va a cocina.' : '. Entregada.'),
       aCocina ? 'info' : 'ok'
     );
@@ -22775,6 +24295,11 @@ NASCAR.Caja = (function () {
   function quienEs(p) {
     if (p.tipo === 'mesa') return 'Mesa ' + U.esc(p.mesa);
     if (p.tipo === 'domicilio') return U.esc(p.cliente.nombre || 'Domicilio');
+    /* El que recoge también tiene nombre: es quien va a aparecer en el
+       mostrador a reclamarlo, así que en caja hay que poder buscarlo por
+       ahí. Sin el caso, caía en «Mostrador» y no se distinguía de una
+       venta directa. */
+    if (p.tipo === 'recoger') return U.esc(p.cliente.nombre || 'Recoge en el local');
     return 'Mostrador';
   }
 
@@ -22787,6 +24312,13 @@ NASCAR.Caja = (function () {
     return (
       '<div class="op-card op-card--' + p.estado + '">' +
       '<div class="op-card__top">' +
+      /* La casilla sólo en la COLA: en el histórico no hay nada que
+         cobrar y una casilla ahí sólo confundiría. */
+      (enCola
+        ? '<input class="pago-check" type="checkbox" data-caja-marcar="' + U.esc(p.id) + '"' +
+          (marcados.has(String(p.id)) ? ' checked' : '') +
+          ' aria-label="Marcar ' + U.esc(p.codigo) + ' para cobrar en lote">'
+        : '') +
       '<span class="op-card__codigo">' + U.esc(p.codigo) + '</span>' +
       (BADGE_PAGO[p.estadoPago] || BADGE_PAGO.pendiente) +
       '</div>' +
@@ -22820,13 +24352,107 @@ NASCAR.Caja = (function () {
       '<div class="fila mt-8" style="gap:8px">' +
       (enCola
         ? '<button class="btn btn--fantasma btn--sm crece" data-caja-rechazar="' + U.esc(p.id) + '" ' +
-          'style="border-color:var(--rojo);color:var(--rojo-claro)">✕ Rechazar pago</button>'
+          'style="border-color:var(--peligro);color:var(--peligro-claro)">✕ Rechazar pago</button>'
         : '') +
       '<button class="btn btn--fantasma btn--sm' + (enCola ? '' : ' crece') +
       '" data-caja-ver="' + U.esc(p.id) + '">Ver pedido</button>' +
       '</div>' +
       '</div>'
     );
+  }
+
+  /* ---------------------------------------------------------------
+     COBRAR VARIOS DE UNA VEZ
+
+     Confirmar un pago cuesta unos 460 ms, y casi todo es el viaje a la
+     base: el trabajo del servidor son ~16 ms. Veinte cobros de uno en
+     uno eran veinte viajes con el navegador congelado en cada uno. Esto
+     los manda juntos, en una sola llamada.
+     --------------------------------------------------------------- */
+  function barraLote(lista, modo) {
+    if (modo !== 'por-confirmar') return '';
+    const cobrables = lista.filter((p) => p.estadoPago !== 'confirmado');
+    if (cobrables.length < 2) return ''; // con uno solo no hay lote que valga
+
+    const sel = cobrables.filter((p) => marcados.has(String(p.id)));
+    const monto = sel.reduce((s, p) => s + p.total, 0);
+    const todos = sel.length === cobrables.length;
+
+    return (
+      '<div class="lote-barra" id="cajaLoteBarra">' +
+      '<label class="lote-barra__todos">' +
+      '<input type="checkbox" id="cajaLoteTodos"' + (todos ? ' checked' : '') + '>' +
+      '<span>' + (todos ? 'Quitar todos' : 'Marcar los ' + cobrables.length) + '</span></label>' +
+      '<span class="lote-barra__cuenta" id="cajaLoteCuenta">' +
+      (sel.length
+        ? sel.length + ' marcado' + (sel.length === 1 ? '' : 's') + ' · ' + U.money(monto)
+        : 'Marca los que ya recibiste') +
+      '</span>' +
+      '<button class="btn btn--sm lote-barra__btn" id="cajaLoteCobrar"' +
+      (sel.length ? '' : ' disabled') + '>💵 Cobrar ' +
+      (sel.length ? 'los ' + sel.length : 'marcados') + '</button>' +
+      '</div>'
+    );
+  }
+
+  /* Sólo cambia el texto y el botón: repintar la lista entera en cada
+     clic haría perder el scroll justo cuando se está marcando. */
+  function refrescarBarraLote() {
+    const barra = $('#cajaLoteBarra');
+    if (!barra) return;
+    const cobrables = listaPagos().filter((p) => p.estadoPago !== 'confirmado');
+    const sel = cobrables.filter((p) => marcados.has(String(p.id)));
+    const monto = sel.reduce((s, p) => s + p.total, 0);
+
+    $('#cajaLoteCuenta').textContent = sel.length
+      ? sel.length + ' marcado' + (sel.length === 1 ? '' : 's') + ' · ' + U.money(monto)
+      : 'Marca los que ya recibiste';
+
+    const btn = $('#cajaLoteCobrar');
+    btn.disabled = !sel.length;
+    btn.innerHTML = '💵 Cobrar ' + (sel.length ? 'los ' + sel.length : 'marcados');
+
+    const todos = $('#cajaLoteTodos');
+    todos.checked = sel.length === cobrables.length && cobrables.length > 0;
+    todos.nextElementSibling.textContent = todos.checked
+      ? 'Quitar todos'
+      : 'Marcar los ' + cobrables.length;
+  }
+
+  function cobrarLote() {
+    const cobrables = listaPagos().filter((p) => p.estadoPago !== 'confirmado');
+    const sel = cobrables.filter((p) => marcados.has(String(p.id)));
+    if (!sel.length) return false;
+
+    const monto = sel.reduce((s, p) => s + p.total, 0);
+
+    /* Se pregunta antes: cobrar es irreversible desde la pantalla, y
+       marcar veinte casillas es fácil de hacer sin querer. */
+    U.confirmar(
+      'Vas a dar por recibidos ' + U.money(monto) + ' de ' + sel.length +
+      ' pedido' + (sel.length === 1 ? '' : 's') + '. Cada uno se cobra con SU método ' +
+      'de pago, el que dijo el cliente.',
+      function () {
+        let r;
+        try {
+          r = S.confirmarPagos(sel.map((p) => p.id), null, ctx.firma ? ctx.firma() : null);
+        } catch (e) {
+          return U.toast(e.message, 'error');
+        }
+        marcados.clear();
+        refrescar();
+        if (ctx.alCobrar) ctx.alCobrar();
+
+        if (r.fallidos) {
+          U.toast('Cobrados ' + r.cobrados + '. No se pudo con ' + r.fallidos + ': ' +
+                  (r.mal[0] ? r.mal[0].codigo + ' · ' + r.mal[0].motivo : ''), 'error');
+        } else {
+          U.toast('Cobrados ' + r.cobrados + ' pedidos · ' + U.money(monto) + '.');
+        }
+      },
+      'Sí, cobrar los ' + sel.length
+    );
+    return false;
   }
 
   function pintarPorCobrar() {
@@ -22865,8 +24491,14 @@ NASCAR.Caja = (function () {
           + 'el rango de arriba sólo filtra el histórico.'
         : '';
 
+    /* Al repintar, se olvidan las marcas de lo que ya no está en la
+       lista: si un pedido se cobró o se filtró, su marca no puede
+       quedarse viva e invisible. */
+    const visibles = new Set(lista.map((p) => String(p.id)));
+    Array.from(marcados).forEach((id) => { if (!visibles.has(id)) marcados.delete(id); });
+
     $('#cajaPorCobrar').innerHTML = lista.length
-      ? lista.map(tarjetaPago).join('')
+      ? barraLote(lista, modo) + lista.map(tarjetaPago).join('')
       : '<div class="vacio"><div class="vacio__ico">' +
         (modo === 'por-confirmar' ? '✅' : '🔎') + '</div>' +
         '<h3>' + (modo === 'por-confirmar' ? 'Nada por cobrar' : 'Nada en este rango') + '</h3>' +
@@ -23474,7 +25106,7 @@ NASCAR.Gastos = (function () {
         '<textarea class="textarea" id="anMotivo" placeholder="Ej. Se registró dos veces por error"></textarea></label>' +
         '<div class="fila fila--fin">' +
         '<button class="btn btn--fantasma" id="anNo">Cancelar</button>' +
-        '<button class="btn btn--rojo" id="anSi">Anular gasto</button></div>',
+        '<button class="btn btn--peligro" id="anSi">Anular gasto</button></div>',
     });
 
     U.$('#anNo', m.raiz).onclick = m.cerrar;
@@ -24447,7 +26079,14 @@ NASCAR.Tema = (function () {
 
     // --- Tipografía
     cargarFuente(t.fontFamily);
+    const tip = S.tipografia(t.fontFamily) || {};
     raiz.style.setProperty('--f-body', S.familiaTipografica(t.fontFamily));
+    /* La de los titulares sale de la misma elección. Estaba clavada en
+       'Archivo Black' para todas las empresas, que es la letra de los
+       titulares de NASCAR: cualquier restaurante llevaba tipografía de
+       carreras en sus títulos sin haberlo pedido. */
+    if (tip.titular) raiz.style.setProperty('--f-display', tip.titular);
+    raiz.style.setProperty('--f-display-peso', String(tip.peso || 400));
 
     /* Claro u oscuro. Es un atributo en <html> y nada más: el bloque
        [data-tema='claro'] de css/styles.css cambia los VALORES de los
@@ -24462,6 +26101,28 @@ NASCAR.Tema = (function () {
     pintarLogotipo(t);
     pintarFavicon(t);
     pintarTitulo();
+
+    /* Se deja guardado para la próxima visita: el guión del <head> lo
+       vuelve a poner antes del primer fotograma y el cliente ya no ve su
+       página cambiar de colores al refrescar. Se guarda lo YA RESUELTO
+       —el acento corregido para claro, el fondo sólo si va— y no el tema
+       en bruto, para que repintar sea copiar y no volver a decidir. */
+    if (window.TasecaMarca)
+      window.TasecaMarca.guardar({
+        primary: t.primary,
+        secondary: t.secondary,
+        accent: claro ? paraFondoClaro(t.accent) : t.accent,
+        /* En claro el fondo de la empresa no se aplica: manda la rampa
+           clara. Guardarlo sería volver a pintar la página de negro. */
+        background: claro ? '' : t.background,
+        azulGlow: conAlfa(t.primary, 0.35),
+        rojoGlow: conAlfa(t.secondary, 0.35),
+        body: S.familiaTipografica(t.fontFamily),
+        titular: tip.titular || '',
+        peso: tip.peso || 400,
+        modo: claro ? 'claro' : 'oscuro',
+        patron: (S.patron ? (S.patron(t.patron) || {}).id : '') || '',
+      });
 
     return t;
   }
@@ -24494,47 +26155,9 @@ NASCAR.Tema = (function () {
     });
   }
 
-  /**
-   * El color de acento, pero legible sobre fondo claro.
-   *
-   * El acento se elige mirando el tema oscuro: un azul luminoso que
-   * brilla sobre negro. Ese mismo azul sobre blanco da un contraste de
-   * 2,8 — por debajo de lo que se lee. Y el acento se usa como TEXTO en
-   * bastantes sitios (el precio de un plato, los estados).
-   *
-   * Se oscurece hasta que contrasta, conservando el tono: sigue siendo
-   * su azul, sólo que el que se puede leer. No se toca el color
-   * guardado; esto es sólo cómo se pinta en modo claro.
-   */
-  function paraFondoClaro(hex) {
-    const v = String(hex || '').replace('#', '');
-    if (v.length !== 6) return hex;
-
-    let r = parseInt(v.slice(0, 2), 16),
-        g = parseInt(v.slice(2, 4), 16),
-        b = parseInt(v.slice(4, 6), 16);
-
-    /* Luminancia relativa, que es como se mide el contraste de verdad.
-       Se baja en pasos hasta llegar al objetivo; 0.18 deja alrededor de
-       4,5 contra blanco, que es el mínimo para texto normal. */
-    const luz = () => {
-      const f = (c) => {
-        c /= 255;
-        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-    };
-
-    let vueltas = 0;
-    while (luz() > 0.18 && vueltas++ < 24) {
-      r = Math.round(r * 0.9);
-      g = Math.round(g * 0.9);
-      b = Math.round(b * 0.9);
-    }
-
-    const dos = (n) => ('0' + n.toString(16)).slice(-2);
-    return '#' + dos(r) + dos(g) + dos(b);
-  }
+  /* Vive en el almacén (NASCAR.Store) porque la vista previa del panel
+     de Taseca también la necesita, y esa página no carga tema.js. */
+  const paraFondoClaro = (hex) => S.paraFondoClaro(hex);
 
   /* #rrggbb -> rgba(r,g,b,a). Si el color no es hexadecimal se devuelve
      tal cual: normalizarTheme() ya garantiza que lo sea, pero mejor no
@@ -24615,11 +26238,20 @@ NASCAR.Tema = (function () {
 
     pintarFichas(t);
 
+    /* Que la marca sea una IMAGEN o un TEXTO cambia cómo se compone la
+       cabecera entera, no sólo este nodo: con imagen sobra el subtítulo
+       de debajo. Se marca en <html> para que el CSS lo resuelva solo, en
+       vez de repartir estilos en línea por aquí. */
+    document.documentElement.setAttribute('data-logo', t.logo ? 'imagen' : 'texto');
+
     document.querySelectorAll('.logo__marca').forEach(function (nodo) {
       if (t.logo) {
+        /* El tamaño lo manda css/styles.css (.logo__img). Estaba escrito
+           aquí como `height:30px` en línea, que además de quedar perdido
+           en una barra de 74px le ganaba a cualquier regla del CSS: no
+           había forma de encogerlo en el móvil. */
         nodo.innerHTML =
-          '<img src="' + t.logo + '" alt="' + escapar(nombre) + '" ' +
-          'style="height:30px;width:auto;display:block;object-fit:contain">';
+          '<img class="logo__img" src="' + t.logo + '" alt="' + escapar(nombre) + '">';
         return;
       }
       if (t.logoTexto || t.logoAcento) {
@@ -25057,6 +26689,9 @@ NASCAR.Avisos = (function () {
     telefono: '',
     direccion: '',
     zona: '',
+    /* 'domicilio' o 'recoger'. Decide qué campos se piden, si hay costo de
+       entrega y con qué tipo nace el pedido. */
+    entrega: 'domicilio',
     notas: '',
     metodoPago: 'efectivo',
     pagaCon: '',
@@ -25064,6 +26699,8 @@ NASCAR.Avisos = (function () {
     comprobante: null, // { dataUrl, nombreArchivo, pesoKB }
   };
   let ultimoPedido = null;
+  /* Por qué no se pudo reportar el pago del último pedido, si pasó. */
+  let avisoPago = '';
 
   /* Unidad / local en la que pide el cliente. Cada unidad tiene su carta y
      su menú del día: el portal muestra UNA a la vez, nunca mezcladas. Se
@@ -25269,26 +26906,16 @@ NASCAR.Avisos = (function () {
       compartir: ['badge--azul', 'Para compartir'],
     };
 
+    /* El emoji de cada categoría, para los platos que no tienen foto. */
+    const iconos = {};
+    S.getCategorias({ sucursalId: unidadPortal }).forEach(function (c) {
+      iconos[c.id] = c.icono;
+    });
+
+    /* La tarjeta la arma U.tarjetaPlato: es la misma del portal y de la
+       pantalla de mesa, y vivía copiada en los dos sitios. */
     cont.innerHTML = platos
-      .map(function (p) {
-        const tag = etiquetas[p.tag];
-        return (
-          '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
-          U.fotoPlato(p) +
-          '<div class="plato__top">' +
-          '<h3>' + U.esc(p.nombre) + '</h3>' +
-          '<span class="plato__precio">' + U.money(p.precio) + '</span>' +
-          '</div>' +
-          '<p class="plato__desc">' + U.esc(p.desc) + '</p>' +
-          '<div class="plato__pie">' +
-          (tag ? '<span class="badge ' + tag[0] + '">' + tag[1] + '</span>' : '<span></span>') +
-          (p.disponible
-            ? '<button class="btn btn--fantasma btn--xs" data-add-carta="' + p.id + '">+ Agregar</button>'
-            : '<span class="badge badge--gris">Agotado</span>') +
-          '</div>' +
-          '</article>'
-        );
-      })
+      .map((p) => U.tarjetaPlato(p, { etiqueta: etiquetas[p.tag], icono: iconos[p.cat] }))
       .join('');
   }
 
@@ -25692,32 +27319,40 @@ NASCAR.Avisos = (function () {
       '<span class="mini tenue">Cada pedido sale de un solo local: el de los productos que elegiste.</span>' +
       '</label>' +
 
+      selectorEntrega(suc) +
+
       '<label class="campo"><span>Tu nombre <i class="req">*</i></span>' +
       '<input class="input" id="fNombre" placeholder="Ej. Juan Pérez" value="' + U.esc(borrador.nombre) + '" autocomplete="name"></label>' +
 
+      /* El celular se pide también para recoger: es por donde se avisa que
+         ya está, y por donde se pregunta si alguien no aparece. */
       '<label class="campo"><span>Celular <i class="req">*</i></span>' +
       '<input class="input" id="fTelefono" inputmode="tel" placeholder="Ej. 3001234567" value="' + U.esc(borrador.telefono) + '" autocomplete="tel"></label>' +
 
-      /* La zona sólo se pide si el local tiene zonas configuradas. Sin
-         zonas el domicilio no tiene costo ni pedido mínimo. */
-      (hayZonas(suc)
-        ? '<label class="campo"><span>Zona de entrega <i class="req">*</i></span>' +
-          '<select class="select" id="fZona"><option value="">Selecciona tu zona…</option>' +
-          suc.zonas
-            .map(
-              (z) =>
-                '<option value="' + U.esc(z.nombre) + '"' + (z.nombre === borrador.zona ? ' selected' : '') + '>' +
-                U.esc(z.nombre) + ' · ' + U.money(z.costo) + '</option>'
-            )
-            .join('') +
-          '</select></label>'
-        : '') +
+      (esRecoger()
+        ? dondeRecoger(suc)
+        : /* La zona sólo se pide si el local tiene zonas configuradas. Sin
+             zonas el domicilio no tiene costo ni pedido mínimo. */
+          (hayZonas(suc)
+            ? '<label class="campo"><span>Zona de entrega <i class="req">*</i></span>' +
+              '<select class="select" id="fZona"><option value="">Selecciona tu zona…</option>' +
+              suc.zonas
+                .map(
+                  (z) =>
+                    '<option value="' + U.esc(z.nombre) + '"' + (z.nombre === borrador.zona ? ' selected' : '') + '>' +
+                    U.esc(z.nombre) + ' · ' + U.money(z.costo) + '</option>'
+                )
+                .join('') +
+              '</select></label>'
+            : '') +
+          '<label class="campo"><span>Dirección completa <i class="req">*</i></span>' +
+          '<input class="input" id="fDireccion" placeholder="Cra. 10 # 20-30, apto 501, torre 2" value="' + U.esc(borrador.direccion) + '" autocomplete="street-address"></label>') +
 
-      '<label class="campo"><span>Dirección completa <i class="req">*</i></span>' +
-      '<input class="input" id="fDireccion" placeholder="Cra. 10 # 20-30, apto 501, torre 2" value="' + U.esc(borrador.direccion) + '" autocomplete="street-address"></label>' +
-
-      '<label class="campo"><span>Indicaciones para el domiciliario</span>' +
-      '<textarea class="textarea" id="fNotas" placeholder="Portería, punto de referencia, timbre…">' + U.esc(borrador.notas) + '</textarea></label>' +
+      '<label class="campo"><span>' +
+      (esRecoger() ? 'Algo que debamos saber' : 'Indicaciones para el domiciliario') + '</span>' +
+      '<textarea class="textarea" id="fNotas" placeholder="' +
+      (esRecoger() ? 'Sin cebolla, va a nombre de…, llego sobre las 7' : 'Portería, punto de referencia, timbre…') +
+      '">' + U.esc(borrador.notas) + '</textarea></label>' +
 
       '<div id="avisoMinimo"></div>';
 
@@ -25740,6 +27375,18 @@ NASCAR.Avisos = (function () {
       (s) => $(s) && $(s).addEventListener('input', leerFormularioDatos)
     );
 
+    /* Cambiar entre domicilio y recoger cambia QUÉ campos hay, así que se
+       vuelve a pintar el paso entero. Antes se lee lo escrito: si no, al
+       cambiar de opción se perdería el nombre a medio escribir. */
+    $$('[data-entrega]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (borrador.entrega === this.dataset.entrega) return;
+        leerFormularioDatos();
+        borrador.entrega = this.dataset.entrega;
+        pintarPasoDatos();
+      });
+    });
+
     recalcular();
   }
 
@@ -25748,8 +27395,13 @@ NASCAR.Avisos = (function () {
     borrador.sucursalId = sucursalObligatoria() || Number(unidadPortal) || Number($('#fSucursal').value);
     borrador.nombre = $('#fNombre').value.trim();
     borrador.telefono = $('#fTelefono').value.trim();
-    borrador.zona = $('#fZona') ? $('#fZona').value : '';
-    borrador.direccion = $('#fDireccion').value.trim();
+    /* Un campo que no está en pantalla conserva lo que ya tenía. Al pasar
+       a «recoger» desaparecen la zona y la dirección, y si el cliente se
+       vuelve a domicilio no tiene que escribirlas otra vez. Lo que no vale
+       es MANDARLAS en un pedido para recoger, y de eso se encarga
+       confirmarPedido(). */
+    if ($('#fZona')) borrador.zona = $('#fZona').value;
+    if ($('#fDireccion')) borrador.direccion = $('#fDireccion').value.trim();
     borrador.notas = $('#fNotas').value.trim();
   }
 
@@ -25757,9 +27409,75 @@ NASCAR.Avisos = (function () {
     return !!(suc && (suc.zonas || []).length);
   }
 
+  /**
+   * ¿Este local deja recoger el pedido en sitio?
+   *
+   * Se deduce de que tenga dirección. Si el local no dice dónde está, no
+   * hay a dónde ir, y ofrecer «recoger» sería mandar al cliente a ninguna
+   * parte.
+   *
+   * No es un interruptor por local: si algún día un local CON dirección
+   * quiere trabajar sólo a domicilio, eso pide un campo nuevo en la
+   * unidad (y su columna en la base). Hoy no hay ninguno así.
+   */
+  function puedeRecoger(suc) {
+    return !!(suc && String(suc.direccion || '').trim());
+  }
+
+  /* Si el local elegido no permite recoger, la elección no vale: el
+     cliente pudo marcarla en otro local y después cambiarse de local.
+     Preguntando aquí, y no en cada sitio, no hay forma de que se escape
+     un pedido «para recoger» en un local que no recoge. */
+  function esRecoger() {
+    return borrador.entrega === 'recoger' && puedeRecoger(U.sucursal(borrador.sucursalId));
+  }
+
   function zonaActual() {
+    /* Quien recoge no tiene zona: ni costo de entrega ni pedido mínimo.
+       Se corta aquí y no en los tres sitios que preguntan por la zona. */
+    if (esRecoger()) return null;
     const suc = U.sucursal(borrador.sucursalId);
     return ((suc && suc.zonas) || []).find((z) => z.nombre === borrador.zona) || null;
+  }
+
+  /* Los dos botones de «¿cómo lo quieres?».
+
+     Si el local no permite recoger no se pinta nada: un selector con una
+     sola opción no es una elección, es ruido. */
+  function selectorEntrega(suc) {
+    if (!puedeRecoger(suc)) return '';
+    const op = function (id, ico, titulo, pie) {
+      const activo = borrador.entrega === id;
+      return (
+        '<button type="button" class="entrega__op' + (activo ? ' is-activo' : '') +
+        '" data-entrega="' + id + '" aria-pressed="' + activo + '">' +
+        '<span class="entrega__ico">' + ico + '</span>' +
+        '<b>' + titulo + '</b>' +
+        '<span class="mini tenue">' + pie + '</span>' +
+        '</button>'
+      );
+    };
+    return (
+      '<div class="campo"><span>¿Cómo lo quieres?</span>' +
+      '<div class="entrega">' +
+      op('domicilio', '🛵', 'Domicilio', 'Te lo llevamos') +
+      op('recoger', '🥡', 'Recoger', 'Pasas por el local') +
+      '</div></div>'
+    );
+  }
+
+  /* Dónde y cuándo pasar. Ocupa el sitio de la zona y la dirección, que
+     para recoger no se piden: la dirección es la del local y la pone el
+     local, no el cliente. */
+  function dondeRecoger(suc) {
+    return (
+      '<div class="caja-datos">' +
+      '<b>Recoges en ' + U.esc(suc.nombre) + '</b>' +
+      '<p class="mini tenue" style="margin:4px 0 0">' + U.esc(suc.direccion) +
+      (suc.horario ? ' · ' + U.esc(suc.horario) : '') + '</p>' +
+      '<p class="mini tenue" style="margin:4px 0 0">Te avisamos cuando esté listo. No se cobra domicilio.</p>' +
+      '</div>'
+    );
   }
 
   function costoDomicilio() {
@@ -25771,6 +27489,16 @@ NASCAR.Avisos = (function () {
      pantalla: la factura y el panel tienen que decir el mismo número. */
   function recargoPago() {
     return S.recargoDeMetodo(borrador.metodoPago, carrito.subtotal() + costoDomicilio());
+  }
+
+  /* El total del pedido que se está armando, en UN solo sitio: el aviso
+     de las vueltas y la línea «Total» de abajo tienen que decir lo mismo
+     o el cliente ve dos números distintos en la misma pantalla.
+
+     No hace falta descontar el domicilio de quien recoge: zonaActual() ya
+     devuelve null en ese caso, y costoDomicilio() sale 0. */
+  function totalPedido() {
+    return carrito.subtotal() + costoDomicilio() + recargoPago();
   }
 
   function pintarTotales(sel) {
@@ -25787,15 +27515,19 @@ NASCAR.Avisos = (function () {
 
     cont.innerHTML =
       '<div><span>Subtotal</span><span class="num">' + U.money(sub) + '</span></div>' +
-      '<div><span>Domicilio' + (borrador.zona ? ' · ' + U.esc(borrador.zona) : '') + '</span>' +
-      '<span class="num">' +
-      (borrador.zona ? U.money(dom) : hayZonas(U.sucursal(borrador.sucursalId)) ? '—' : 'Sin costo') +
-      '</span></div>' +
+      /* Quien recoge no paga entrega, así que la línea no aparece: un
+         «Domicilio: $0» invita a preguntarse si hay letra pequeña. */
+      (esRecoger()
+        ? ''
+        : '<div><span>Domicilio' + (borrador.zona ? ' · ' + U.esc(borrador.zona) : '') + '</span>' +
+          '<span class="num">' +
+          (borrador.zona ? U.money(dom) : hayZonas(U.sucursal(borrador.sucursalId)) ? '—' : 'Sin costo') +
+          '</span></div>') +
       (rec > 0
         ? '<div><span>Recargo' + (metodo ? ' · ' + U.esc(metodo.nombre) : '') + '</span>' +
           '<span class="num">' + U.money(rec) + '</span></div>'
         : '') +
-      '<div class="total"><span>Total</span><span class="num">' + U.money(sub + dom + rec) + '</span></div>';
+      '<div class="total"><span>Total</span><span class="num">' + U.money(totalPedido()) + '</span></div>';
   }
 
   function revisarMinimo() {
@@ -25904,12 +27636,62 @@ NASCAR.Avisos = (function () {
         });
         conectarAdjunto();
       } else if (borrador.metodoPago === 'efectivo') {
+        /* Decirlo aquí es lo que hace que el domiciliario salga con las
+           vueltas contadas. Es opcional: quien no lo sepa aún, lo deja
+           en blanco y paga igual. */
         d.innerHTML =
           '<label class="campo"><span>¿Con cuánto vas a pagar?</span>' +
-          '<input class="input" id="fPagaCon" inputmode="numeric" placeholder="Ej. 100000 (para llevar tus vueltas)" value="' + U.esc(borrador.pagaCon) + '"></label>';
+          '<input class="input" id="fPagaCon" inputmode="numeric" autocomplete="off" ' +
+          'placeholder="Ej. 100000 (para llevar tus vueltas)" value="' + U.esc(borrador.pagaCon) + '">' +
+          '<small class="mini tenue">Opcional. Así el domiciliario sale con tus vueltas listas.</small>' +
+          '<div class="mini" id="avisoPagaCon"></div></label>';
+
+        /* Cuánto va a devolver, o que no alcanza. El cliente lo ve ANTES
+           de confirmar, que es cuando todavía puede corregirlo; si no, se
+           entera en la puerta y con el domiciliario delante. */
+        function avisarPagaCon() {
+          const caja = $('#avisoPagaCon');
+          if (!caja) return;
+          const dado = borrador.pagaCon === '' ? null : Number(borrador.pagaCon);
+          const tot = totalPedido();
+          if (dado === null) {
+            caja.innerHTML = '';
+          } else if (dado < tot) {
+            caja.innerHTML =
+              '<span class="ambar">Con ' + U.money(dado) + ' no alcanza: el total es ' +
+              U.money(tot) + '.</span>';
+          } else if (dado === tot) {
+            caja.innerHTML = '<span class="tenue">Pagas justo, no hay vueltas.</span>';
+          } else {
+            caja.innerHTML =
+              '<span class="tenue">Te devolvemos ' + U.money(dado - tot) + '.</span>';
+          }
+        }
+
         $('#fPagaCon').addEventListener('input', function () {
-          borrador.pagaCon = this.value.replace(/\D/g, '');
+          /* El tope es el de core.pedidos.paga_con: sin él, un dedo
+             apoyado en una tecla tumbaba el pedido entero.
+
+             Y el campo se reescribe SIEMPRE con lo que de verdad quedó
+             guardado: si no, quien escribe letras las sigue viendo ahí
+             mientras el pedido viaja sin ellas, y cree que dijo algo que
+             no dijo. */
+          borrador.pagaCon = S.montoPagaCon(this.value);
+          const limpio = String(borrador.pagaCon);
+          if (this.value !== limpio) {
+            const alFinal = this.selectionStart === this.value.length;
+            this.value = limpio;
+            if (alFinal) {
+              try {
+                this.setSelectionRange(limpio.length, limpio.length);
+              } catch (e) {
+                /* algunos navegadores no dejan mover el cursor aquí */
+              }
+            }
+          }
+          avisarPagaCon();
         });
+        avisarPagaCon();
       } else {
         d.innerHTML =
           '<div class="caja-datos"><p class="mini" style="margin:0">El domiciliario llega con datáfono. ' +
@@ -26003,17 +27785,32 @@ NASCAR.Avisos = (function () {
 
       '<div class="caja-datos">' +
       '<div class="linea"><span class="tenue">Local</span><b>' + U.esc(suc.nombre) + '</b></div>' +
-      '<div class="linea"><span class="tenue">Entrega en</span><b>' + U.esc(p.cliente.direccion) + '</b></div>' +
-      '<div class="linea"><span class="tenue">Tiempo estimado</span><b>' + NASCAR.CONFIG.tiempos.domicilio + '</b></div>' +
+      /* Un pedido para recoger no tiene dirección de entrega: la línea
+         salía vacía. Y el tiempo que le importa no es el del domicilio
+         sino el de que esté listo. */
+      (p.tipo === 'recoger'
+        ? '<div class="linea"><span class="tenue">Recoges en</span><b>' +
+          U.esc(suc.direccion || suc.nombre) + '</b></div>' +
+          '<div class="linea"><span class="tenue">Listo en</span><b>' +
+          NASCAR.CONFIG.tiempos.mesa + '</b></div>'
+        : '<div class="linea"><span class="tenue">Entrega en</span><b>' +
+          U.esc(p.cliente.direccion) + '</b></div>' +
+          '<div class="linea"><span class="tenue">Tiempo estimado</span><b>' +
+          NASCAR.CONFIG.tiempos.domicilio + '</b></div>') +
       '<div class="linea"><span class="tenue">Total</span><b>' + U.money(p.total) + '</b></div>' +
       '<div class="linea"><span class="tenue">Pago</span><b>' + etiquetaPago(p.metodoPago) + '</b></div>' +
       '</div>' +
 
       (esTransferencia(p.metodoPago)
-        ? '<div class="caja-datos" style="border-color:var(--ambar)">' +
-          '<b class="ambar">Pago por confirmar</b>' +
-          '<p class="mini tenue" style="margin:4px 0 0">Tu pedido se despacha apenas verifiquemos la transferencia en caja. ' +
-          'Enviar el soporte por WhatsApp acelera el proceso.</p></div>'
+        ? '<div class="caja-datos" style="border-color:var(--' + (avisoPago ? 'rojo' : 'ambar') + ')">' +
+          (avisoPago
+            ? '<b class="rojo">No quedó registrada tu referencia</b>' +
+              '<p class="mini tenue" style="margin:4px 0 0">' + U.esc(avisoPago) + '<br>' +
+              'Tu pedido <b>' + U.esc(p.codigo) + '</b> sí entró. Manda el soporte por WhatsApp y en caja lo confirman.</p>'
+            : '<b class="ambar">Pago por confirmar</b>' +
+              '<p class="mini tenue" style="margin:4px 0 0">Tu pedido se despacha apenas verifiquemos la transferencia en caja. ' +
+              'Enviar el soporte por WhatsApp acelera el proceso.</p>') +
+          '</div>'
         : '') +
 
       '<a class="btn btn--verde btn--bloque mt-16" style="background:#12b76a;border-color:#12b76a;color:#04220f" ' +
@@ -26034,18 +27831,22 @@ NASCAR.Avisos = (function () {
   }
 
   function enlaceWhatsApp(p, suc) {
+    const recoge = p.tipo === 'recoger';
     const lineas = [
       // La marca es la de la empresa que atiende, no una escrita a mano
       '*Pedido ' + p.codigo + '* — ' + (S.getConfig().marca || '') + ' ' + suc.corto,
       '',
       'Cliente: ' + p.cliente.nombre,
       'Tel: ' + p.cliente.telefono,
-      'Dirección: ' + p.cliente.direccion + (p.cliente.zona ? ' (' + p.cliente.zona + ')' : ''),
+      recoge
+        ? 'RECOGE EN EL LOCAL: ' + (suc.direccion || suc.nombre)
+        : 'Dirección: ' + p.cliente.direccion + (p.cliente.zona ? ' (' + p.cliente.zona + ')' : ''),
       '',
       ...p.items.map((it) => '• ' + it.cantidad + ' x ' + it.nombre + (it.detalle ? ' (' + it.detalle + ')' : '') + ' — ' + U.money(it.precio * it.cantidad)),
       '',
       'Subtotal: ' + U.money(p.subtotal),
-      'Domicilio: ' + U.money(p.domicilio),
+      // Sin domicilio que cobrar no hay línea de domicilio
+      ...(recoge ? [] : ['Domicilio: ' + U.money(p.domicilio)]),
       // Sólo si lo hay: una línea en cero no dice nada
       ...(p.recargo ? ['Recargo: ' + U.money(p.recargo)] : []),
       '*Total: ' + U.money(p.total) + '*',
@@ -26064,13 +27865,18 @@ NASCAR.Avisos = (function () {
     if (borrador.nombre.length < 3) errores.push('Escribe tu nombre completo.');
     if (!/^\d{7,10}$/.test(borrador.telefono.replace(/\D/g, '')))
       errores.push('El celular debe tener entre 7 y 10 dígitos.');
-    if (!borrador.zona && hayZonas(U.sucursal(borrador.sucursalId)))
-      errores.push('Selecciona tu zona de entrega.');
-    if (borrador.direccion.length < 8) errores.push('Escribe la dirección completa.');
+    /* Zona, dirección y pedido mínimo son del domicilio. A quien recoge no
+       se le puede exigir una dirección que no va a usar nadie, ni un
+       mínimo que existe para que salga a cuenta mandar la moto. */
+    if (!esRecoger()) {
+      if (!borrador.zona && hayZonas(U.sucursal(borrador.sucursalId)))
+        errores.push('Selecciona tu zona de entrega.');
+      if (borrador.direccion.length < 8) errores.push('Escribe la dirección completa.');
 
-    const z = zonaActual();
-    if (z && carrito.subtotal() < z.min)
-      errores.push('El pedido mínimo para ' + z.nombre + ' es ' + U.money(z.min) + '.');
+      const z = zonaActual();
+      if (z && carrito.subtotal() < z.min)
+        errores.push('El pedido mínimo para ' + z.nombre + ' es ' + U.money(z.min) + '.');
+    }
 
     if (errores.length) {
       U.toast(errores[0], 'error');
@@ -26094,13 +27900,16 @@ NASCAR.Avisos = (function () {
     try {
       pedido = S.crearPedido({
         clave: borrador.clave,
-        tipo: 'domicilio',
+        tipo: esRecoger() ? 'recoger' : 'domicilio',
         sucursalId: borrador.sucursalId,
         cliente: {
           nombre: borrador.nombre,
           telefono: borrador.telefono,
-          direccion: borrador.direccion,
-          zona: borrador.zona,
+          /* En un pedido para recoger no van ni dirección ni zona, aunque
+             el borrador las traiga de antes de cambiar de opción: con zona
+             la base le cobraría el domicilio. */
+          direccion: esRecoger() ? '' : borrador.direccion,
+          zona: esRecoger() ? '' : borrador.zona,
           notas: borrador.notas,
           pagaCon: borrador.pagaCon || '',
         },
@@ -26113,23 +27922,47 @@ NASCAR.Avisos = (function () {
       return false; // el botón vuelve: se puede reintentar con la misma clave
     }
 
-    borrador.clave = ''; // el pedido entró: el siguiente es otro intento
+    /* AQUÍ EL PEDIDO YA EXISTE.
+       --------------------------------------------------------------
+       Lo que viene -guardar el comprobante y reportar el pago- puede
+       fallar por su cuenta, y si falla NO es un pedido fallido: es un
+       pedido con el pago sin reportar.
 
+       Estaba fuera de cualquier try, y la clave del envío se soltaba
+       justo antes. O sea: el pedido entraba, reportar el pago reventaba,
+       el cliente veía un error, volvía a darle a confirmar... y como ya
+       no había clave se generaba otra y entraba OTRO pedido. Tres clics,
+       tres pedidos.
+
+       Ahora el fallo del pago se recoge aparte y la clave se suelta al
+       final del todo: mientras siga puesta, reintentar devuelve ESTE
+       mismo pedido en vez de crear uno nuevo. */
+    avisoPago = '';
     if (esTransferencia(borrador.metodoPago)) {
-      if (borrador.comprobante) {
-        S.guardarComprobante(pedido.id, borrador.comprobante);
+      try {
+        if (borrador.comprobante) {
+          S.guardarComprobante(pedido.id, borrador.comprobante);
+        }
+        if (borrador.referencia || borrador.comprobante) {
+          S.reportarPago(pedido.id, borrador.referencia || 'con comprobante adjunto');
+        }
+        pedido = S.getPedido(pedido.id) || pedido;
+      } catch (e) {
+        avisoPago = e.message || 'No pudimos registrar tu pago.';
       }
-      if (borrador.referencia || borrador.comprobante) {
-        S.reportarPago(pedido.id, borrador.referencia || 'con comprobante adjunto');
-      }
-      pedido = S.getPedido(pedido.id);
     }
+
+    /* De aquí no se vuelve: el pedido entró y se le va a enseñar. */
+    borrador.clave = '';
 
     ultimoPedido = pedido;
     recordarPedido(pedido.codigo); // para seguirlo aunque recargue la página
     paso = 'listo';
     pintarCarrito();
     U.toast('¡Pedido ' + pedido.codigo + ' enviado a cocina!');
+    /* El pedido entró igual; lo que no entró es el reporte del pago. Se
+       dice después, para que la primera noticia sea la buena. */
+    if (avisoPago) U.toast('No pudimos registrar tu pago: ' + avisoPago, 'error');
   }
 
   /* =================================================================
@@ -26236,11 +28069,14 @@ NASCAR.Avisos = (function () {
        a entregado. Un estado sin texto aquí se muestra con su nombre. */
     function pasosDe(p) {
       const dom = p.tipo === 'domicilio';
+      const rec = p.tipo === 'recoger';
       const info = {
         nuevo: { ico: '🧾', corto: 'Recibido', titulo: 'Recibimos tu pedido', texto: 'Ya está en el sistema. En un momento la cocina empieza a prepararlo.' },
         preparacion: { ico: '👨‍🍳', corto: 'Preparando', titulo: 'Estamos preparando tu pedido', texto: 'La cocina está trabajando en él.' },
         listo: dom
           ? { ico: '🛍️', corto: 'Listo', titulo: 'Tu pedido está listo', texto: 'Lo estamos empacando para despacharlo.' }
+          : rec
+          ? { ico: '🥡', corto: 'Listo', titulo: 'Tu pedido está listo', texto: 'Ya puedes pasar por el local a recogerlo.' }
           : { ico: '🍽️', corto: 'Listo', titulo: 'Tu pedido está listo', texto: 'En un momento lo llevamos a tu mesa.' },
         camino: { ico: '🛵', corto: 'En camino', titulo: 'Tu pedido va en camino', texto: 'El domiciliario va hacia tu dirección. Ten tu teléfono a la mano.' },
         entregado: { ico: '✅', corto: 'Entregado', titulo: '¡Pedido entregado!', texto: 'Gracias por pedir con nosotros. ¡Buen provecho!' },
@@ -26290,8 +28126,10 @@ NASCAR.Avisos = (function () {
         '<div class="seg-datos">' +
         '<div><span>Pedido</span><b>#' + U.esc(p.codigo) + '</b></div>' +
         '<div><span>Local</span><b>' + U.esc(suc ? suc.nombre : '—') + '</b></div>' +
+        /* Decía «Domicilio» para todo lo que no fuera mesa, así que un
+           pedido para recoger salía como si fuera a ir en moto. */
         '<div><span>' + (p.tipo === 'mesa' ? 'Mesa' : 'Entrega') + '</span><b>' +
-        (p.tipo === 'mesa' ? U.esc(p.mesa) : 'Domicilio') + '</b></div>' +
+        (p.tipo === 'mesa' ? U.esc(p.mesa) : U.etiquetaTipo(p)) + '</b></div>' +
         '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
         '<div class="seg-datos__ancho"><span>Pago</span><b>' + insigniaPago(p) + '</b></div>' +
         '</div>';
@@ -26652,7 +28490,7 @@ NASCAR.Avisos = (function () {
   function pintarFiltros() {
     const cont = $('#filtrosCarta');
     // Las categorías de la unidad de esta mesa
-    const cats = [{ id: 'todos', nombre: 'Todo', icono: '🏁' }].concat(S.getCategorias({ sucursalId: sucursalId }));
+    const cats = [{ id: 'todos', nombre: 'Todo', icono: S.emblema() || '•' }].concat(S.getCategorias({ sucursalId: sucursalId }));
     cont.innerHTML = cats
       .map(
         (c) =>
@@ -26684,21 +28522,17 @@ NASCAR.Avisos = (function () {
     let platos = S.getCarta({ sucursalId: sucursalId }); // la carta de ESTA unidad
     if (categoriaActiva !== 'todos') platos = platos.filter((p) => p.cat === categoriaActiva);
 
+    /* El emoji de cada categoría, para los platos que no tienen foto. */
+    const iconos = {};
+    S.getCategorias({ sucursalId: sucursalId }).forEach(function (c) {
+      iconos[c.id] = c.icono;
+    });
+
+    /* La misma tarjeta que en el portal del cliente, de una sola fuente.
+       En mesa no se pintan las etiquetas («el más pedido»): quien está
+       sentado ya eligió el sitio, no necesita que le vendan el plato. */
     $('#listaCarta').innerHTML = platos
-      .map(function (p) {
-        return (
-          '<article class="plato' + (p.disponible ? '' : ' no-disp') + '">' +
-          U.fotoPlato(p) +
-          '<div class="plato__top"><h3>' + U.esc(p.nombre) + '</h3>' +
-          '<span class="plato__precio">' + U.money(p.precio) + '</span></div>' +
-          '<p class="plato__desc">' + U.esc(p.desc) + '</p>' +
-          '<div class="plato__pie"><span></span>' +
-          (p.disponible
-            ? '<button class="btn btn--fantasma btn--xs" data-add-carta="' + p.id + '">+ Agregar</button>'
-            : '<span class="badge badge--gris">Agotado</span>') +
-          '</div></article>'
-        );
-      })
+      .map((p) => U.tarjetaPlato(p, { icono: iconos[p.cat] }))
       .join('');
   }
 
@@ -26755,7 +28589,8 @@ NASCAR.Avisos = (function () {
         '<p class="mini tenue">El pago se realiza al final del servicio. Si necesitas factura, avísale al mesero.</p>' +
         /* Hook propio, no data-accion: el modal vive fuera de la raíz de la
            vista y con data-accion el envío se disparaba dos veces. */
-        '<button class="btn btn--rojo btn--bloque mt-16" data-enviar-modal>🏁 Enviar a cocina</button>';
+        '<button class="btn btn--rojo btn--bloque mt-16" data-enviar-modal>' +
+        (S.emblema() ? S.emblema() + ' ' : '') + 'Enviar a cocina</button>';
 
       pintarBarra();
     }
@@ -26829,7 +28664,8 @@ NASCAR.Avisos = (function () {
 
         '<div class="fila fila--fin mt-16">' +
         '<button class="btn btn--fantasma" id="mNo">Revisar</button>' +
-        '<button class="btn btn--rojo" id="mSi">🏁 Enviar a cocina</button></div>',
+        '<button class="btn btn--rojo" id="mSi">' +
+        (S.emblema() ? S.emblema() + ' ' : '') + 'Enviar a cocina</button></div>',
     });
 
     U.$('#mNo', m.raiz).onclick = m.cerrar;
@@ -27006,7 +28842,14 @@ NASCAR.Avisos = (function () {
       // Sin usuario se acepta sólo el PIN, como antes.
       const ok = usuario ? A.entrar(usuario, pin) : S.login(pin);
 
-      if (ok) {
+      /* La cuenta está en espera por demasiados PIN errados (migración 41).
+         Es un objeto, no una sesión: hay que mirarlo ANTES del `if (ok)`,
+         porque un objeto es «truthy» y colaría como si hubiera entrado. */
+      if (ok && ok.bloqueado) {
+        U.toast(ok.mensaje || 'Demasiados intentos. Espera unos minutos.', 'error');
+        $('#pin').value = '';
+        $('#pin').focus();
+      } else if (ok) {
         $('#pin').value = '';
         mostrarPanel();
       } else {
@@ -27169,6 +29012,11 @@ NASCAR.Avisos = (function () {
       rechazar: rechazarPago,
       verComprobante: verComprobante,
       ver: verDetallePedido,
+      /* Para el cobro en lote: quien cobra queda registrado -en modo
+         local, porque en la nube sale del token- y al terminar se
+         repinta el panel entero, que los contadores cambian. */
+      firma: A.firma,
+      alCobrar: refrescarTodo,
     });
 
     montajeListo = true;
@@ -27647,7 +29495,12 @@ NASCAR.Avisos = (function () {
         e.stopPropagation();
         if (!A.exigir('pedidos_gestionar')) return;
         return U.ocupado(avanzar, '⏳', function () {
-          S.avanzarEstado(avanzar.dataset.avanzar);
+          try {
+            S.avanzarEstado(avanzar.dataset.avanzar, avanzar.dataset.desde);
+          } catch (err) {
+            U.toast(err.message, 'error');
+            return false; // el botón vuelve; el tablero se refresca solo
+          }
           U.toast('Pedido actualizado.');
         });
       }
@@ -27742,7 +29595,12 @@ NASCAR.Avisos = (function () {
       '<div class="tp__pie">' +
       '<div><span class="tp__total">' + U.money(p.total) + '</span><br>' + insigniaPago(p) + '</div>' +
       (siguiente
-        ? '<button class="btn btn--azul btn--xs" data-avanzar="' + p.id + '">' + siguiente + ' →</button>'
+        /* `data-desde` es el estado que el usuario está viendo. Si para
+           cuando suelta el clic el pedido ya se movió -doble clic, u otra
+           persona en otra pantalla- el store lo rechaza en vez de saltarse
+           un estado. */
+        ? '<button class="btn btn--azul btn--xs" data-avanzar="' + p.id +
+          '" data-desde="' + U.esc(p.estado) + '">' + siguiente + ' →</button>'
         : '') +
       '</div>' +
       '</article>'
@@ -27861,7 +29719,7 @@ NASCAR.Avisos = (function () {
         /* Anular es sólo del Admin: es echar atrás una venta hecha y
            devolver mercancía al inventario. */
         (p.estado !== 'cancelado' && p.estado !== 'anulado' && A.puede('pedidos_anular')
-          ? '<button class="btn btn--rojo btn--sm" id="detAnular">❌ Anular factura</button>'
+          ? '<button class="btn btn--peligro btn--sm" id="detAnular">❌ Anular factura</button>'
           : '') +
         '</div>';
 
@@ -27995,7 +29853,7 @@ NASCAR.Avisos = (function () {
 
         '<div class="fila fila--fin mt-16">' +
         '<button class="btn btn--fantasma" data-no>Cancelar</button>' +
-        '<button class="btn btn--rojo" data-si>❌ Anular factura</button></div>',
+        '<button class="btn btn--peligro" data-si>❌ Anular factura</button></div>',
     });
 
     U.$('[data-no]', m.raiz).onclick = m.cerrar;
@@ -28225,6 +30083,12 @@ NASCAR.Avisos = (function () {
     if (!p) return;
     const comp = S.getComprobante(pedidoId);
 
+    /* Lo que el cliente anunció en el checkout («pago con 50.000»). Viaja
+       desde index.html hasta core.pedidos.paga_con y vuelve en el pedido;
+       hasta ahora llegaba aquí y nadie lo miraba, así que la caja volvía a
+       preguntarlo con el cliente delante. */
+    const declarado = Number(p.cliente && p.cliente.pagaCon) || 0;
+
     /* Con qué pagó de verdad: los métodos activos de la empresa. Si el del
        pedido ya no está activo, igual se ofrece para poder dejarlo como está. */
     const metodos = (S.getConfig().metodosPago || []).filter((x) => x.activo || x.id === p.metodoPago);
@@ -28243,8 +30107,16 @@ NASCAR.Avisos = (function () {
         (p.comprobante
           ? '<div class="linea"><span class="tenue">Ref. del cliente</span><b>' + U.esc(p.comprobante) + '</b></div>'
           : '') +
-        '<div class="linea"><span class="tenue">Total a recibir</span><b>' + U.money(p.total) + '</b></div>' +
+        /* Lo que el cliente dijo al pedir. Es una DECLARACIÓN suya, no un
+           hecho: la caja la ve, y la cambia si llega con otro billete. */
+        (declarado
+          ? '<div class="linea"><span class="tenue">Dijo que pagaba con</span><b>' +
+            U.money(declarado) + '</b></div>'
+          : '') +
+        '<div class="linea"><span class="tenue">Total a recibir</span><b id="cpTotal">' +
+        U.money(p.total) + '</b></div>' +
         '</div>' +
+        '<p class="mini" id="cpAvisoRecargo"></p>' +
 
         (comp
           ? '<div class="comprobante-visor mb-16">' +
@@ -28260,6 +30132,11 @@ NASCAR.Avisos = (function () {
           .join('') +
         '</select></label>' +
 
+        /* Sólo el efectivo deja cambio. Va dentro de un marco propio
+           porque al cambiar de método cambia el TOTAL, y el bloque tiene
+           que rearmarse contra el número nuevo. */
+        '<div id="cpCajaMarco"></div>' +
+
         '<p class="mini ambar">Confirma sólo con el dinero en la mano, el voucher del datáfono o la transferencia ' +
         'vista en el banco. Esta acción marca el pedido como cobrado y ya no se puede cambiar.</p>' +
 
@@ -28273,9 +30150,72 @@ NASCAR.Avisos = (function () {
     });
 
     U.$('#cpNo', m.raiz).onclick = m.cerrar;
+
+    /* ------------------------------------------------------------------
+       EL MÉTODO MANDA SOBRE EL TOTAL
+
+       El recargo es el precio de pagar ASÍ -los $500 de Nequi- y no un
+       cargo del pedido. Si caja cambia el método, lo que hay que cobrar
+       cambia, y tiene que verse AQUÍ, antes de confirmar: si no, la caja
+       cobra el número viejo y el cambio sale mal.
+
+       La cuenta es la misma que hace la base en api.sp_actualizar_pago
+       (migración 40): subtotal + domicilio + el recargo del método nuevo.
+       ------------------------------------------------------------------ */
+    const selMetodo = U.$('#cpMetodo', m.raiz);
+    const marcoCambio = U.$('#cpCajaMarco', m.raiz);
+    const avisoRecargo = U.$('#cpAvisoRecargo', m.raiz);
+    const BASE = (Number(p.subtotal) || 0) + (Number(p.domicilio) || 0);
+
+    function totalCon(met) {
+      return BASE + (Number(S.recargoDeMetodo(met, BASE, p.empresaId)) || 0);
+    }
+
+    /* Se reasigna cada vez que se rearma el bloque. Arranca con lo que el
+       cliente declaró, si lo declaró: la caja no tiene que volver a
+       preguntar algo que ya está escrito en el pedido. */
+    let ultimoRecibido = declarado || null;
+    let leerCambio = function () { return { recibido: ultimoRecibido, cambio: 0, falta: 0 }; };
+
+    function pintarMetodo() {
+      const met = selMetodo.value;
+      const tot = totalCon(met);
+      const dif = tot - p.total;
+
+      U.$('#cpTotal', m.raiz).textContent = U.money(tot);
+      avisoRecargo.className = 'mini' + (dif === 0 ? '' : ' ambar');
+      avisoRecargo.textContent =
+        dif === 0
+          ? ''
+          : dif > 0
+            ? 'Pagar con ' + nombreCorto(metodos.find((x) => x.id === met) || { id: met }) +
+              ' recarga ' + U.money(dif) + ': el total sube.'
+            : 'Se quita el recargo del método anterior: el total baja ' + U.money(-dif) + '.';
+
+      /* Lo que la caja ya hubiera escrito no se pierde al cambiar de
+         método; el cambio se recalcula contra el total nuevo. */
+      const escrito = leerCambio().recibido;
+      ultimoRecibido = escrito;
+      marcoCambio.innerHTML = U.bloqueCambio(tot, 'cp', escrito);
+      leerCambio = U.montarCambio(marcoCambio, tot, 'cp');
+      U.$('#cpCaja', marcoCambio).classList.toggle('oculto', met !== 'efectivo');
+    }
+    selMetodo.addEventListener('change', pintarMetodo);
+    pintarMetodo();
+
     U.unaVez(U.$('#cpSi', m.raiz), '⏳ Confirmando…', function () {
       if (!A.exigir('pagos')) return false;
       const metodo = U.$('#cpMetodo', m.raiz).value;
+
+      /* Confirmar es irreversible desde esta pantalla. Si lo que hay en
+         la mano no alcanza, no es un cobro: es un cobro a medias, y el
+         sistema no sabe representarlo. Mejor pararlo aquí. */
+      const efectivo = metodo === 'efectivo' ? leerCambio() : null;
+      if (efectivo && efectivo.falta > 0) {
+        U.toast('No alcanza: faltan ' + U.money(efectivo.falta) + '.', 'error');
+        return false;
+      }
+
       // Queda registrado quién confirmó el pago, cuándo y con qué método
       try {
         S.confirmarPago(pedidoId, U.$('#cpRef', m.raiz).value.trim(), A.firma(), metodo);
@@ -28284,7 +30224,12 @@ NASCAR.Avisos = (function () {
         return false; // el botón vuelve: se puede reintentar
       }
       m.cerrar();
-      U.toast('Pago de ' + p.codigo + ' confirmado · ' + nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) + '.');
+      U.toast(
+        'Pago de ' + p.codigo + ' confirmado · ' +
+        nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) +
+        ' · ' + U.money(totalCon(metodo)) +
+        (efectivo && efectivo.cambio > 0 ? ' · devuelve ' + U.money(efectivo.cambio) : '') + '.'
+      );
       if (alTerminar) alTerminar();
       refrescarTodo();
     });
@@ -29095,20 +31040,52 @@ NASCAR.Avisos = (function () {
           .join('')
       : '<p class="tenue mini">Sin datos.</p>';
 
+    /* Cómo se llama cada medio de pago. Sale de la configuración de la
+       empresa y no de un mapa fijo: desde que Nequi, Daviplata y Bre-B son
+       métodos aparte, el mapa de cuatro entradas los dejaba fuera y el
+       informe decía «nequi» en minúscula. */
+    function nombrePago(k) {
+      if (k === 'por_cobrar') return '⏳ Por cobrar en caja';
+      const m = (S.getConfig().metodosPago || []).find((x) => x.id === k);
+      return (m && m.nombre) ||
+        { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[k] || k;
+    }
+
     // Por método de pago
     const pagos = Object.keys(v.porPago);
     const maxPago = Math.max(1, ...pagos.map((k) => v.porPago[k].total));
-    $('#porPago').innerHTML = pagos.length
-      ? pagos
-          .map((k) =>
-            barra(
-              { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono', por_cobrar: '⏳ Por cobrar en caja' }[k] || k,
-              U.money(v.porPago[k].total) + ' · ' + v.porPago[k].n + ' ped.',
-              (v.porPago[k].total / maxPago) * 100
+    $('#porPago').innerHTML =
+      (pagos.length
+        ? pagos
+            .map((k) =>
+              barra(
+                nombrePago(k),
+                U.money(v.porPago[k].total) + ' · ' + v.porPago[k].n + ' ped.' +
+                  /* El recargo ya está dentro de ese total. Se dice aparte
+                     porque es lo ÚNICO de esa cifra que no es comida
+                     vendida: es lo que se cobró por el medio de pago. */
+                  (v.porPago[k].recargo
+                    ? ' <span class="ambar">· recargo ' + U.money(v.porPago[k].recargo) + '</span>'
+                    : ''),
+                (v.porPago[k].total / maxPago) * 100
+              )
             )
-          )
-          .join('')
-      : '<p class="tenue mini">Sin datos.</p>';
+            .join('')
+        : '<p class="tenue mini">Sin datos.</p>') +
+
+      /* El total del recargo, abajo y en una sola línea: responde
+         «¿cuánto me entró por cobrar con recargo?» sin tener que sumar
+         las barras de arriba a mano. */
+      (v.recargo || v.recargoPorCobrar
+        ? '<div class="recargo-resumen">' +
+          '<span>Recargo <b class="tenue">cobrado</b> por medio de pago' +
+          (v.recargoPorCobrar
+            ? ' <span class="mini tenue">(+ ' + U.money(v.recargoPorCobrar) + ' sin cobrar aún)</span>'
+            : '') +
+          '</span>' +
+          '<b>' + U.money(v.recargo) + '</b>' +
+          '</div>'
+        : '');
 
     // Por sucursal
     const sucs = Object.keys(v.porSucursal);
@@ -29265,7 +31242,7 @@ NASCAR.Avisos = (function () {
         '<p class="mini tenue">No se puede deshacer. Los cierres, gastos, stock y menús no se tocan.</p>' +
         '<label class="campo"><span>Escribe BORRAR para confirmar</span>' +
         '<input class="input" id="bfConfirma" autocomplete="off" style="text-transform:uppercase"></label>' +
-        '<button class="btn btn--rojo btn--bloque" id="bfOk" disabled>Borrar facturas</button>',
+        '<button class="btn btn--peligro btn--bloque" id="bfOk" disabled>Borrar facturas</button>',
     });
     const input = U.$('#bfConfirma', m.raiz);
     const ok = U.$('#bfOk', m.raiz);

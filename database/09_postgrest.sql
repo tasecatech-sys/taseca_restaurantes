@@ -438,15 +438,58 @@ SECURITY DEFINER
 SET search_path = core, public
 AS $$
 DECLARE
-    v      RECORD;
-    v_exp  BIGINT;
-    v_uni  INTEGER[];
+    /* El freno del login, en dos números. Ver database/41_login_con_freno.sql
+       para el porqué. 5 PIN errados seguidos dejan la cuenta en espera. */
+    c_tope      CONSTANT SMALLINT  := 5;
+    c_espera    CONSTANT INTERVAL  := INTERVAL '5 minutes';
+
+    v_pre    RECORD;
+    v        RECORD;
+    v_exp    BIGINT;
+    v_uni    INTEGER[];
+    v_nuevos SMALLINT;
 BEGIN
-    SELECT * INTO v FROM api.fn_login(p_usuario, p_pin) LIMIT 1;
-    IF v.usuario_id IS NULL THEN
+    /* La cuenta, con el MISMO filtro que api.fn_login, pero sin tocar el
+       PIN: si no casa, para fn_login no existe, así que aquí tampoco se le
+       lleva contador ni se la bloquea. */
+    SELECT u.id, u.bloqueado_hasta, u.intentos_fallidos
+      INTO v_pre
+      FROM core.usuarios u
+      LEFT JOIN core.empresas e ON e.id = u.empresa_id
+     WHERE lower(u.usuario) = lower(trim(p_usuario))
+       AND u.activo
+       AND (e.id IS NULL OR e.estado = 'activa');
+
+    IF v_pre.id IS NULL THEN
         PERFORM pg_sleep(0.6);
         RETURN NULL;
     END IF;
+
+    /* En espera: no se gasta un bcrypt, se dice cuánto falta y se corta. */
+    IF v_pre.bloqueado_hasta IS NOT NULL AND v_pre.bloqueado_hasta > now() THEN
+        RETURN jsonb_build_object(
+            'bloqueado', true,
+            'minutos',   GREATEST(1, ceil(extract(epoch FROM (v_pre.bloqueado_hasta - now())) / 60))::INT,
+            'mensaje',   'Demasiados intentos. Espera unos minutos y vuelve a probar.');
+    END IF;
+
+    SELECT * INTO v FROM api.fn_login(p_usuario, p_pin) LIMIT 1;
+
+    IF v.usuario_id IS NULL THEN
+        /* PIN errado en una cuenta que existe y no está en espera. Si
+           veníamos de una espera ya vencida, el contador arranca en 1. */
+        v_nuevos := CASE WHEN v_pre.bloqueado_hasta IS NOT NULL THEN 1
+                         ELSE v_pre.intentos_fallidos + 1 END;
+        UPDATE core.usuarios
+           SET intentos_fallidos = v_nuevos,
+               bloqueado_hasta   = CASE WHEN v_nuevos >= c_tope THEN now() + c_espera ELSE NULL END
+         WHERE id = v_pre.id;
+        PERFORM pg_sleep(0.6);
+        RETURN NULL;
+    END IF;
+
+    /* Acertó: se borra el freno. */
+    UPDATE core.usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = v.usuario_id;
 
     v_exp := extract(epoch FROM now() + make_interval(hours => (SELECT duracion_horas FROM core.jwt_config ORDER BY id DESC LIMIT 1)))::BIGINT;
     SELECT COALESCE(array_agg(unidad_id ORDER BY unidad_id), '{}') INTO v_uni

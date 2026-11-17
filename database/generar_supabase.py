@@ -63,11 +63,12 @@ PARTES = [
     #        · la 19 se queda la última, como estaba, porque enciende RLS
     #          sobre todas las tablas y estas tres añaden columnas.
     #
-    #      NO están la 33 ni la 36: eran parches para bases YA instaladas.
-    #      Sus fallos se corrigieron en origen -la 30 y la 15-, así que en
-    #      una instalación nueva sobrarían. La 34 y la 35 sí están, porque
-    #      arreglan funciones que nacen en los scripts base y no hay dónde
-    #      corregirlas antes.
+    #      NO están la 33, la 36 ni la 41: eran parches para bases YA
+    #      instaladas. Sus fallos se corrigieron en origen -la 30, la 15, y
+    #      la 41 en la 01 (columnas) y la 09 (rest.login con el freno)-, así
+    #      que en una instalación nueva sobrarían. La 34 y la 35 sí están,
+    #      porque arreglan funciones que nacen en los scripts base y no hay
+    #      dónde corregirlas antes.
     ('27_fotos_en_storage.sql',              'Las fotos de la carta viven en Storage'),
     ('28_recetas_cantidad.sql',              'Cuánto gasta cada plato de cada insumo'),
     ('29_billeteras_separadas.sql',          'Nequi, Daviplata y Bre-B, cada una por su lado'),

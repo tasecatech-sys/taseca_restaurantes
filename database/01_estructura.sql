@@ -307,6 +307,10 @@ CREATE TABLE core.usuarios (
     pin_hash        TEXT         NOT NULL,
     activo          BOOLEAN      NOT NULL DEFAULT TRUE,
     ultimo_acceso   TIMESTAMPTZ,
+    -- Freno del login: PIN errados seguidos y hasta cuándo espera la
+    -- cuenta. Ver database/41_login_con_freno.sql.
+    intentos_fallidos SMALLINT   NOT NULL DEFAULT 0,
+    bloqueado_hasta   TIMESTAMPTZ,
     creado_en       TIMESTAMPTZ  NOT NULL DEFAULT now(),
     actualizado_en  TIMESTAMPTZ  NOT NULL DEFAULT now()
 );

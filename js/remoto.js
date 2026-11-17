@@ -774,6 +774,11 @@ NASCAR.Remoto = (function () {
       if (pin === undefined) return false; // el ingreso sólo con PIN es del modo local
       const r = rpc('login', { p_usuario: usuario, p_pin: pin }, false);
       if (!r) return false;
+      /* La cuenta está en espera por demasiados PIN errados (migración 41).
+         No es una sesión: se devuelve el aviso como texto para que la
+         pantalla lo muestre tal cual en vez del «usuario o PIN
+         incorrectos» genérico. */
+      if (r.bloqueado) return { bloqueado: true, mensaje: r.mensaje || 'Demasiados intentos. Espera unos minutos.' };
       if (r.alcance === 'plataforma') {
         // SuperAdmin de Taseca: no pertenece a ninguna empresa
         S.establecerSesion({

@@ -33,7 +33,14 @@
       // Sin usuario se acepta sólo el PIN, como antes.
       const ok = usuario ? A.entrar(usuario, pin) : S.login(pin);
 
-      if (ok) {
+      /* La cuenta está en espera por demasiados PIN errados (migración 41).
+         Es un objeto, no una sesión: hay que mirarlo ANTES del `if (ok)`,
+         porque un objeto es «truthy» y colaría como si hubiera entrado. */
+      if (ok && ok.bloqueado) {
+        U.toast(ok.mensaje || 'Demasiados intentos. Espera unos minutos.', 'error');
+        $('#pin').value = '';
+        $('#pin').focus();
+      } else if (ok) {
         $('#pin').value = '';
         mostrarPanel();
       } else {
