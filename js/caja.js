@@ -43,6 +43,12 @@ NASCAR.Caja = (function () {
   let ticket = [];
   let vista = 'vender';        // 'vender' | 'cobrar'
 
+  /* Con cuánto paga el cliente, en el mostrador. Vive aquí y no dentro de
+     pintarTicket porque el ticket se repinta con cada «+» y lo escrito no
+     puede borrarse por agregar un producto. El cambio se recalcula solo
+     contra el total nuevo. */
+  let recibidoMostrador = null;
+
   /* Los pedidos marcados para cobrar de una vez. Vive aquí y no en el
      DOM porque la lista se repinta sola cada pocos segundos y la marca
      tiene que sobrevivir a eso. */
@@ -295,6 +301,11 @@ NASCAR.Caja = (function () {
 
       '<div class="caja-ticket__total"><span>Total</span><b>' + U.money(total()) + '</b></div>' +
 
+      /* En el mostrador el cliente paga de frente y casi siempre con un
+         billete. Sin ticket no hay nada que cobrar, así que tampoco hay
+         cambio que calcular. */
+      (ticket.length ? U.bloqueCambio(total(), 'cm', recibidoMostrador) : '') +
+
       '<button class="btn btn--bloque caja-ticket__cobrar" id="cajaCobrar"' +
       (ticket.length ? '' : ' disabled') + '>' +
       '💵 Cobrar' + (n ? ' · ' + n + (n === 1 ? ' producto' : ' productos') : '') + '</button>' +
@@ -304,7 +315,24 @@ NASCAR.Caja = (function () {
       '</div>';
 
     const sel = $('#cajaMetodo');
-    if (sel) sel.addEventListener('change', function () { metodo = this.value; });
+
+    /* Sólo el efectivo deja cambio. El bloque se queda montado y se
+       muestra u oculta: así no se pierde lo ya escrito al cambiar de
+       método por error. */
+    const cajaCambio = $('#cmCaja');
+    function seguirMetodo() {
+      if (cajaCambio) cajaCambio.classList.toggle('oculto', metodo !== 'efectivo');
+    }
+    if (sel)
+      sel.addEventListener('change', function () {
+        metodo = this.value;
+        seguirMetodo();
+      });
+
+    leerCambio = ticket.length
+      ? U.montarCambio(caja, total(), 'cm', function (e) { recibidoMostrador = e.recibido; })
+      : null;
+    seguirMetodo();
 
     U.unaVez($('#cajaCobrar'), '⏳ Cobrando…', cobrar);
   }
@@ -312,9 +340,20 @@ NASCAR.Caja = (function () {
   /* =================================================================
      COBRAR
      ================================================================= */
+  /* Lo devuelve montarCambio; se rellena en cada repintado del ticket. */
+  let leerCambio = null;
+
   function cobrar() {
     if (!ticket.length) return false;
     if (!A.exigir('pagos')) return false;
+
+    /* La venta de mostrador NACE cobrada: una vez registrada no hay dónde
+       volver a cobrar. Si lo que hay en la mano no alcanza, se para aquí. */
+    const efectivo = metodo === 'efectivo' && leerCambio ? leerCambio() : null;
+    if (efectivo && efectivo.falta > 0) {
+      U.toast('No alcanza: faltan ' + U.money(efectivo.falta) + '.', 'error');
+      return false;
+    }
 
     /* Una clave por intento: si el cobro falla y se vuelve a tocar, va la
        misma y la base no registra dos ventas. */
@@ -343,8 +382,10 @@ NASCAR.Caja = (function () {
     const aCocina = ticket.some((x) => x.requierePreparacion);
     ticket = [];
     claveVenta = '';
+    recibidoMostrador = null;   // lo del cliente anterior no es lo del siguiente
     U.toast(
       'Venta ' + venta.codigo + ' cobrada · ' + U.money(venta.total) +
+      (efectivo && efectivo.cambio > 0 ? ' · devuelve ' + U.money(efectivo.cambio) : '') +
       (aCocina ? '. Va a cocina.' : '. Entregada.'),
       aCocina ? 'info' : 'ok'
     );

@@ -2501,6 +2501,80 @@ textarea {
   font-size: 30px;
   color: var(--blanco);
 }
+/* ── EL CAMBIO EN EFECTIVO ───────────────────────────────────────────
+   El número que de verdad importa aquí es cuánto devolver, y se mira de
+   pie, de lejos y con prisa. Por eso va en grande y en verde: a un metro
+   del mostrador tiene que leerse sin acercarse. Lo que falta va en
+   --peligro, que es el color de las señales del sistema y no cambia de
+   una empresa a otra.
+   ─────────────────────────────────────────────────────────────────── */
+.cambio {
+  margin: 4px 0 12px;
+}
+.cambio__monto {
+  font-family: var(--f-cond);
+  font-size: var(--txt-xl);
+  letter-spacing: 0.02em;
+}
+.cambio__rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cambio__rapidos .btn {
+  flex: 1 1 auto;
+  min-width: 62px;
+}
+.cambio__resultado:empty {
+  display: none;
+}
+.cambio__devolver,
+.cambio__justo,
+.cambio__falta {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+}
+.cambio__devolver {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-color: var(--verde);
+  background: rgba(18, 183, 106, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--verde) 11%, transparent);
+}
+.cambio__devolver span {
+  font-size: var(--txt-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gris-osc);
+}
+.cambio__devolver b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-2xl);
+  line-height: 1;
+  color: var(--verde);
+}
+.cambio__justo {
+  font-size: var(--txt-sm);
+  color: var(--gris);
+  border-color: var(--borde);
+}
+.cambio__falta {
+  font-size: var(--txt-sm);
+  color: var(--peligro-claro);
+  border-color: var(--peligro);
+  background: rgba(198, 40, 40, 0.1); /* respaldo: Safari < 16.2 no conoce color-mix */
+  background: color-mix(in srgb, var(--peligro) 11%, transparent);
+}
+.cambio__falta b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-lg);
+}
+
 .caja-ticket__cobrar {
   background: var(--verde);
   border-color: var(--verde);

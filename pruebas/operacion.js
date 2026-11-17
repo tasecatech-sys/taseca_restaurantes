@@ -393,6 +393,114 @@
   /* ================================================================
      ARRANQUE
      ================================================================ */
+  /* =================================================================
+     6 · EL CAMBIO EN EFECTIVO
+
+     Aritmética de caja: si esto se desvía, alguien devuelve de menos a
+     un cliente o de más a costa del negocio. Son funciones puras, así
+     que se prueban sin tocar la base.
+     ================================================================= */
+  function pruebasCambio() {
+    grupo('6 · Cambio en efectivo');
+
+    const U = window.NASCAR && NASCAR.UI;
+    if (!U || !U.montosProbables) {
+      probar('ui.js trae la calculadora de cambio', false, 'no se encontró U.montosProbables');
+      return;
+    }
+
+    /* --- Leer lo que escribe la caja ------------------------------ */
+    const lecturas = [
+      ['25.000', 25000, 'con los puntos que pone el propio campo'],
+      ['$ 25.000', 25000, 'si alguien pega el valor con el signo'],
+      ['25000', 25000, 'tecleado a secas'],
+      ['', null, 'vacío no es cero: es «no lo usé»'],
+      ['abc', null, 'letras no son dinero'],
+      ['  12.345  ', 12345, 'con espacios alrededor'],
+    ];
+    lecturas.forEach(function (c) {
+      probar(
+        'Lee «' + c[0] + '» como ' + (c[1] === null ? 'nada' : c[1]),
+        U.montoEscrito(c[0]) === c[1],
+        c[2] + ' — salió ' + U.montoEscrito(c[0])
+      );
+    });
+
+    probar(
+      'Un dedo apoyado en una tecla se topa',
+      U.montoEscrito('999999999999') === 99999999,
+      'quedó ' + U.montoEscrito('999999999999')
+    );
+
+    /* --- Con cuánto se suele pagar -------------------------------- */
+    const atajos = [
+      [23400, [25000, 30000, 40000]],
+      [8500, [10000, 20000, 50000]],
+      [99000, [100000]],
+      [112000, [115000, 120000, 150000]],
+    ];
+    atajos.forEach(function (c) {
+      const r = U.montosProbables(c[0]);
+      probar(
+        'Para ' + c[0] + ' ofrece ' + c[1].join(', '),
+        r.join(',') === c[1].join(','),
+        'ofreció ' + (r.join(', ') || 'nada')
+      );
+    });
+
+    probar(
+      'Nunca ofrece un atajo por DEBAJO del total',
+      [1, 999, 7350, 50000, 100000, 237800].every(function (t) {
+        return U.montosProbables(t).every((m) => m > t);
+      }),
+      'un atajo menor que la cuenta sería un cobro incompleto de un toque'
+    );
+
+    probar(
+      'Los atajos van de menor a mayor y sin repetirse',
+      [1500, 23400, 50000, 112000].every(function (t) {
+        const r = U.montosProbables(t);
+        return r.every((m, i) => i === 0 || m > r[i - 1]);
+      }),
+      'dos botones iguales serían dos botones desperdiciados'
+    );
+
+    /* --- La resta, que es el punto de todo esto ------------------- */
+    const marco = document.createElement('div');
+    marco.innerHTML = U.bloqueCambio(23400, 'tst');
+    document.body.appendChild(marco);
+    const leer = U.montarCambio(marco, 23400, 'tst');
+    const campo = marco.querySelector('#tstRecibido');
+
+    function conMonto(v) {
+      campo.value = v;
+      campo.dispatchEvent(new Event('input', { bubbles: true }));
+      return leer();
+    }
+
+    let e = conMonto('50.000');
+    probar('50.000 sobre 23.400 devuelve 26.600', e.cambio === 26600 && e.falta === 0, 'cambio ' + e.cambio);
+
+    e = conMonto('23.400');
+    probar('Pagar justo no devuelve nada', e.cambio === 0 && e.falta === 0, 'cambio ' + e.cambio);
+
+    e = conMonto('20.000');
+    probar(
+      'Pagar de menos avisa de cuánto falta, y no inventa cambio',
+      e.falta === 3400 && e.cambio === 0,
+      'faltan ' + e.falta + ', cambio ' + e.cambio
+    );
+
+    e = conMonto('');
+    probar(
+      'Sin escribir nada no hay ni cambio ni falta',
+      e.recibido === null && e.cambio === 0 && e.falta === 0,
+      'la caja puede cobrar sin usar la calculadora'
+    );
+
+    marco.remove();
+  }
+
   function arrancar() {
     if (!S) {
       marcador.textContent = 'No se cargó NASCAR.Store. ¿Están los /js/*.js en su sitio?';
@@ -415,7 +523,7 @@
     UNIDAD = conCarta[0].id;
     PLATO = S.getCarta({ sucursalId: UNIDAD }).filter((p) => Number(p.precio) > 0)[0];
 
-    const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes, pruebasDinero];
+    const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes, pruebasDinero, pruebasCambio];
     bloques.forEach(function (fn) {
       try {
         fn();

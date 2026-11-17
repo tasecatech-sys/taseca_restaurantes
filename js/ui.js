@@ -155,6 +155,154 @@ NASCAR.UI = (function () {
     return 'badge--rojo';
   }
 
+  /* ---------------------------------------------------------------
+     EL CAMBIO EN EFECTIVO
+
+     Cuando el cliente paga con un billete hay que devolverle, y hasta
+     ahora esa resta se hacía de cabeza, de pie, frente al cliente y con
+     fila detrás. Aquí se escribe con cuánto paga y el cambio se ve en
+     grande ANTES de confirmar, que es cuando todavía se puede corregir.
+
+     Sólo aparece con EFECTIVO: lo que entra por datáfono, transferencia
+     o billetera entra por el valor exacto y no hay nada que devolver.
+
+     No guarda nada. Es una calculadora en el sitio donde hace falta.
+     --------------------------------------------------------------- */
+
+  const fmtMiles = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
+
+  /** Puntos de miles para leer la cifra mientras se escribe: 25000 → «25.000». */
+  function conMiles(n) {
+    return fmtMiles.format(Math.round(Number(n) || 0));
+  }
+
+  /** Lo escrito, como número. «$ 25.000» → 25000; vacío o sin cifras → null. */
+  function montoEscrito(texto) {
+    const d = String(texto == null ? '' : texto).replace(/\D/g, '');
+    if (!d) return null;
+    /* Un dedo apoyado en el 9 no puede volverse un número absurdo que
+       rompa la resta. El tope es alto a propósito: cabe cualquier cuenta
+       real y no cabe un error de tecleo infinito. */
+    return Math.min(Number(d), 99999999);
+  }
+
+  /**
+   * Con cuánto suele pagar alguien que debe `total`.
+   *
+   * No son múltiplos arbitrarios: son los redondeos que de verdad se
+   * usan con los billetes que circulan. Para 23.400 → 25.000, 30.000 y
+   * 40.000; para 8.500 → 10.000, 20.000 y 50.000.
+   */
+  function montosProbables(total) {
+    const t = Math.max(0, Math.ceil(Number(total) || 0));
+    const vistos = {};
+    const salida = [];
+    [5000, 10000, 20000, 50000, 100000].forEach(function (paso) {
+      const m = Math.ceil(t / paso) * paso;
+      if (m > t && !vistos[m]) {
+        vistos[m] = 1;
+        salida.push(m);
+      }
+    });
+    return salida.sort((a, b) => a - b).slice(0, 3);
+  }
+
+  /** El HTML del bloque. `pre` prefija los id para poder usarlo dos veces
+      en la misma página sin que choquen. */
+  function bloqueCambio(total, pre, recibidoInicial) {
+    pre = pre || 'cb';
+    const valor = recibidoInicial ? conMiles(recibidoInicial) : '';
+    return (
+      '<div class="cambio" id="' + pre + 'Caja">' +
+      '<label class="campo"><span>¿Con cuánto paga?</span>' +
+      '<input class="input cambio__monto" id="' + pre + 'Recibido" type="text" inputmode="numeric" ' +
+      'autocomplete="off" value="' + esc(valor) + '" placeholder="' + esc(conMiles(total)) + '"></label>' +
+      '<div class="cambio__rapidos">' +
+      '<button type="button" class="btn btn--fantasma btn--xs" data-cambio-monto="' + total + '">Justo</button>' +
+      montosProbables(total)
+        .map(function (m) {
+          return '<button type="button" class="btn btn--fantasma btn--xs" data-cambio-monto="' + m + '">' +
+            esc(conMiles(m)) + '</button>';
+        })
+        .join('') +
+      '</div>' +
+      '<div class="cambio__resultado" id="' + pre + 'Resultado" aria-live="polite"></div>' +
+      '</div>'
+    );
+  }
+
+  /**
+   * Enciende el bloque: los botones rápidos, los puntos de miles y el
+   * cambio en vivo.
+   *
+   * Devuelve una función que dice en qué estado está:
+   *     { recibido, cambio, falta }
+   * `falta > 0` significa que lo recibido NO alcanza: quien llama decide
+   * si eso bloquea el cobro (en caja, sí).
+   */
+  function montarCambio(raiz, total, pre, alCambiar) {
+    pre = pre || 'cb';
+    const vacio = { recibido: null, cambio: 0, falta: 0 };
+    const caja = $('#' + pre + 'Caja', raiz);
+    if (!caja) return function () { return vacio; };
+
+    const campo = $('#' + pre + 'Recibido', caja);
+    const salida = $('#' + pre + 'Resultado', caja);
+    let estado = vacio;
+
+    function pintar(normalizar) {
+      const r = montoEscrito(campo.value);
+
+      /* Reescribir el campo en cada tecla movería el cursor al final y
+         haría imposible corregir una cifra por el medio. Se reescribe
+         sólo si el cursor YA está al final, o al salir del campo. */
+      if (r !== null && (normalizar || campo.selectionStart === campo.value.length)) {
+        const texto = conMiles(r);
+        if (campo.value !== texto) {
+          campo.value = texto;
+          try {
+            campo.setSelectionRange(texto.length, texto.length);
+          } catch (e) {
+            /* input oculto o de un tipo que no deja mover el cursor */
+          }
+        }
+      }
+
+      estado =
+        r === null
+          ? vacio
+          : { recibido: r, cambio: Math.max(0, r - total), falta: Math.max(0, total - r) };
+
+      if (r === null) {
+        salida.innerHTML = '';
+      } else if (estado.falta > 0) {
+        salida.innerHTML =
+          '<div class="cambio__falta">No alcanza · faltan <b>' + esc(money(estado.falta)) + '</b></div>';
+      } else if (estado.cambio === 0) {
+        salida.innerHTML = '<div class="cambio__justo">Pagó justo · no hay que devolver</div>';
+      } else {
+        salida.innerHTML =
+          '<div class="cambio__devolver"><span>Devuelve</span><b>' + esc(money(estado.cambio)) + '</b></div>';
+      }
+
+      if (alCambiar) alCambiar(estado);
+    }
+
+    campo.addEventListener('input', function () { pintar(false); });
+    campo.addEventListener('blur', function () { pintar(true); });
+    caja.addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-cambio-monto]');
+      if (!b) return;
+      ev.preventDefault();
+      campo.value = conMiles(b.dataset.cambioMonto);
+      pintar(true);
+      campo.focus();
+    });
+
+    pintar(true);
+    return function () { return estado; };
+  }
+
   function el(tag, attrs, html) {
     const n = document.createElement(tag);
     if (attrs) Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
@@ -683,6 +831,11 @@ NASCAR.UI = (function () {
 
   return {
     money: money,
+    conMiles: conMiles,
+    montoEscrito: montoEscrito,
+    montosProbables: montosProbables,
+    bloqueCambio: bloqueCambio,
+    montarCambio: montarCambio,
     fechaLarga: fechaLarga,
     hora: hora,
     haceCuanto: haceCuanto,

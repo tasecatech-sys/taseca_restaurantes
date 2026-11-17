@@ -1302,6 +1302,10 @@
           .join('') +
         '</select></label>' +
 
+        /* Sólo el efectivo deja cambio. Se pinta siempre y se muestra u
+           oculta según el método, para no rearmar el modal a cada rato. */
+        U.bloqueCambio(p.total, 'cp') +
+
         '<p class="mini ambar">Confirma sólo con el dinero en la mano, el voucher del datáfono o la transferencia ' +
         'vista en el banco. Esta acción marca el pedido como cobrado y ya no se puede cambiar.</p>' +
 
@@ -1315,9 +1319,31 @@
     });
 
     U.$('#cpNo', m.raiz).onclick = m.cerrar;
+
+    /* La calculadora de cambio sólo tiene sentido con efectivo: lo que
+       entra por datáfono, transferencia o billetera entra exacto. */
+    const selMetodo = U.$('#cpMetodo', m.raiz);
+    const cajaCambio = U.$('#cpCaja', m.raiz);
+    const leerCambio = U.montarCambio(m.raiz, p.total, 'cp');
+    function seguirMetodo() {
+      cajaCambio.classList.toggle('oculto', selMetodo.value !== 'efectivo');
+    }
+    selMetodo.addEventListener('change', seguirMetodo);
+    seguirMetodo();
+
     U.unaVez(U.$('#cpSi', m.raiz), '⏳ Confirmando…', function () {
       if (!A.exigir('pagos')) return false;
       const metodo = U.$('#cpMetodo', m.raiz).value;
+
+      /* Confirmar es irreversible desde esta pantalla. Si lo que hay en
+         la mano no alcanza, no es un cobro: es un cobro a medias, y el
+         sistema no sabe representarlo. Mejor pararlo aquí. */
+      const efectivo = metodo === 'efectivo' ? leerCambio() : null;
+      if (efectivo && efectivo.falta > 0) {
+        U.toast('No alcanza: faltan ' + U.money(efectivo.falta) + '.', 'error');
+        return false;
+      }
+
       // Queda registrado quién confirmó el pago, cuándo y con qué método
       try {
         S.confirmarPago(pedidoId, U.$('#cpRef', m.raiz).value.trim(), A.firma(), metodo);
@@ -1326,7 +1352,11 @@
         return false; // el botón vuelve: se puede reintentar
       }
       m.cerrar();
-      U.toast('Pago de ' + p.codigo + ' confirmado · ' + nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) + '.');
+      U.toast(
+        'Pago de ' + p.codigo + ' confirmado · ' +
+        nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) +
+        (efectivo && efectivo.cambio > 0 ? ' · devuelve ' + U.money(efectivo.cambio) : '') + '.'
+      );
       if (alTerminar) alTerminar();
       refrescarTodo();
     });
