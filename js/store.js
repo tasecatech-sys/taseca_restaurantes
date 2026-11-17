@@ -4231,6 +4231,21 @@ NASCAR.Store = (function () {
       topPlatos: [],
       pendientesCobro: 0,
       montoPendiente: 0,
+      /* CUÁNTO ENTRÓ POR RECARGO DEL MÉTODO DE PAGO.
+
+         No es venta de comida: es lo que la empresa le cobra de más a
+         quien paga por un medio que le cuesta. Va aparte porque responde
+         otra pregunta -«¿cuánto me está costando cobrar por Nequi?»- y
+         porque no se reparte como las ventas.
+
+         Ya está dentro de `total` y de `porPago[k].total`; aquí se
+         desglosa, no se vuelve a sumar.
+
+         Se separa lo COBRADO de lo que todavía no ha entrado: «cuánto me
+         ha dejado cobrar por Nequi» es una pregunta sobre dinero en la
+         mano, y un pedido sin confirmar no es dinero en la mano. */
+      recargo: 0,
+      recargoPorCobrar: 0,
     };
 
     const conteoPlatos = {};
@@ -4247,9 +4262,12 @@ NASCAR.Store = (function () {
       /* Por método sólo cuenta lo que caja ya cobró: mientras no se confirme,
          el método no se conoce de verdad (una mesa se toma sin saberlo). */
       const clavePago = p.estadoPago === 'confirmado' ? p.metodoPago : 'por_cobrar';
-      r.porPago[clavePago] = r.porPago[clavePago] || { n: 0, total: 0 };
+      r.porPago[clavePago] = r.porPago[clavePago] || { n: 0, total: 0, recargo: 0 };
       r.porPago[clavePago].n += 1;
       r.porPago[clavePago].total += p.total;
+      r.porPago[clavePago].recargo += Number(p.recargo) || 0;
+      if (p.estadoPago === 'confirmado') r.recargo += Number(p.recargo) || 0;
+      else r.recargoPorCobrar += Number(p.recargo) || 0;
 
       r.porSucursal[p.sucursalId] = r.porSucursal[p.sucursalId] || { n: 0, total: 0 };
       r.porSucursal[p.sucursalId].n += 1;

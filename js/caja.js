@@ -242,8 +242,27 @@ NASCAR.Caja = (function () {
     pintarTicket();
   }
 
-  function total() {
+  function subtotalTicket() {
     return ticket.reduce((s, x) => s + x.precio * x.cantidad, 0);
+  }
+
+  /* Lo que el método de pago le cobra encima al cliente. Lo calcula el
+     store, no esta pantalla: la factura y el panel tienen que decir el
+     mismo número. */
+  function recargoTicket() {
+    return S.recargoDeMetodo(metodo, subtotalTicket());
+  }
+
+  /* LO QUE SE LE PIDE AL CLIENTE.
+
+     Esto sumaba sólo los productos. crearPedido SÍ le sumaba el recargo
+     del método, así que con Nequi la caja leía 9.000 en pantalla, le
+     pedía 9.000 al cliente, y el sistema registraba la venta en 9.500:
+     faltaban 500 en el cajón por cada venta con recargo y nada lo
+     avisaba. Encima, el cambio se calculaba contra el número de la
+     pantalla, así que también se devolvía de más. */
+  function total() {
+    return subtotalTicket() + recargoTicket();
   }
 
   function metodosActivos() {
@@ -299,6 +318,16 @@ NASCAR.Caja = (function () {
         .join('') +
       '</select></label>' +
 
+      /* El recargo sólo se nombra si lo hay: una línea en cero no informa
+         y hace dudar de si se está cobrando algo de más. Pero si lo hay,
+         tiene que verse, porque es lo que la caja le va a decir al
+         cliente que pague. */
+      (recargoTicket() > 0
+        ? '<div class="caja-ticket__recargo"><span>Recargo · ' +
+          U.esc(nombreCorto(metodosActivos().find((m) => m.id === metodo) || { id: metodo })) +
+          '</span><b>' + U.money(recargoTicket()) + '</b></div>'
+        : '') +
+
       '<div class="caja-ticket__total"><span>Total</span><b>' + U.money(total()) + '</b></div>' +
 
       /* En el mostrador el cliente paga de frente y casi siempre con un
@@ -326,7 +355,10 @@ NASCAR.Caja = (function () {
     if (sel)
       sel.addEventListener('change', function () {
         metodo = this.value;
-        seguirMetodo();
+        /* Se repinta entero: con el método cambia el RECARGO y por tanto
+           el total, los atajos del cambio y lo que hay que devolver. Lo
+           ya escrito sobrevive en recibidoMostrador. */
+        pintarTicket();
       });
 
     leerCambio = ticket.length

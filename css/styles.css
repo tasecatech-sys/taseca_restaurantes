@@ -2484,6 +2484,51 @@ textarea {
   border-top: 1px solid var(--borde-fuerte);
   background: var(--negro-700);
 }
+/* El total de lo cobrado por recargo, debajo de las barras por método.
+   Es dinero que entró y que no es comida vendida, así que se separa con
+   una línea en vez de confundirse con una barra más. */
+.recargo-resumen {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--borde);
+  font-size: var(--txt-sm);
+  color: var(--gris);
+}
+.recargo-resumen > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.recargo-resumen > b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-lg);
+  color: var(--ambar);
+  /* La cifra no se parte: una cantidad de dinero cortada en dos líneas
+     se lee mal y se confunde con dos cifras. */
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* El recargo del método, encima del total. Discreto pero legible: es
+   dinero que el cliente va a pagar y que no estaba en la carta. */
+.caja-ticket__recargo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: var(--txt-sm);
+  color: var(--gris);
+}
+.caja-ticket__recargo b {
+  font-family: var(--f-cond);
+  font-size: var(--txt-md);
+  color: var(--ambar);
+}
+
 .caja-ticket__total {
   display: flex;
   align-items: baseline;

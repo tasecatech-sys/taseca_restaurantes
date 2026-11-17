@@ -667,6 +667,88 @@
     );
   }
 
+  /* =================================================================
+     9 · EL RECARGO SE VE Y SE CUENTA
+
+     Dos cosas distintas:
+       · que la pantalla del mostrador diga lo mismo que se registra -si
+         no, falta plata en el cajón y nadie avisa-;
+       · que se pueda saber cuánto entró por recargo, y por qué medio.
+     ================================================================= */
+  function pruebasRecargoVisible() {
+    grupo('9 · El recargo se ve y se cuenta');
+
+    const U = window.NASCAR && NASCAR.UI;
+    const cfg = S.getConfig();
+    S.guardarConfig({
+      metodosPago: (cfg.metodosPago || []).map(function (m) {
+        if (m.id === 'nequi') return Object.assign({}, m, { recargo: 500, recargoTipo: 'fijo', activo: true });
+        if (m.id === 'efectivo') return Object.assign({}, m, { recargo: 0, activo: true });
+        return m;
+      }),
+    });
+
+    /* --- Lo que la caja le pide al cliente --------------------------
+       El mostrador suma precio × cantidad y le añade el recargo del
+       método. Esta cuenta vive en caja.js, pero el número tiene que
+       salir del store: si los dos no coinciden, la pantalla miente. */
+    const base = PLATO.precio;
+    probar(
+      'El total con recargo sale del store, no de la pantalla',
+      base + S.recargoDeMetodo('nequi', base) === base + 500,
+      base + ' + 500 = ' + (base + S.recargoDeMetodo('nequi', base))
+    );
+    probar(
+      'Un método sin recargo no añade nada',
+      S.recargoDeMetodo('efectivo', base) === 0,
+      'una línea de recargo en cero sólo haría dudar al cliente'
+    );
+
+    /* --- Y lo que se registra dice lo mismo ------------------------ */
+    const venta = S.crearPedido(unPedido({
+      clave: 'rv-' + Date.now(), tipo: 'mostrador', metodoPago: 'nequi',
+      cliente: {}, costoDomicilio: 0,
+    }));
+    probar(
+      'La venta de mostrador se registra CON el recargo',
+      venta.total === venta.subtotal + 500 && venta.recargo === 500,
+      'subtotal ' + venta.subtotal + ' + recargo ' + venta.recargo + ' = ' + venta.total +
+        ' — si la pantalla dijera sólo el subtotal, faltarían 500 en el cajón'
+    );
+
+    /* --- El desglose del dinero ------------------------------------ */
+    const v = S.ventas(S.hoy(), S.hoy());
+    probar(
+      'El informe desglosa el recargo por medio de pago',
+      v.porPago.nequi && v.porPago.nequi.recargo > 0,
+      'nequi: ' + (v.porPago.nequi ? U.money(v.porPago.nequi.recargo) : 'sin datos')
+    );
+    probar(
+      'Lo COBRADO y lo que falta por cobrar van por separado',
+      typeof v.recargo === 'number' && typeof v.recargoPorCobrar === 'number',
+      'cobrado ' + U.money(v.recargo) + ' · sin cobrar ' + U.money(v.recargoPorCobrar)
+    );
+
+    /* La venta de mostrador nace cobrada, así que su recargo cuenta
+       como recibido desde el primer momento. */
+    const soloConfirmados = S.getPedidos({ desde: S.hoy(), hasta: S.hoy() })
+      .filter((p) => p.estado !== 'cancelado' && p.estado !== 'anulado' && p.estadoPago === 'confirmado')
+      .reduce((s, p) => s + (Number(p.recargo) || 0), 0);
+    probar(
+      'El recargo cobrado cuenta SÓLO los pagos confirmados',
+      v.recargo === soloConfirmados,
+      'el informe dice ' + U.money(v.recargo) + ' y los confirmados suman ' + U.money(soloConfirmados) +
+        ' — un pedido sin confirmar no es dinero en la mano'
+    );
+
+    probar(
+      'El recargo nunca se cuenta dos veces: ya está dentro del total',
+      v.porPago.nequi && v.porPago.nequi.total >= v.porPago.nequi.recargo,
+      'total ' + (v.porPago.nequi ? U.money(v.porPago.nequi.total) : '—') +
+        ' incluye el recargo, no se suma aparte'
+    );
+  }
+
   function arrancar() {
     if (!S) {
       marcador.textContent = 'No se cargó NASCAR.Store. ¿Están los /js/*.js en su sitio?';
@@ -690,7 +772,8 @@
     PLATO = S.getCarta({ sucursalId: UNIDAD }).filter((p) => Number(p.precio) > 0)[0];
 
     const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes,
-                     pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo, pruebasPagaCon];
+                     pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo, pruebasPagaCon,
+                     pruebasRecargoVisible];
     bloques.forEach(function (fn) {
       try {
         fn();

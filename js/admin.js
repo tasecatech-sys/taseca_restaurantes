@@ -2224,20 +2224,52 @@
           .join('')
       : '<p class="tenue mini">Sin datos.</p>';
 
+    /* Cómo se llama cada medio de pago. Sale de la configuración de la
+       empresa y no de un mapa fijo: desde que Nequi, Daviplata y Bre-B son
+       métodos aparte, el mapa de cuatro entradas los dejaba fuera y el
+       informe decía «nequi» en minúscula. */
+    function nombrePago(k) {
+      if (k === 'por_cobrar') return '⏳ Por cobrar en caja';
+      const m = (S.getConfig().metodosPago || []).find((x) => x.id === k);
+      return (m && m.nombre) ||
+        { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[k] || k;
+    }
+
     // Por método de pago
     const pagos = Object.keys(v.porPago);
     const maxPago = Math.max(1, ...pagos.map((k) => v.porPago[k].total));
-    $('#porPago').innerHTML = pagos.length
-      ? pagos
-          .map((k) =>
-            barra(
-              { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono', por_cobrar: '⏳ Por cobrar en caja' }[k] || k,
-              U.money(v.porPago[k].total) + ' · ' + v.porPago[k].n + ' ped.',
-              (v.porPago[k].total / maxPago) * 100
+    $('#porPago').innerHTML =
+      (pagos.length
+        ? pagos
+            .map((k) =>
+              barra(
+                nombrePago(k),
+                U.money(v.porPago[k].total) + ' · ' + v.porPago[k].n + ' ped.' +
+                  /* El recargo ya está dentro de ese total. Se dice aparte
+                     porque es lo ÚNICO de esa cifra que no es comida
+                     vendida: es lo que se cobró por el medio de pago. */
+                  (v.porPago[k].recargo
+                    ? ' <span class="ambar">· recargo ' + U.money(v.porPago[k].recargo) + '</span>'
+                    : ''),
+                (v.porPago[k].total / maxPago) * 100
+              )
             )
-          )
-          .join('')
-      : '<p class="tenue mini">Sin datos.</p>';
+            .join('')
+        : '<p class="tenue mini">Sin datos.</p>') +
+
+      /* El total del recargo, abajo y en una sola línea: responde
+         «¿cuánto me entró por cobrar con recargo?» sin tener que sumar
+         las barras de arriba a mano. */
+      (v.recargo || v.recargoPorCobrar
+        ? '<div class="recargo-resumen">' +
+          '<span>Recargo <b class="tenue">cobrado</b> por medio de pago' +
+          (v.recargoPorCobrar
+            ? ' <span class="mini tenue">(+ ' + U.money(v.recargoPorCobrar) + ' sin cobrar aún)</span>'
+            : '') +
+          '</span>' +
+          '<b>' + U.money(v.recargo) + '</b>' +
+          '</div>'
+        : '');
 
     // Por sucursal
     const sucs = Object.keys(v.porSucursal);
