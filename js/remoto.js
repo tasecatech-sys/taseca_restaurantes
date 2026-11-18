@@ -291,6 +291,7 @@ NASCAR.Remoto = (function () {
       nombre: p.nombre,
       desc: p.descripcion || '',
       emoji: p.emoji || '',
+      imagen: p.imagen || '',
       precio: n(p.precio),
       cupos: p.cupos === null ? null : n(p.cupos),
       vendidos: n(p.vendidos),

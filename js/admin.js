@@ -2150,6 +2150,24 @@
         '<label class="campo"><span>Bebida</span><input class="input" id="dBeb" value="' + U.esc(p.bebida || '') + '"></label>' +
         '</div></details>' +
 
+        /* Foto del plato: se sube al mismo bucket que la carta (Storage). Sin
+           nube queda sólo la casilla de la dirección. */
+        '<div class="campo"><span>Foto del plato</span>' +
+        '<div class="foto-plato" id="dFotoCaja">' +
+        '<div class="foto-plato__vista" id="dFotoVista"></div>' +
+        '<div class="foto-plato__acciones">' +
+        (typeof S.subirFotoCarta === 'function'
+          ? '<label class="btn btn--fantasma btn--sm" style="cursor:pointer;margin:0">📷 Subir foto' +
+            '<input type="file" id="dFotoArchivo" accept="image/*" hidden></label> '
+          : '') +
+        '<button type="button" class="btn btn--fantasma btn--sm" id="dFotoQuitar">Quitar</button>' +
+        '<p class="mini tenue" style="margin:8px 0 0">' +
+        (typeof S.subirFotoCarta === 'function'
+          ? 'Se guarda en la carpeta de tu empresa. Subir otra con el mismo plato la reemplaza.'
+          : 'Pega la dirección de una imagen que ya esté publicada.') +
+        '</p></div></div>' +
+        '<input class="input mt-8" id="dImagen" value="' + U.esc(p.imagen || '') + '" placeholder="https://…"></div>' +
+
         '<label class="fila mini" style="gap:8px;margin:6px 0 16px">' +
         '<input type="checkbox" id="dDisp"' + (p.disponible !== false ? ' checked' : '') +
         ' style="accent-color:var(--verde);width:18px;height:18px"> Disponible (el cliente lo ve)</label>' +
@@ -2164,6 +2182,40 @@
       const b = e.target.closest('[data-emoji]');
       if (b) U.$('#dEmoji', m.raiz).value = b.dataset.emoji;
     });
+
+    /* La foto, igual que en la carta: todo gira en torno a #dImagen -ahí vive
+       la dirección que se guarda-. La subida va al bucket de la empresa. */
+    (function conectarFotoPlato() {
+      const campo = U.$('#dImagen', m.raiz);
+      const vista = U.$('#dFotoVista', m.raiz);
+      const archivo = U.$('#dFotoArchivo', m.raiz);
+      const quitar = U.$('#dFotoQuitar', m.raiz);
+      if (!campo || !vista) return;
+
+      const nombreFoto = function () {
+        const base = 'plato-' + String((existente && existente.id) || Date.now().toString(36));
+        return base.replace(/[^A-Za-z0-9._-]/g, '-') + '.jpg';
+      };
+      const pintar = function () {
+        const src = campo.value.trim();
+        vista.innerHTML = src ? '<img src="' + U.esc(src) + '" alt="">' : '<span class="mini tenue">Sin foto</span>';
+        if (quitar) quitar.classList.toggle('oculto', !src);
+      };
+      campo.addEventListener('input', pintar);
+      if (quitar) quitar.addEventListener('click', function () { campo.value = ''; pintar(); });
+      if (archivo)
+        archivo.addEventListener('change', function () {
+          const f = this.files && this.files[0];
+          if (!f) return;
+          this.value = '';
+          vista.innerHTML = '<span class="mini tenue">⏳ Subiendo…</span>';
+          U.comprimirImagen(f)
+            .then((img) => S.subirFotoCarta(img.dataUrl, nombreFoto()))
+            .then(function (url) { campo.value = url; pintar(); U.toast('Foto subida.'); })
+            .catch(function (err) { pintar(); U.toast(err.message || 'No se pudo subir la foto.', 'error'); });
+        });
+      pintar();
+    })();
 
     U.$('#dNo', m.raiz).onclick = m.cerrar;
     U.$('#dSi', m.raiz).onclick = function () {
@@ -2185,6 +2237,7 @@
         precio: Math.round(precio),
         cupos: cupos > 0 ? Math.round(cupos) : null, // vacío = sin límite
         disponible: U.$('#dDisp', m.raiz).checked,
+        imagen: U.$('#dImagen', m.raiz).value.trim(),
       };
       if (existente) datos.id = existente.id;
       else Object.assign(datos, { sucursalId: k.sucursalId, fecha: k.fecha, vendidos: 0 });

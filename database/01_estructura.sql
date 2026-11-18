@@ -527,7 +527,8 @@ CREATE TABLE core.platos_dia (
     precio       NUMERIC(12,2) NOT NULL CHECK (precio > 0),
     cupos        INTEGER       CHECK (cupos > 0),
     disponible   BOOLEAN       NOT NULL DEFAULT TRUE,
-    orden        SMALLINT      NOT NULL DEFAULT 0
+    orden        SMALLINT      NOT NULL DEFAULT 0,
+    imagen_url   VARCHAR(400)
 );
 COMMENT ON COLUMN core.platos_dia.cupos IS 'NULL = sin límite. Los vendidos se calculan de pedido_items, no se guardan.';
 

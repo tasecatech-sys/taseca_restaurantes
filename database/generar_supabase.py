@@ -106,6 +106,7 @@ PARTES = [
 
     # El panel guarda el interruptor de acompañamientos (rest.sincronizar_catalogo).
     ('46_sincronizar_guarda_acompanamientos.sql', 'El panel guarda el interruptor de acompañamientos del chef'),
+    ('47_plato_chef_con_imagen.sql',          'El plato del chef puede tener foto'),
 ]
 
 CABECERA = '''/* ============================================================================

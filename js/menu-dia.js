@@ -54,6 +54,10 @@ NASCAR.MenuDia = (function () {
 
     return (
       '<article class="plato-dia plato-dia--chef">' +
+      (p.imagen
+        ? '<img class="plato-dia__foto" src="' + esc(p.imagen) + '" alt="" loading="lazy" ' +
+          'style="width:100%;height:160px;object-fit:cover;display:block;border-radius:12px 12px 0 0">'
+        : '') +
       '<div class="plato-dia__head">' +
       '<div>' +
       '<span class="plato-dia__tipo">Menú del chef</span>' +
