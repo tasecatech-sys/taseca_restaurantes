@@ -89,6 +89,11 @@ PARTES = [
     ('42_el_escaparate_no_filtra.sql',       'El escaparate anonimo no filtra razon social, correo ni la vista entera'),
 
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
+
+    # Al final del todo: cuando ya existen TODAS las funciones, se le fija el
+    # search_path a las que les faltaba (los triggers y ayudantes de core, y
+    # los atajos de pgcrypto en public). Defensa en profundidad + linter limpio.
+    ('43_search_path_fijo.sql',              'Cada funcion con su search_path fijo (cierra el linter)'),
 ]
 
 CABECERA = '''/* ============================================================================
