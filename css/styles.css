@@ -1023,9 +1023,11 @@ textarea {
    de pedido. */
 .logo__img {
   display: block;
-  height: calc(var(--alto-cabecera) * 0.6);
+  /* 0.8 de la barra (≈59px en 74): la marca se reconoce sin que el logo
+     toque los bordes. A 0.6 se veía perdido en tanto negro. */
+  height: calc(var(--alto-cabecera) * 0.8);
   width: auto;
-  max-width: min(220px, 40vw);
+  max-width: min(240px, 46vw);
   object-fit: contain;
 }
 
