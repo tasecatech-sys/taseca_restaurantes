@@ -94,6 +94,11 @@ PARTES = [
     # search_path a las que les faltaba (los triggers y ayudantes de core, y
     # los atajos de pgcrypto en public). Defensa en profundidad + linter limpio.
     ('43_search_path_fijo.sql',              'Cada funcion con su search_path fijo (cierra el linter)'),
+
+    # Corrige el alcance de la 42: devuelve a anon las 11 columnas de marca que
+    # necesita el directorio publico, y le quita a taseca_app el SELECT directo
+    # sobre rest.empresas (lo leia de otras empresas). Va despues de la 42.
+    ('44_vitrina_publica_por_columnas.sql',  'anon ve solo la marca del directorio; app no lee la ficha de otras'),
 ]
 
 CABECERA = '''/* ============================================================================
