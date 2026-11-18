@@ -83,6 +83,11 @@ PARTES = [
     # corregirla antes.
     ('40_el_recargo_sigue_al_metodo.sql',    'Si caja cambia el metodo de pago, el recargo lo sigue'),
 
+    # La 42 va despues de la 24 (rest.arranque) y de la ultima recreacion de la
+    # vista rest.empresas (la 31), para quitarle a anon el SELECT directo y que
+    # el arranque sin sesion no entregue razon social ni correo.
+    ('42_el_escaparate_no_filtra.sql',       'El escaparate anonimo no filtra razon social, correo ni la vista entera'),
+
     ('19_rls.sql',                           'Seguridad a nivel de fila en todas las tablas'),
 ]
 
