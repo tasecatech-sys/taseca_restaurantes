@@ -31,9 +31,18 @@ NASCAR.MenuDia = (function () {
   /* ---------------------------------------------------------------
      MENÚ DEL CHEF · una tarjeta por plato
      --------------------------------------------------------------- */
-  function tarjetaChef(p, o) {
+  function tarjetaChef(p, o, menu) {
     const restantes =
       typeof p.cupos === 'number' && p.cupos > 0 ? Math.max(0, p.cupos - (p.vendidos || 0)) : null;
+
+    /* ¿Este menú deja que el cliente elija sus acompañamientos? Entonces cada
+       plato trae sus grupos (Sopa, Bebida…), scoped por plato para que una
+       tarjeta no le cambie la elección a otra. */
+    const acomp =
+      menu && menu.pideAcompanamientos && menu.acompanamientos &&
+      menu.acompanamientos.categorias && menu.acompanamientos.categorias.length
+        ? gruposAcompanamiento(menu, p, (o || {}).clave)
+        : '';
 
     // Los platos de antes traían su composición fija: se sigue mostrando
     const combo = [
@@ -64,6 +73,7 @@ NASCAR.MenuDia = (function () {
           combo.map((c) => '<li><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></li>').join('') +
           '</ul>'
         : '') +
+      acomp +
 
       '<div class="plato-dia__pie">' +
       '<div class="precio"><small>Precio</small>' + money(p.precio) + '</div>' +
@@ -82,8 +92,8 @@ NASCAR.MenuDia = (function () {
   /* ---------------------------------------------------------------
      MENÚ ARMADO · categorías con opciones de radio
      --------------------------------------------------------------- */
-  function nombreRadio(clave, menu, cat) {
-    return 'md-' + clave + '-' + menu.menuId + '-' + cat.id;
+  function nombreRadio(clave, menu, cat, extra) {
+    return 'md-' + clave + '-' + menu.menuId + (extra != null ? '-' + extra : '') + '-' + cat.id;
   }
 
   /* Cuántas opciones se pueden elegir en la categoría. Lo dice el
@@ -109,53 +119,57 @@ NASCAR.MenuDia = (function () {
    * al llegar al tope. Al final va el aviso de "menú agregado", oculto
    * hasta que se agrega uno.
    */
+  /* Un grupo (categoría) con sus opciones. El NOMBRE del grupo de radios se
+     recibe ya calculado: el menú armado lo scope por menú; el acompañamiento
+     del chef lo scope además por plato, para que cada tarjeta elija aparte. */
+  function unFieldset(c, nombre) {
+    const max = maxDe(c);
+    const multiple = max > 1;
+    const tipo = multiple ? 'checkbox' : 'radio';
+
+    return (
+      /* data-armado-cat y no data-cat: la toma de pedidos del mesero
+         ya usa [data-cat] para los filtros de la carta. */
+      '<fieldset class="armado__cat" data-armado-cat="' + esc(c.id) + '" data-max="' + max + '"' +
+      (c.obligatoria ? ' data-obligatoria="1"' : '') + '>' +
+      '<legend class="armado__leyenda">' +
+      '<span class="armado__titulo">' +
+      (c.icono ? '<i aria-hidden="true">' + esc(c.icono) + '</i>' : '') +
+      esc(c.nombre) +
+      '</span>' +
+      '<em class="armado__regla' + (c.obligatoria ? ' armado__regla--req' : '') + '">' +
+      reglaDe(c) + '</em>' +
+      '</legend>' +
+      '<div class="armado__ops" role="' + (multiple ? 'group' : 'radiogroup') + '" aria-label="' +
+      esc(c.nombre) + '"' + (c.obligatoria ? ' aria-required="true"' : '') + '>' +
+      c.opciones
+        .map(
+          (op) =>
+            '<label class="armado__op"><input type="' + tipo + '" name="' + nombre + '" value="' +
+            esc(op.id) + '"><span>' + esc(op.nombre) + '</span></label>'
+        )
+        .join('') +
+      // En una opcional de una sola opción también se puede no elegir nada
+      (c.obligatoria || multiple
+        ? ''
+        : '<label class="armado__op armado__op--ninguna"><input type="radio" name="' + nombre +
+          '" value="" checked><span>Sin ' + esc(c.nombre.toLowerCase()) + '</span></label>') +
+      '</div>' +
+      (multiple
+        ? '<p class="armado__tope oculto">Puedes elegir máximo ' + max + ' opciones de ' + esc(c.nombre) + '.</p>'
+        : '') +
+      '<p class="armado__falta" role="alert">' +
+      (multiple ? 'Elige al menos una opción de ' : 'Elige una opción de ') + esc(c.nombre) + '.</p>' +
+      '</fieldset>'
+    );
+  }
+
   function camposArmado(menu, clave) {
     const k = clave || 'pub';
     return (
       '<div class="armado" data-clave="' + esc(k) + '">' +
       menu.armado.categorias
-        .map(function (c) {
-          const nombre = nombreRadio(k, menu, c);
-          const max = maxDe(c);
-          const multiple = max > 1;
-          const tipo = multiple ? 'checkbox' : 'radio';
-
-          return (
-            /* data-armado-cat y no data-cat: la toma de pedidos del mesero
-               ya usa [data-cat] para los filtros de la carta. */
-            '<fieldset class="armado__cat" data-armado-cat="' + esc(c.id) + '" data-max="' + max + '"' +
-            (c.obligatoria ? ' data-obligatoria="1"' : '') + '>' +
-            '<legend class="armado__leyenda">' +
-            '<span class="armado__titulo">' +
-            (c.icono ? '<i aria-hidden="true">' + esc(c.icono) + '</i>' : '') +
-            esc(c.nombre) +
-            '</span>' +
-            '<em class="armado__regla' + (c.obligatoria ? ' armado__regla--req' : '') + '">' +
-            reglaDe(c) + '</em>' +
-            '</legend>' +
-            '<div class="armado__ops" role="' + (multiple ? 'group' : 'radiogroup') + '" aria-label="' +
-            esc(c.nombre) + '"' + (c.obligatoria ? ' aria-required="true"' : '') + '>' +
-            c.opciones
-              .map(
-                (op) =>
-                  '<label class="armado__op"><input type="' + tipo + '" name="' + nombre + '" value="' +
-                  esc(op.id) + '"><span>' + esc(op.nombre) + '</span></label>'
-              )
-              .join('') +
-            // En una opcional de una sola opción también se puede no elegir nada
-            (c.obligatoria || multiple
-              ? ''
-              : '<label class="armado__op armado__op--ninguna"><input type="radio" name="' + nombre +
-                '" value="" checked><span>Sin ' + esc(c.nombre.toLowerCase()) + '</span></label>') +
-            '</div>' +
-            (multiple
-              ? '<p class="armado__tope oculto">Puedes elegir máximo ' + max + ' opciones de ' + esc(c.nombre) + '.</p>'
-              : '') +
-            '<p class="armado__falta" role="alert">' +
-            (multiple ? 'Elige al menos una opción de ' : 'Elige una opción de ') + esc(c.nombre) + '.</p>' +
-            '</fieldset>'
-          );
-        })
+        .map((c) => unFieldset(c, nombreRadio(k, menu, c)))
         .join('') +
       '</div>' +
 
@@ -163,6 +177,22 @@ NASCAR.MenuDia = (function () {
       '<b>✓ Menú agregado</b>' +
       '<span class="mini tenue" data-cuenta-menus></span>' +
       '<button type="button" class="btn btn--rojo btn--sm" data-otro-menu>+ Agregar otro menú</button>' +
+      '</div>'
+    );
+  }
+
+  /* Los grupos de acompañamiento de UN plato del chef. Mismo armazón que el
+     armado (misma clase .armado para reusar conectar/aplicarTope/leerSeleccion)
+     pero sin configurador ni pie: es una elección por plato, no un menú entero.
+     Los nombres de radio llevan el id del plato para que cada tarjeta elija
+     aparte. */
+  function gruposAcompanamiento(menu, plato, clave) {
+    const k = clave || 'pub';
+    const cats = (menu.acompanamientos && menu.acompanamientos.categorias) || [];
+    if (!cats.length) return '';
+    return (
+      '<div class="armado armado--acomp" data-clave="' + esc(k) + '" data-plato="' + esc(plato.id) + '">' +
+      cats.map((c) => unFieldset(c, nombreRadio(k, menu, c, plato.id))).join('') +
       '</div>'
     );
   }
@@ -213,7 +243,7 @@ NASCAR.MenuDia = (function () {
     if (!menu || !menu.publicado) return '';
     return menu.tipo === 'armado'
       ? tarjetaArmado(menu, o)
-      : menu.platos.map((p) => tarjetaChef(p, o)).join('');
+      : menu.platos.map((p) => tarjetaChef(p, o, menu)).join('');
   }
 
   /* Repinta sin perder lo que el cliente ya había marcado. El menú se
@@ -316,17 +346,20 @@ NASCAR.MenuDia = (function () {
    * respeta el máximo de la categoría y sólo cuentan opciones que siguen
    * publicadas en `menu`.
    */
-  function leerSeleccion(raiz, menu) {
+  function leerSeleccion(raiz, menu, platoId) {
     const r = { ok: true, faltan: [], elegidas: [] };
-    if (!raiz || !menu || !menu.armado) return { ok: false, faltan: [], elegidas: [] };
+    const cats =
+      menu &&
+      (menu.armado ? menu.armado.categorias : menu.acompanamientos && menu.acompanamientos.categorias);
+    if (!raiz || !menu || !cats) return { ok: false, faltan: [], elegidas: [] };
 
     const bloque = raiz.matches && raiz.matches('.armado') ? raiz : raiz.querySelector('.armado');
     const clave = (bloque && bloque.dataset.clave) || 'pub';
     const entradas = raiz.querySelectorAll('.armado input');
     const grupos = raiz.querySelectorAll('.armado__cat');
 
-    menu.armado.categorias.forEach(function (c) {
-      const nombre = nombreRadio(clave, menu, c);
+    cats.forEach(function (c) {
+      const nombre = nombreRadio(clave, menu, c, platoId);
       const marcadas = Array.prototype.filter.call(
         entradas,
         (x) => x.name === nombre && x.checked && x.value
@@ -376,6 +409,26 @@ NASCAR.MenuDia = (function () {
     };
   }
 
+  /* La línea de pedido de UN plato del chef con sus acompañamientos elegidos.
+     El refId lleva el plato y las opciones ordenadas: el mismo plato con la
+     misma sopa y bebida suma cantidad; con otra combinación es otra línea.
+     El nombre y el precio son los del plato; lo elegido va en `detalle`. */
+  function itemChef(menu, plato, elegidas) {
+    const ids = [];
+    (elegidas || []).forEach((e) => e.opciones.forEach((o) => ids.push(o.id)));
+    const base = String(plato.id);
+    return {
+      refId: ids.length ? base + ':' + ids.slice().sort().join('.') : base,
+      nombre: plato.nombre + ' (menú del día)',
+      detalle: (elegidas || [])
+        .map((e) => e.categoria + ': ' + e.opciones.map((o) => o.nombre).join(', '))
+        .join(' · '),
+      precio: plato.precio,
+      origen: 'dia',
+      sucursalId: plato.sucursalId != null ? plato.sucursalId : menu.sucursalId,
+    };
+  }
+
   /* Al marcar una opción su categoría deja de estar en rojo y se recalcula
      el tope. "Agregar otro menú" reinicia el configurador: una sola
      implementación para el portal, la mesa y el mesero. */
@@ -402,9 +455,11 @@ NASCAR.MenuDia = (function () {
   return {
     tarjetas: tarjetas,
     camposArmado: camposArmado,
+    gruposAcompanamiento: gruposAcompanamiento,
     pintar: pintar,
     leerSeleccion: leerSeleccion,
     itemArmado: itemArmado,
+    itemChef: itemChef,
     conectar: conectar,
     reiniciar: reiniciar,
     agregado: agregado,

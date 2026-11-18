@@ -479,11 +479,12 @@
     return it ? Number(it.sucursalId) : null;
   }
 
-  function agregarDelDia(platoId) {
+  function agregarDelDia(platoId, boton) {
     const p = S.getPlatosDia(S.hoy()).find((x) => x.id === platoId);
     if (!p) return U.toast('Ese plato ya no está disponible.', 'error');
     // Sólo si es lo que su sucursal publica hoy (menú del chef, disponible)
-    if (!S.getMenuPublico(S.hoy(), p.sucursalId).platos.some((x) => x.id === p.id))
+    const menu = S.getMenuPublico(S.hoy(), p.sucursalId);
+    if (!menu.platos.some((x) => x.id === p.id))
       return U.toast('Ese plato ya no está disponible.', 'error');
 
     const fijada = sucursalObligatoria();
@@ -495,13 +496,23 @@
       );
     }
 
-    carrito.agregar({
-      refId: p.id,
-      nombre: p.nombre + ' (menú del día)',
-      precio: p.precio,
-      origen: 'dia',
-      sucursalId: p.sucursalId,
-    }, 1);
+    /* Si el menú del chef deja elegir acompañamientos, se leen de la tarjeta
+       de ESTE plato y se exigen los obligatorios antes de agregar. Si no, el
+       plato entra completo como siempre. */
+    if (menu.pideAcompanamientos) {
+      const tarjeta = boton && boton.closest ? boton.closest('.plato-dia') : null;
+      const sel = M.leerSeleccion(tarjeta, menu, p.id);
+      if (!sel.ok) return U.toast('Te falta elegir: ' + sel.faltan.join(', ') + '.', 'error');
+      carrito.agregar(M.itemChef(menu, p, sel.elegidas), 1);
+    } else {
+      carrito.agregar({
+        refId: p.id,
+        nombre: p.nombre + ' (menú del día)',
+        precio: p.precio,
+        origen: 'dia',
+        sucursalId: p.sucursalId,
+      }, 1);
+    }
 
     borrador.sucursalId = Number(p.sucursalId);
     U.toast(p.nombre + ' agregado a tu pedido.');
@@ -1593,7 +1604,7 @@
     // Agregar al carrito
     EVENTOS.addEventListener('click', function (e) {
       const d = e.target.closest('[data-add-dia]');
-      if (d) return agregarDelDia(d.dataset.addDia);
+      if (d) return agregarDelDia(d.dataset.addDia, d);
 
       const ar = e.target.closest('[data-add-armado]');
       if (ar) return agregarArmado(ar);

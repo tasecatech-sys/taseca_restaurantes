@@ -485,6 +485,7 @@ CREATE TABLE core.menus_dia (
     descripcion      VARCHAR(240),
     precio           NUMERIC(12,2) CHECK (precio > 0),
     disponible       BOOLEAN       NOT NULL DEFAULT TRUE,
+    pide_acompanamientos BOOLEAN   NOT NULL DEFAULT FALSE,
     titulo_publico   VARCHAR(60),
     mensaje_publico  VARCHAR(400),
     creado_por_id    INTEGER       REFERENCES core.usuarios (id) ON DELETE RESTRICT,
@@ -493,6 +494,7 @@ CREATE TABLE core.menus_dia (
     CONSTRAINT uq_menus_dia UNIQUE (unidad_id, fecha)
 );
 COMMENT ON TABLE core.menus_dia IS 'Una sola modalidad por unidad y fecha. nombre/descripcion/precio aplican al menú ARMADO.';
+COMMENT ON COLUMN core.menus_dia.pide_acompanamientos IS 'Menú del chef: si es TRUE, el cliente elige los acompañamientos (grupos menu_categorias).';
 
 CREATE TABLE core.menu_categorias (
     id             BIGSERIAL PRIMARY KEY,

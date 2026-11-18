@@ -260,6 +260,7 @@ NASCAR.Remoto = (function () {
       sucursalId: m.unidad_id,
       fecha: m.fecha,
       tipo: m.tipo,
+      pideAcompanamientos: !!m.pide_acompanamientos,
       armado: {
         nombre: m.nombre || 'Menú del día',
         descripcion: m.descripcion || '',
@@ -316,7 +317,11 @@ NASCAR.Remoto = (function () {
 
   function refDeItem(i) {
     if (i.origen === 'carta') return 'p' + i.producto_id;
-    if (i.origen === 'chef') return 'd' + i.plato_dia_id;
+    if (i.origen === 'chef' || i.origen === 'dia') {
+      const base = 'd' + i.plato_dia_id;
+      const ops = (i.opciones || []).map((o) => 'mo' + o).sort();
+      return ops.length ? base + ':' + ops.join('.') : base;
+    }
     return 'armado:m' + i.menu_dia_id + ':' + (i.opciones || []).map((o) => 'mo' + o).sort().join('.');
   }
 
@@ -400,8 +405,12 @@ NASCAR.Remoto = (function () {
       const partes = ref.split(':'); // armado:m12:mo3.mo7
       linea.menu_dia_id = Number(String(partes[1]).replace(/^m/, ''));
       linea.opciones = (partes[2] || '').split('.').filter(Boolean).map((o) => Number(o.replace(/^mo/, '')));
-    } else if (it.origen === 'dia' || /^d\d+$/.test(ref)) {
-      linea.plato_dia_id = Number(ref.slice(1));
+    } else if (it.origen === 'dia' || /^d\d+(:|$)/.test(ref)) {
+      const partes = ref.split(':'); // 'd5'  ó  'd5:mo3.mo7' (chef con acompañamientos)
+      linea.plato_dia_id = Number(String(partes[0]).replace(/^d/, ''));
+      if (partes[1]) {
+        linea.opciones = partes[1].split('.').filter(Boolean).map((o) => Number(o.replace(/^mo/, '')));
+      }
     } else if (/^p\d+$/.test(ref)) {
       linea.producto_id = Number(ref.slice(1));
     } else {

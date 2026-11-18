@@ -99,6 +99,10 @@ PARTES = [
     # necesita el directorio publico, y le quita a taseca_app el SELECT directo
     # sobre rest.empresas (lo leia de otras empresas). Va despues de la 42.
     ('44_vitrina_publica_por_columnas.sql',  'anon ve solo la marca del directorio; app no lee la ficha de otras'),
+
+    # El menú del chef puede pedir acompañamientos (opcional, por menú). Va al
+    # final: redefine sp_crear_pedido y dos triggers ya existentes.
+    ('45_chef_con_acompanamientos.sql',      'El menu del chef puede dejar que el cliente elija sopa y bebida'),
 ]
 
 CABECERA = '''/* ============================================================================

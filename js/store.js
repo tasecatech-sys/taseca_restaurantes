@@ -3148,6 +3148,21 @@ NASCAR.Store = (function () {
     if (tipo === 'chef') {
       r.platos = getPlatosChef(f, sucursalId, eid).filter((p) => p.disponible !== false);
       r.publicado = r.platos.length > 0;
+      /* El menú del chef puede dejar que el cliente elija acompañamientos
+         (sopa, bebida…). Los grupos vienen en doc.armado.categorias -la base
+         los publica igual para las dos modalidades-; sólo se ofrecen si el
+         menú lo pide y hay grupos con opciones activas. */
+      r.pideAcompanamientos = !!(doc && doc.pideAcompanamientos);
+      if (r.pideAcompanamientos && doc && doc.armado) {
+        const cats = (doc.armado.categorias || [])
+          .filter((c) => c.activa && c.nombre)
+          .map((c) => Object.assign({}, c, { opciones: c.opciones.filter((o) => o.activa && o.nombre) }))
+          .filter((c) => c.opciones.length > 0);
+        if (cats.length) r.acompanamientos = { categorias: cats };
+        else r.pideAcompanamientos = false;
+      } else {
+        r.pideAcompanamientos = false;
+      }
       if (!r.publicado) r.motivo = 'No hay platos del chef disponibles para esta fecha.';
       return r;
     }
