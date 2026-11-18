@@ -103,6 +103,9 @@ PARTES = [
     # El menú del chef puede pedir acompañamientos (opcional, por menú). Va al
     # final: redefine sp_crear_pedido y dos triggers ya existentes.
     ('45_chef_con_acompanamientos.sql',      'El menu del chef puede dejar que el cliente elija sopa y bebida'),
+
+    # El panel guarda el interruptor de acompañamientos (rest.sincronizar_catalogo).
+    ('46_sincronizar_guarda_acompanamientos.sql', 'El panel guarda el interruptor de acompañamientos del chef'),
 ]
 
 CABECERA = '''/* ============================================================================

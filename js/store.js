@@ -3244,6 +3244,15 @@ NASCAR.Store = (function () {
     });
   }
 
+  /* Menú del chef: deja que el cliente elija sus acompañamientos (los grupos
+     que se editan igual que en el armado). Sólo el interruptor; los grupos
+     viven en doc.armado.categorias. */
+  function setAcompanamientosMenu(fecha, sucursalId, valor) {
+    return mutarMenuDia(fecha, sucursalId, function (doc) {
+      doc.pideAcompanamientos = !!valor;
+    });
+  }
+
   function guardarDatosArmado(fecha, sucursalId, datos) {
     const d = datos || {};
     return mutarMenuDia(fecha, sucursalId, function (doc) {
@@ -6071,6 +6080,7 @@ NASCAR.Store = (function () {
     manejaMenuDia: manejaMenuDia,
     getMenuPublico: getMenuPublico,
     setTipoMenuDia: setTipoMenuDia,
+    setAcompanamientosMenu: setAcompanamientosMenu,
     guardarDatosArmado: guardarDatosArmado,
     guardarCategoriaArmado: guardarCategoriaArmado,
     borrarCategoriaArmado: borrarCategoriaArmado,

@@ -1492,6 +1492,17 @@
     const cont = $('#listaDiaAdmin');
     cont.addEventListener('click', clicDia);
 
+    // Interruptor de acompañamientos del menú del chef (es checkbox, no botón)
+    cont.addEventListener('change', function (e) {
+      const t = e.target.closest('[data-md="toggle-acomp"]');
+      if (!t) return;
+      const k = claveDia();
+      accionDia(
+        () => S.setAcompanamientosMenu(k.fecha, k.sucursalId, t.checked),
+        t.checked ? 'Listo: el cliente ya puede elegir acompañamientos.' : 'Acompañamientos desactivados.'
+      );
+    });
+
     cont.addEventListener('submit', function (e) {
       const k = claveDia();
 
@@ -2024,6 +2035,9 @@
   /* ---- Menú del chef ---- */
   function htmlChefDia(k) {
     const platos = S.getPlatosChef(k.fecha, k.sucursalId);
+    const menu = S.getMenuDia(k.fecha, k.sucursalId);
+    const pide = !!(menu && menu.pideAcompanamientos);
+    const cats = (menu && menu.armado && menu.armado.categorias) || [];
     return (
       '<div class="md-cabecera">' +
       '<div><h3 class="md-sub" style="margin:0">Platos del chef</h3>' +
@@ -2033,7 +2047,28 @@
       (platos.length
         ? '<div class="md-platos">' + platos.map((p, i) => htmlPlatoDia(p, i, platos.length)).join('') + '</div>'
         : '<div class="vacio" style="padding:30px">Todavía no hay platos del chef para esta fecha. ' +
-          'Crea el primero con «+ Nuevo plato» o usa «Copiar el de ayer».</div>')
+          'Crea el primero con «+ Nuevo plato» o usa «Copiar el de ayer».</div>') +
+
+      /* Acompañamientos: el cliente elige, por ejemplo, su entrada y su bebida.
+         Opcional, por menú. Los grupos se editan igual que en el menú armado. */
+      '<div class="caja mt-24" style="padding:16px">' +
+      '<label class="fila mini" style="gap:10px;align-items:flex-start">' +
+      '<input type="checkbox" data-md="toggle-acomp"' + (pide ? ' checked' : '') +
+      ' style="accent-color:var(--verde);width:18px;height:18px;margin-top:2px">' +
+      '<span><b>Dejar que el cliente elija acompañamientos</b> (entrada, bebida…)<br>' +
+      '<span class="mini tenue">Al pedir cada plato, el cliente elige uno de cada grupo obligatorio. Los platos siguen con su precio.</span></span>' +
+      '</label></div>' +
+
+      (pide
+        ? '<div class="md-cabecera mt-16">' +
+          '<div><h3 class="md-sub" style="margin:0">Grupos de acompañamiento</h3>' +
+          '<p class="mini tenue">Crea por ejemplo «Entrada» y «Bebida», cada uno con sus opciones. Con ↑ ↓ cambias el orden.</p></div>' +
+          '<button type="button" class="btn btn--fantasma btn--sm" data-md="nueva-cat">+ Nuevo grupo</button>' +
+          '</div>' +
+          (cats.length
+            ? '<div class="md-cats">' + cats.map((c, i) => htmlCategoriaDia(c, i, cats.length)).join('') + '</div>'
+            : '<div class="vacio" style="padding:30px">Aún no hay grupos. Crea «Entrada» y «Bebida» con «+ Nuevo grupo».</div>')
+        : '')
     );
   }
 

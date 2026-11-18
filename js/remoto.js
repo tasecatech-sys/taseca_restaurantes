@@ -1072,7 +1072,7 @@ NASCAR.Remoto = (function () {
   const SINCRONIZADAS = [
     'guardarCategoria', 'borrarCategoria', 'guardarPlatoCarta', 'borrarPlatoCarta', 'ajustarPlatoCarta',
     'guardarPlatoDia', 'borrarPlatoDia', 'copiarPlatosDia', 'moverPlatoDia', 'copiarMenuDia',
-    'setTipoMenuDia', 'guardarDatosArmado', 'guardarCategoriaArmado', 'borrarCategoriaArmado',
+    'setTipoMenuDia', 'setAcompanamientosMenu', 'guardarDatosArmado', 'guardarCategoriaArmado', 'borrarCategoriaArmado',
     'moverCategoriaArmado', 'guardarOpcionArmado', 'borrarOpcionArmado', 'moverOpcionArmado',
     'guardarTextoMenuDia',
   ];
