@@ -132,7 +132,7 @@
   --ancho: 1200px;
   /* Lo usan la cabecera pegajosa y todo lo que tenga que quedarse
      justo debajo de ella. Escrito dos veces se desincroniza. */
-  --alto-cabecera: 74px;
+  --alto-cabecera: 100px;
   /* El aire a los lados de .contenedor. Lo compensan con margen
      negativo las barras que tienen que llegar de borde a borde. */
   --pad-contenedor: 24px;
@@ -969,6 +969,13 @@ textarea {
   gap: 24px;
   height: var(--alto-cabecera);
 }
+/* En el teléfono la cabecera se mantiene compacta para no comerse la
+   pantalla; el logo encoge con ella (sigue siendo proporcional). */
+@media (max-width: 560px) {
+  :root {
+    --alto-cabecera: 70px;
+  }
+}
 
 .logo {
   display: flex;
@@ -1023,11 +1030,12 @@ textarea {
    de pedido. */
 .logo__img {
   display: block;
-  /* 0.8 de la barra (≈59px en 74): la marca se reconoce sin que el logo
-     toque los bordes. A 0.6 se veía perdido en tanto negro. */
-  height: calc(var(--alto-cabecera) * 0.8);
+  /* 0.86 de la barra (≈86px en 100): la marca se ve de verdad, con un
+     margen mínimo arriba y abajo. La barra es más alta justo para que el
+     logo tenga presencia sin tocar los bordes. */
+  height: calc(var(--alto-cabecera) * 0.86);
   width: auto;
-  max-width: min(240px, 46vw);
+  max-width: min(260px, 52vw);
   object-fit: contain;
 }
 
