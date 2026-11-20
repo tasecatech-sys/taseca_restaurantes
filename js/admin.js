@@ -1133,6 +1133,7 @@
       '.tot{font-size:16px;font-weight:bold}.c{text-align:center}' +
       '</style></head><body>' +
 
+      (NASCAR.Caja && NASCAR.Caja.htmlLogo ? NASCAR.Caja.htmlLogo(p.sucursalId) : '') +
       '<h1>' + U.esc(((S.getEmpresaActual && S.getEmpresaActual()) || {}).nombre || '') + '</h1>' +
       '<div class="c">' + U.esc(suc.nombre) + (suc.direccion ? '<br>' + U.esc(suc.direccion) : '') +
       (NASCAR.CONFIG.pago && NASCAR.CONFIG.pago.nit ? '<br>NIT ' + U.esc(NASCAR.CONFIG.pago.nit) : '') + '</div>' +
@@ -1167,7 +1168,12 @@
     );
     w.document.close();
     w.focus();
-    setTimeout(() => w.print(), 260);
+    // Con logo, se imprime cuando la imagen ya cargó (si no, saldría en blanco)
+    const img = w.document.images[0];
+    let impreso = false;
+    const imprimir = () => { if (impreso) return; impreso = true; setTimeout(() => w.print(), 120); };
+    if (img && !img.complete) { img.onload = img.onerror = imprimir; setTimeout(imprimir, 3000); }
+    else imprimir();
   }
 
   /* =================================================================

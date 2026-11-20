@@ -1086,6 +1086,17 @@ NASCAR.Caja = (function () {
     return !!(U.sucursal(sucursalId || sucursal()) || {}).cajonMonedero;
   }
 
+  /* El logo de los papeles que se lleva el cliente (ticket y comprobante):
+     el de la sede si tiene uno propio, si no el de la empresa. En gris,
+     porque la impresora térmica sólo pinta negro. Sin logo, nada. */
+  function htmlLogo(sucursalId) {
+    const suc = U.sucursal(sucursalId || sucursal()) || {};
+    const logo = (suc.branding && suc.branding.logo) || ((S.getTheme && S.getTheme()) || {}).logo || '';
+    if (!/^(data:image\/|https:\/\/)/.test(logo)) return '';
+    return '<div style="text-align:center;margin:0 0 6px"><img src="' + U.esc(logo) + '" alt="" ' +
+      'style="max-width:46mm;max-height:26mm;filter:grayscale(1)"></div>';
+  }
+
   function htmlRecibo(pedidos, extra) {
     extra = extra || {};
     const e = U.esc;
@@ -1125,6 +1136,7 @@ NASCAR.Caja = (function () {
       '.it{margin:4px 0}.n{font-size:11px;padding-left:12px}hr{border:0;border-top:1px dashed #000;margin:7px 0}' +
       '.aviso{font-size:10px;text-align:center;margin-top:6px}' +
       '</style></head><body>' +
+      htmlLogo(suc.id) +
       '<h1>' + e(emp.nombre || '') + '</h1>' +
       '<div class="c">' + e(suc.nombre || '') + (suc.direccion ? '<br>' + e(suc.direccion) : '') +
       (nit ? '<br>NIT ' + e(nit) : '') + '</div>' +
@@ -1313,5 +1325,5 @@ NASCAR.Caja = (function () {
     }
   }
 
-  return { iniciar: iniciar, refrescar: refrescar, imprimirRecibo: imprimirRecibo, tieneCajon: tieneCajon };
+  return { iniciar: iniciar, refrescar: refrescar, imprimirRecibo: imprimirRecibo, tieneCajon: tieneCajon, htmlLogo: htmlLogo };
 })();
