@@ -988,8 +988,14 @@
           <label class="campo"><span>Observación</span>
             <input class="input" id="enObs" placeholder="Factura, proveedor…"></label>
         </div>
+        <!-- Si se elige un despiece (Pollo entero → presas), aquí se ve en qué se reparte -->
+        <p class="mini tenue" id="enReparto" style="margin:-4px 0 12px" hidden></p>
 
-        <button class="btn btn--rojo btn--sm" id="btnGuardarEntrada">+ Registrar entrada</button>
+        <div class="fila" style="gap:8px">
+          <button class="btn btn--rojo btn--sm" id="btnGuardarEntrada">+ Registrar entrada</button>
+          <button class="btn btn--fantasma btn--sm" id="btnDespieces"
+                  title="Lo que se compra entero y se reparte en varios productos (Pollo entero → presas)">🍗 Despieces</button>
+        </div>
       </div>
 
       <div class="barra-herramientas">

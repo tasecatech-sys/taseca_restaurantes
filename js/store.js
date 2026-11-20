@@ -23,6 +23,7 @@ NASCAR.Store = (function () {
     seed: 'nascar.semillaAplicada.v1',
     cierres: 'nascar.cierres.v1',
     entradas: 'nascar.entradas.v1',
+    despieces: 'nascar.despieces.v1', // lo que se compra y se reparte en insumos (Pollo entero → presas)
     // --- configuración administrable ---
     config: 'nascar.config.v1',
     sucursales: 'nascar.sucursales.v1', // las UNIDADES / LOCALES de cada empresa
@@ -4997,6 +4998,9 @@ NASCAR.Store = (function () {
 
     const permiso = entradaEditable(lista[i]);
     if (!permiso.editable) throw new Error(permiso.motivo);
+    if (lista[i].loteDespiece)
+      throw new Error('Esta entrada salió del despiece «' + (lista[i].despiece || '') +
+        '»: elimínala (se va el despiece completo) y regístralo de nuevo.');
 
     const cantidad = Number(datos.cantidad);
     if (datos.cantidad !== undefined && (!isFinite(cantidad) || cantidad <= 0 || Math.floor(cantidad) !== cantidad))
@@ -5029,14 +5033,111 @@ NASCAR.Store = (function () {
   }
 
   function borrarEntrada(entradaId) {
-    const e = leer(K.entradas, []).find((x) => x.id === entradaId);
-    const permiso = entradaEditable(e);
-    if (!permiso.editable) throw new Error(permiso.motivo);
-    escribir(
-      K.entradas,
-      leer(K.entradas, []).filter((x) => x.id !== entradaId)
-    );
+    const todas = leer(K.entradas, []);
+    const e = todas.find((x) => x.id === entradaId);
+    /* Una entrada de despiece se va con todo su lote (igual que en la base). */
+    const lote = e && e.loteDespiece ? todas.filter((x) => x.loteDespiece === e.loteDespiece) : [e];
+    lote.forEach(function (x) {
+      const permiso = entradaEditable(x);
+      if (!permiso.editable) throw new Error(permiso.motivo);
+    });
+    const fuera = {};
+    lote.forEach((x) => (fuera[x.id] = true));
+    escribir(K.entradas, todas.filter((x) => !fuera[x.id]));
     return true;
+  }
+
+  /* ===============================================================
+     INVENTARIO · DESPIECES
+
+     Lo que se COMPRA y se reparte en varios insumos: un «Pollo entero»
+     llena pechuga, ala, pierna y muslo; una «Pierna pernil», pierna y
+     muslo. No tiene stock propio. Cada negocio arma los suyos.
+     =============================================================== */
+  function getDespieces(filtro) {
+    filtro = filtro || {};
+    let lista = soloDeEmpresa(leer(K.despieces, []), empresaDe(filtro));
+    if (!filtro.todos) lista = lista.filter((d) => d.activo !== false);
+    return lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  function guardarDespiece(datos) {
+    const nombre = String(datos.nombre || '').trim();
+    if (nombre.length < 2) throw new Error('El despiece necesita un nombre (por ejemplo «Pollo entero»).');
+    const comps = (datos.componentes || []).filter((c) => c && c.codigo);
+    if (!comps.length) throw new Error('Di en qué productos de inventario se reparte «' + nombre + '».');
+    const vistos = {};
+    const componentes = comps.map(function (c) {
+      const prod = getProductoInventario(c.codigo);
+      if (!prod) throw new Error('El producto de inventario «' + c.codigo + '» no existe.');
+      if (vistos[prod.codigo]) throw new Error('El producto «' + prod.codigo + '» está dos veces en el despiece.');
+      vistos[prod.codigo] = true;
+      const n = Number(c.cantidad);
+      if (!isFinite(n) || n <= 0 || Math.floor(n) !== n)
+        throw new Error('La cantidad de cada presa debe ser un número entero mayor que cero.');
+      return { codigo: prod.codigo, nombre: prod.nombre, area: prod.area, cantidad: n };
+    });
+    const eid = datos.empresaId || empresaActivaId();
+    const lista = leer(K.despieces, []);
+    const repetido = soloDeEmpresa(lista, eid).find(
+      (d) => d.nombre.toLowerCase() === nombre.toLowerCase() && d.id !== datos.id
+    );
+    if (repetido) throw new Error('Ya hay un despiece llamado «' + nombre + '».');
+    const i = lista.findIndex((d) => d.id === datos.id);
+    const doc = conEmpresa({
+      id: datos.id || 'ds' + id(),
+      nombre: nombre,
+      activo: datos.activo !== false,
+      componentes: componentes,
+    }, eid);
+    if (i >= 0) lista[i] = doc;
+    else lista.push(doc);
+    escribir(K.despieces, lista);
+    return doc;
+  }
+
+  function borrarDespiece(despieceId) {
+    const lista = leer(K.despieces, []);
+    const usado = leer(K.entradas, []).some((e) => e.despieceId === despieceId);
+    if (usado) {
+      escribir(K.despieces, lista.map((d) => (d.id === despieceId ? Object.assign({}, d, { activo: false }) : d)));
+      return { desactivado: true };
+    }
+    escribir(K.despieces, lista.filter((d) => d.id !== despieceId));
+    return { borrado: true };
+  }
+
+  /* Una entrada por cada componente, atadas por el mismo lote. Todo o nada:
+     se valida todo antes de escribir. */
+  function guardarEntradaDespiece(datos) {
+    const d = getDespieces({ todos: true }).find((x) => x.id === datos.despieceId);
+    if (!d) throw new Error('Ese despiece no existe.');
+    if (d.activo === false) throw new Error('El despiece «' + d.nombre + '» está desactivado.');
+    const n = Number(datos.cantidad);
+    if (!isFinite(n) || n <= 0 || Math.floor(n) !== n)
+      throw new Error('La cantidad debe ser un número entero mayor que cero.');
+    (d.componentes || []).forEach(function (c) {
+      const prod = getProductoInventario(c.codigo);
+      if (!prod || prod.activo === false || !esDeUnidad(prod, datos.sucursalId))
+        throw new Error('«' + (prod ? prod.nombre : c.codigo) + '» no está activo en esta sede: actívalo en Stock o quítalo del despiece.');
+    });
+    const lote = 'lt' + id();
+    const obs = 'Despiece: ' + n + ' × ' + d.nombre + (datos.observacion ? ' · ' + datos.observacion : '');
+    const antes = leer(K.entradas, []);
+    try {
+      const creadas = (d.componentes || []).map(function (c) {
+        const e = guardarEntrada(Object.assign({}, datos, { codigo: c.codigo, cantidad: n * c.cantidad, observacion: obs }));
+        return e;
+      });
+      const ids = {};
+      creadas.forEach((e) => (ids[e.id] = true));
+      escribir(K.entradas, leer(K.entradas, []).map((e) =>
+        ids[e.id] ? Object.assign({}, e, { loteDespiece: lote, despieceId: d.id, despiece: d.nombre }) : e));
+      return { lote: lote, entradas: leer(K.entradas, []).filter((e) => ids[e.id]) };
+    } catch (err) {
+      escribir(K.entradas, antes); // nada a medias
+      throw err;
+    }
   }
 
   /* Total de entradas por código para una jornada y sucursal. */
@@ -6165,6 +6266,10 @@ NASCAR.Store = (function () {
     actualizarEntrada: actualizarEntrada,
     entradaEditable: entradaEditable,
     borrarEntrada: borrarEntrada,
+    getDespieces: getDespieces,
+    guardarDespiece: guardarDespiece,
+    borrarDespiece: borrarDespiece,
+    guardarEntradaDespiece: guardarEntradaDespiece,
     getEntradasPorProducto: getEntradasPorProducto,
 
     // gastos (salidas de dinero — separado de las ventas)

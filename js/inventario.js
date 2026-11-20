@@ -1456,7 +1456,10 @@ NASCAR.Inventario = (function () {
     $('#enFiltroHasta').value = hoyOp;
 
     $('#enArea').addEventListener('change', llenarProductosEntrada);
+    $('#enProducto').addEventListener('change', pintarReparto);
+    $('#enCantidad').addEventListener('input', pintarReparto);
     $('#btnGuardarEntrada').addEventListener('click', guardarEntradaDesdeFormulario);
+    if ($('#btnDespieces')) $('#btnDespieces').addEventListener('click', abrirDespieces);
     ['#enFiltroDesde', '#enFiltroHasta', '#enFiltroArea'].forEach(function (s) {
       const el = $(s);
       if (el) el.addEventListener('change', pintarEntradas);
@@ -1471,7 +1474,14 @@ NASCAR.Inventario = (function () {
       const b = e.target.closest('[data-borrar-entrada]');
       if (!b) return;
       if (NASCAR.Auth && !NASCAR.Auth.exigir('entradas')) return;
-      U.confirmar('¿Eliminar esta entrada? El cruce de esa jornada se recalculará.', function () {
+      const entrada = S.getEntradas({}).find((x) => x.id === b.dataset.borrarEntrada);
+      const lote = entrada && entrada.loteDespiece
+        ? S.getEntradas({}).filter((x) => x.loteDespiece === entrada.loteDespiece) : [];
+      const pregunta = lote.length
+        ? '¿Eliminar el despiece completo de «' + (entrada.despiece || '') + '»? Se eliminan sus ' + lote.length +
+          ' entradas (' + lote.map((x) => '+' + x.cantidad + ' ' + x.nombre).join(', ') + '). El cruce se recalculará.'
+        : '¿Eliminar esta entrada? El cruce de esa jornada se recalculará.';
+      U.confirmar(pregunta, function () {
         try {
           S.borrarEntrada(b.dataset.borrarEntrada);
           U.toast('Entrada eliminada.', 'info');
@@ -1507,8 +1517,8 @@ NASCAR.Inventario = (function () {
 
   function refrescarEntradas() {
     if (!ent || !ent.raiz) return;
-    // Al cambiar de unidad cambia el catálogo que se ofrece
-    if (ent.unidadProductos !== unidadEntradas()) llenarProductosEntrada();
+    // Catálogo y despieces al día (conserva lo elegido)
+    llenarProductosEntrada();
     pintarEntradas();
   }
 
@@ -1516,9 +1526,43 @@ NASCAR.Inventario = (function () {
     const $ = (s) => ent.raiz.querySelector(s);
     const area = $('#enArea').value || NASCAR.AREAS[0].id;
     ent.unidadProductos = unidadEntradas();
-    $('#enProducto').innerHTML = S.getProductosInventario({ area: area, sucursalId: ent.unidadProductos })
-      .map((p) => '<option value="' + p.codigo + '">' + p.codigo + ' · ' + U.esc(p.nombre) + '</option>')
-      .join('');
+    const actual = $('#enProducto').value;
+    const despieces = S.getDespieces ? S.getDespieces() : [];
+    $('#enProducto').innerHTML =
+      S.getProductosInventario({ area: area, sucursalId: ent.unidadProductos })
+        .map((p) => '<option value="' + p.codigo + '">' + p.codigo + ' · ' + U.esc(p.nombre) + '</option>')
+        .join('') +
+      /* Los despieces van en cualquier área: se reparten en lo que digan. */
+      (despieces.length
+        ? '<optgroup label="🍗 Despieces · se reparten en varios productos">' +
+          despieces.map((d) => '<option value="dsp:' + d.id + '">🍗 ' + U.esc(d.nombre) + '</option>').join('') +
+          '</optgroup>'
+        : '');
+    if (actual && Array.from($('#enProducto').options).some((o) => o.value === actual)) $('#enProducto').value = actual;
+    pintarReparto();
+  }
+
+  /* Elegido un despiece: en qué se reparte, con la cantidad escrita. */
+  function despieceElegido() {
+    const v = ent.raiz.querySelector('#enProducto').value || '';
+    if (v.indexOf('dsp:') !== 0) return null;
+    return (S.getDespieces ? S.getDespieces() : []).find((d) => d.id === v.slice(4)) || null;
+  }
+
+  function pintarReparto() {
+    const caja = ent.raiz.querySelector('#enReparto');
+    if (!caja) return;
+    const d = despieceElegido();
+    if (!d) {
+      caja.hidden = true;
+      return;
+    }
+    const n = Number(ent.raiz.querySelector('#enCantidad').value);
+    const veces = isFinite(n) && n > 0 && Math.floor(n) === n ? n : 1;
+    caja.hidden = false;
+    caja.innerHTML =
+      '🍗 <b>' + (veces === 1 ? '1 ' : veces + ' × ') + U.esc(d.nombre) + '</b> se reparte en: ' +
+      (d.componentes || []).map((c) => '<b>+' + c.cantidad * veces + '</b> ' + U.esc(c.nombre)).join(' · ');
   }
 
   /**
@@ -1561,6 +1605,32 @@ NASCAR.Inventario = (function () {
     const sucursalId =
       (A && A.sucursalDelUsuario()) || ent.sucursalGlobal() || U.sucursalPorDefectoId();
     const f = firmaEntrada();
+
+    const d = despieceElegido();
+    if (d) {
+      try {
+        const r = S.guardarEntradaDespiece({
+          fecha: $('#enFecha').value,
+          sucursalId: sucursalId,
+          despieceId: d.id,
+          cantidad: $('#enCantidad').value,
+          tipoEntrada: $('#enTipo').value,
+          observacion: $('#enObs').value.trim(),
+          usuarioId: f.usuarioId,
+          usuarioNombre: f.usuarioNombre,
+          rolUsuario: f.rol,
+        });
+        U.toast('Despiece registrado: ' + r.entradas.map((x) => '+' + x.cantidad + ' ' + x.nombre).join(', ') + '.');
+        $('#enCantidad').value = '';
+        $('#enObs').value = '';
+        pintarReparto();
+        pintarEntradas();
+        refrescarPanel();
+      } catch (err) {
+        U.toast(err.message || 'No se pudo registrar el despiece.', 'error');
+      }
+      return;
+    }
 
     try {
       const e = S.guardarEntrada({
@@ -1726,12 +1796,14 @@ NASCAR.Inventario = (function () {
           iconoArea(e.area) + ' ' + nombreArea(e.area) + '</span></td>' +
           '<td class="col-num verde">+' + e.cantidad + '</td>' +
           '<td class="mini">' + U.esc(nombresTipo[e.tipoEntrada] || e.tipoEntrada) +
+          (e.loteDespiece ? ' <span class="badge badge--linea" title="Salió de un despiece: se elimina junto con el resto">🍗 ' +
+            U.esc(e.despiece || 'Despiece') + '</span>' : '') +
           (e.observacion ? '<br><span class="tenue">' + U.esc(e.observacion) + '</span>' : '') + '</td>' +
           '<td class="mini">' + U.esc(e.usuarioNombre || '—') +
           '<br><span class="tenue">' + U.hora(e.registrado) + '</span></td>' +
           '<td class="nowrap">' +
           (editable.editable
-            ? '<button class="btn btn--fantasma btn--xs" data-editar-entrada="' + e.id + '">Editar</button> ' +
+            ? (e.loteDespiece ? '' : '<button class="btn btn--fantasma btn--xs" data-editar-entrada="' + e.id + '">Editar</button> ') +
               '<button class="btn btn--fantasma btn--xs" data-borrar-entrada="' + e.id + '" ' +
               'style="border-color:var(--rojo);color:var(--rojo-claro)">✕</button>'
             : '<span class="badge badge--gris" title="' + U.esc(editable.motivo) + '">Cerrada</span>') +
@@ -1739,6 +1811,135 @@ NASCAR.Inventario = (function () {
         );
       })
       .join('');
+  }
+
+  /* =================================================================
+     DESPIECES: lo que se compra entero y se reparte (Pollo entero →
+     2 pechugas, 2 alas, 2 piernas, 2 muslos). Cada negocio arma los
+     suyos; los usa el formulario de entradas.
+     ================================================================= */
+  function abrirDespieces() {
+    const A = NASCAR.Auth;
+    if (A && !A.exigir('stock')) return;
+
+    const m = U.modal({ titulo: '🍗 Despieces', ancho: 620, contenido: '<div data-lista></div>' });
+    function pintar() {
+      const lista = S.getDespieces({ todos: true });
+      U.$('[data-lista]', m.raiz).innerHTML =
+        '<p class="mini tenue" style="margin-top:0">Lo que compras entero y se reparte en varios productos de ' +
+        'inventario. Al registrar la entrada eliges el despiece y el sistema suma cada parte.</p>' +
+        (lista.length
+          ? lista.map(function (d) {
+              return '<div class="caja-datos" style="margin-bottom:8px' + (d.activo === false ? ';opacity:.55' : '') + '">' +
+                '<div class="fila" style="gap:8px;align-items:center"><b class="crece">🍗 ' + U.esc(d.nombre) + '</b>' +
+                (d.activo === false ? '<span class="badge badge--gris">Desactivado</span>' : '') +
+                '<button class="btn btn--fantasma btn--xs" data-editar-dsp="' + d.id + '">Editar</button>' +
+                '<button class="btn btn--fantasma btn--xs" data-borrar-dsp="' + d.id + '" ' +
+                'style="border-color:var(--rojo);color:var(--rojo-claro)">✕</button></div>' +
+                '<span class="mini">1 ' + U.esc(d.nombre) + ' = ' +
+                (d.componentes || []).map((c) => c.cantidad + ' ' + U.esc(c.nombre)).join(' + ') + '</span></div>';
+            }).join('')
+          : '<div class="vacio" style="border:0"><p class="mini">Aún no hay despieces. Ejemplo: «Pollo entero» = ' +
+            '2 Pechuga + 2 Ala + 2 Pierna + 2 Muslo.</p></div>') +
+        '<div class="fila fila--fin" style="margin-top:12px">' +
+        '<button class="btn btn--fantasma" data-cerrar>Cerrar</button>' +
+        '<button class="btn btn--rojo" data-nuevo-dsp>+ Nuevo despiece</button></div>';
+    }
+    m.raiz.addEventListener('click', function (e) {
+      if (e.target.closest('[data-cerrar]')) return m.cerrar();
+      if (e.target.closest('[data-nuevo-dsp]')) return editarDespiece(null, pintar);
+      const ed = e.target.closest('[data-editar-dsp]');
+      if (ed) return editarDespiece(ed.dataset.editarDsp, pintar);
+      const b = e.target.closest('[data-borrar-dsp]');
+      if (b) {
+        const d = S.getDespieces({ todos: true }).find((x) => x.id === b.dataset.borrarDsp);
+        U.confirmar('¿Borrar el despiece «' + (d ? d.nombre : '') + '»? Si ya tiene entradas, sólo se desactiva.', function () {
+          try {
+            const r = S.borrarDespiece(b.dataset.borrarDsp);
+            U.toast(r.desactivado ? 'El despiece tiene entradas: quedó desactivado.' : 'Despiece borrado.', 'info');
+            pintar();
+            llenarProductosEntrada();
+          } catch (err) {
+            U.toast(err.message, 'error');
+          }
+        }, 'Sí, borrar');
+      }
+    });
+    pintar();
+  }
+
+  function editarDespiece(despieceId, alGuardar) {
+    const d = despieceId ? S.getDespieces({ todos: true }).find((x) => x.id === despieceId) : null;
+    const productos = S.getProductosInventario({ sucursalId: unidadEntradas() });
+    const filas = d && d.componentes.length ? d.componentes.slice() : [{ codigo: '', cantidad: 1 }];
+
+    function opciones(sel) {
+      return '<option value="">— Elige el producto —</option>' +
+        productos.map((p) => '<option value="' + p.codigo + '"' + (p.codigo === sel ? ' selected' : '') + '>' +
+          U.esc(p.nombre) + ' · ' + p.codigo + '</option>').join('');
+    }
+    function filaHtml(c, i) {
+      return '<div class="fila" style="gap:8px;margin-bottom:8px" data-fila="' + i + '">' +
+        '<select class="select crece" data-comp-codigo>' + opciones(c.codigo) + '</select>' +
+        '<input class="input num derecha" type="number" min="1" step="1" data-comp-cant value="' + (c.cantidad || 1) +
+        '" style="width:90px" title="Cuántos salen de 1">' +
+        '<button class="btn btn--fantasma btn--xs" data-quitar-fila title="Quitar">✕</button></div>';
+    }
+
+    const m = U.modal({
+      titulo: d ? 'Editar despiece' : 'Nuevo despiece',
+      ancho: 560,
+      contenido:
+        '<label class="campo"><span>Nombre <i class="req">*</i></span>' +
+        '<input class="input" id="dsNombre" placeholder="Pollo entero, Pierna pernil…" value="' + U.esc(d ? d.nombre : '') + '"></label>' +
+        '<p class="mini tenue" style="margin:4px 0 8px">De <b>1</b> unidad salen:</p>' +
+        '<div data-filas>' + filas.map(filaHtml).join('') + '</div>' +
+        '<button class="btn btn--fantasma btn--xs" data-agregar-fila>+ Agregar producto</button>' +
+        (productos.length ? '' : '<p class="mini ambar">Esta sede no tiene productos de inventario: créalos primero en 📦 Stock.</p>') +
+        '<label class="fila mini" style="gap:8px;margin:14px 0"><input type="checkbox" id="dsActivo"' +
+        (!d || d.activo !== false ? ' checked' : '') + '> Activo (se ofrece al registrar entradas)</label>' +
+        '<div class="fila fila--fin">' +
+        '<button class="btn btn--fantasma" id="dsNo">Cancelar</button>' +
+        '<button class="btn btn--rojo" id="dsSi">Guardar</button></div>',
+    });
+
+    function leerFilas() {
+      return Array.from(m.raiz.querySelectorAll('[data-fila]')).map((f) => ({
+        codigo: f.querySelector('[data-comp-codigo]').value,
+        cantidad: f.querySelector('[data-comp-cant]').value,
+      }));
+    }
+    m.raiz.addEventListener('click', function (e) {
+      if (e.target.closest('[data-agregar-fila]')) {
+        const actuales = leerFilas();
+        actuales.push({ codigo: '', cantidad: 1 });
+        U.$('[data-filas]', m.raiz).innerHTML = actuales.map(filaHtml).join('');
+        return;
+      }
+      const q = e.target.closest('[data-quitar-fila]');
+      if (q) {
+        const i = Number(q.closest('[data-fila]').dataset.fila);
+        const actuales = leerFilas().filter((_, j) => j !== i);
+        U.$('[data-filas]', m.raiz).innerHTML = (actuales.length ? actuales : [{ codigo: '', cantidad: 1 }]).map(filaHtml).join('');
+      }
+    });
+    U.$('#dsNo', m.raiz).onclick = m.cerrar;
+    U.$('#dsSi', m.raiz).onclick = function () {
+      try {
+        S.guardarDespiece({
+          id: d ? d.id : undefined,
+          nombre: U.$('#dsNombre', m.raiz).value.trim(),
+          activo: U.$('#dsActivo', m.raiz).checked,
+          componentes: leerFilas().filter((c) => c.codigo),
+        });
+      } catch (err) {
+        return U.toast(err.message, 'error');
+      }
+      m.cerrar();
+      U.toast(d ? 'Despiece actualizado.' : 'Despiece creado.');
+      if (alGuardar) alGuardar();
+      llenarProductosEntrada();
+    };
   }
 
   /* --- Tarjeta de indicador (mismo formato que el resto del panel) --- */

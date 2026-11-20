@@ -65,7 +65,7 @@ NASCAR.Remoto = (function () {
 
   const CLAVES = [
     'sucursales', 'unidadActiva', 'categorias', 'cartaV2', 'menusDia', 'dia', 'pedidos', 'usuarios',
-    'stock', 'cierres', 'entradas', 'gastos', 'bases', 'empresas', 'config', 'empresaActual',
+    'stock', 'cierres', 'entradas', 'despieces', 'gastos', 'bases', 'empresas', 'config', 'empresaActual',
   ];
 
   // taseca-admin.html, o /taseca a secas (sin empresa detrás)
@@ -1223,14 +1223,30 @@ NASCAR.Remoto = (function () {
       usuarioId: e.usuario_id || null,
       usuarioNombre: e.registrada_por || 'Sistema',
       factura: e.factura || null,
+      // Si salió de un despiece (Pollo entero → presas), todo el lote va junto
+      loteDespiece: e.lote_despiece ? 'lt' + e.lote_despiece : null,
+      despiece: e.despiece || null,
       historial: [],
+    };
+  }
+
+  function aDespiece(d) {
+    return {
+      id: 'ds' + d.despiece_id,
+      idBase: d.despiece_id,
+      empresaId: empresa.codigo,
+      nombre: d.nombre,
+      activo: d.activo !== false,
+      componentes: (d.componentes || []).map((c) => ({
+        codigo: c.codigo, nombre: c.nombre, area: c.area, cantidad: n(c.cantidad),
+      })),
     };
   }
 
   function cargarInventario() {
     if (!token()) {
       marcaInventario = null;
-      S.cargarRemoto({ stock: [], cierres: [], entradas: [] });
+      S.cargarRemoto({ stock: [], cierres: [], entradas: [], despieces: [] });
       return;
     }
     // La marca primero: lo que cambie mientras se descarga se ve en el siguiente refresco
@@ -1238,9 +1254,13 @@ NASCAR.Remoto = (function () {
     const stock = obtener('/stock?order=codigo');
     const cierres = obtener('/cierres?order=fecha_operativa.desc');
     const entradas = obtener('/entradas?order=fecha_operativa.desc,entrada_id.desc');
+    const despieces = obtener('/despieces?order=nombre');
     marcaInventario = m.length ? m[0].marca : null;
     Object.keys(cacheCruce).forEach((k) => delete cacheCruce[k]);
-    S.cargarRemoto({ stock: stock.map(aStock), cierres: cierres.map(aCierre), entradas: entradas.map(aEntrada) });
+    S.cargarRemoto({
+      stock: stock.map(aStock), cierres: cierres.map(aCierre), entradas: entradas.map(aEntrada),
+      despieces: despieces.map(aDespiece),
+    });
   }
 
   /* ¿Cambió algo del inventario? Unos bytes; recarga sólo si sí. */
@@ -1496,9 +1516,44 @@ NASCAR.Remoto = (function () {
     },
 
     borrarEntrada: function (entradaId) {
+      // Si es de un despiece, la base elimina el lote entero
       rpc('anular_entrada', { p_entrada_id: idDe('en', entradaId), p_motivo: 'Eliminada desde el panel' });
       despuesDeInventario();
       return true;
+    },
+
+    guardarDespiece: function (datos) {
+      const r = rpc('guardar_despiece', {
+        p_despiece: {
+          despiece_id: datos.id ? idDe('ds', datos.id) : null,
+          nombre: datos.nombre,
+          activo: datos.activo !== false,
+          componentes: (datos.componentes || []).map((c) => ({ codigo: c.codigo, cantidad: Number(c.cantidad) })),
+        },
+      });
+      despuesDeInventario();
+      return aDespiece(r);
+    },
+
+    borrarDespiece: function (despieceId) {
+      const r = rpc('borrar_despiece', { p_despiece_id: idDe('ds', despieceId) });
+      despuesDeInventario();
+      return { desactivado: !!r.desactivado, borrado: !!r.borrado };
+    },
+
+    guardarEntradaDespiece: function (datos) {
+      const r = rpc('registrar_entrada_despiece', {
+        p_entrada: {
+          unidad_id: Number(datos.sucursalId),
+          despiece_id: idDe('ds', datos.despieceId),
+          tipo: datos.tipoEntrada || 'compra',
+          cantidad: datos.cantidad === '' || datos.cantidad == null ? null : Number(datos.cantidad),
+          observacion: datos.observacion || '',
+          fecha: datos.fecha,
+        },
+      });
+      despuesDeInventario();
+      return { lote: 'lt' + r.lote_despiece, entradas: (r.entradas || []).map(aEntrada) };
     },
 
     calcularCruce: function (sucursalId, fechaCierre, area) {

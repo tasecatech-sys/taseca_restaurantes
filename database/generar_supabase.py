@@ -112,6 +112,12 @@ PARTES = [
     # redefine rest.carta (de la 25), el trigger de ítems (de la 03, con su
     # search_path de la 43) y rest.sincronizar_catalogo (de la 47).
     ('49_solo_personal.sql',                  'Productos solo para el personal: el mesero los vende, el cliente no los ve'),
+
+    # Despieces: una entrada (Pollo entero) que llena varios insumos (presas).
+    # Va al final: redefine rest.entradas y rest.inventario_marca (de la 13),
+    # el trigger de entradas inmutables (de la 13, con su search_path de la 43)
+    # y crea dos tablas con RLS encendida a mano (la 19 ya pasó).
+    ('50_despiece_de_entradas.sql',           'Despieces: comprar un pollo entero y que se llenen las presas'),
 ]
 
 CABECERA = '''/* ============================================================================
