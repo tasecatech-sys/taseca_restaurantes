@@ -1155,6 +1155,17 @@ NASCAR.Caja = (function () {
     imprimirRecibo(pedidos, extra);
   }
 
+  /* ¿Lleva comanda? Lo mismo que decide la base (core.fn_pedido_va_a_cocina):
+     menú del día siempre; de la carta, lo que no se entrega en el acto. Un
+     pedido sólo de vitrina no se imprime, así que no se ofrece reimprimirlo. */
+  function llevaComanda(p) {
+    return (p.items || []).some(function (it) {
+      if (it.origen && it.origen !== 'carta') return true;
+      const prod = S.getPlatoCarta ? S.getPlatoCarta(it.refId) : null;
+      return !prod || prod.requierePreparacion !== false;
+    });
+  }
+
   function pintarCocina() {
     const suc = sucursal();
     const sede = U.sucursal(suc) || {};
@@ -1198,7 +1209,9 @@ NASCAR.Caja = (function () {
               (it.notas ? '<br><span class="mini tenue">* ' + U.esc(it.notas) + '</span>' : '') + '</div>').join('') + '</div>' +
             '<div class="fila mt-8" style="gap:8px">' +
             '<button class="btn btn--bloque crece caja-ticket__cobrar" data-comanda-lista="' + U.esc(p.id) + '">✓ Listo</button>' +
-            '<button class="btn btn--fantasma btn--sm" data-comanda-reimp="' + U.esc(p.id) + '">🖨 Reimprimir</button>' +
+            (llevaComanda(p)
+              ? '<button class="btn btn--fantasma btn--sm" data-comanda-reimp="' + U.esc(p.id) + '">🖨 Reimprimir</button>'
+              : '<span class="mini tenue" title="Todo sale de vitrina o se entrega en el acto">Sale de vitrina: no lleva comanda</span>') +
             '</div></div>';
         }).join('')
       : '<div class="vacio"><div class="vacio__ico">🍳</div><h3>Nada en cocina</h3>' +
