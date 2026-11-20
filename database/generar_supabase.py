@@ -107,6 +107,11 @@ PARTES = [
     # El panel guarda el interruptor de acompañamientos (rest.sincronizar_catalogo).
     ('46_sincronizar_guarda_acompanamientos.sql', 'El panel guarda el interruptor de acompañamientos del chef'),
     ('47_plato_chef_con_imagen.sql',          'El plato del chef puede tener foto'),
+
+    # Productos «solo personal»: mesero y caja sí, el cliente no. Va al final:
+    # redefine rest.carta (de la 25), el trigger de ítems (de la 03, con su
+    # search_path de la 43) y rest.sincronizar_catalogo (de la 47).
+    ('49_solo_personal.sql',                  'Productos solo para el personal: el mesero los vende, el cliente no los ve'),
 ]
 
 CABECERA = '''/* ============================================================================

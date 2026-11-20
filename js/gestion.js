@@ -252,7 +252,11 @@ NASCAR.Gestion = (function () {
       kpi('Productos en carta', cartaUnidad.length, 'De ' + U.sucursal(unidad).nombre) +
       kpi('Visibles al público', S.getCartaDisponible(unidad).length, 'Activos y con existencias', 'verde') +
       kpi('Agotados', cartaUnidad.filter((p) => p.agotado).length, 'No se pueden pedir', 'ambar') +
-      kpi('Ocultos', cartaUnidad.filter((p) => !p.activo).length, 'No aparecen en la carta');
+      kpi('Ocultos', cartaUnidad.filter((p) => !p.activo).length,
+          (function () {
+            const n = cartaUnidad.filter((p) => p.activo && p.soloPersonal).length;
+            return n ? 'Y ' + n + ' solo para el personal' : 'No aparecen en la carta';
+          })());
 
     if (!lista.length) {
       $('#tablaProductos').innerHTML =
@@ -294,6 +298,9 @@ NASCAR.Gestion = (function () {
             : p.agotado
             ? '<span class="badge badge--ambar">Agotado</span>'
             : '<span class="badge badge--verde">Disponible</span>') +
+          (p.activo && p.soloPersonal
+            ? ' <span class="badge badge--linea" title="Lo venden mesero y caja; el cliente no lo ve">Solo personal</span>'
+            : '') +
           '</td>' +
 
           '<td class="nowrap">' +
@@ -473,9 +480,20 @@ NASCAR.Gestion = (function () {
           : 'El producto es de esta unidad y sólo se vende aquí.') +
         '</span></div>' +
 
-        '<div class="fila" style="gap:18px;margin:8px 0 16px">' +
-        '<label class="fila mini" style="gap:8px"><input type="checkbox" id="pActivo"' +
-        (p.activo ? ' checked' : '') + ' style="accent-color:var(--verde);width:18px;height:18px"> Visible en la carta</label>' +
+        /* Tres estados: en la carta (todos), solo personal (mesero y caja,
+           p. ej. una botella de vidrio que no va a domicilio) u oculto. */
+        '<label class="campo" style="margin:8px 0 10px"><span>¿Quién lo ve?</span>' +
+        '<select class="select" id="pVisibilidad">' +
+        [
+          ['carta', 'En la carta · clientes, mesero y caja'],
+          ['personal', 'Solo personal · mesero y caja (el cliente no lo ve)'],
+          ['oculto', 'Oculto · nadie lo vende'],
+        ].map(function (o) {
+          const actual = !p.activo ? 'oculto' : p.soloPersonal ? 'personal' : 'carta';
+          return '<option value="' + o[0] + '"' + (o[0] === actual ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') +
+        '</select></label>' +
+        '<div class="fila" style="gap:18px;margin:0 0 16px">' +
         '<label class="fila mini" style="gap:8px"><input type="checkbox" id="pAgotado"' +
         (p.agotado ? ' checked' : '') + ' style="accent-color:var(--ambar);width:18px;height:18px"> Agotado hoy</label>' +
         '</div>' +
@@ -507,7 +525,8 @@ NASCAR.Gestion = (function () {
           orden: Number(U.$('#pOrden', m.raiz).value) || 0,
           imagen: U.$('#pImagen', m.raiz).value.trim(),
           sucursales: p.sucursales,
-          activo: U.$('#pActivo', m.raiz).checked,
+          activo: U.$('#pVisibilidad', m.raiz).value !== 'oculto',
+          soloPersonal: U.$('#pVisibilidad', m.raiz).value === 'personal',
           agotado: U.$('#pAgotado', m.raiz).checked,
           requierePreparacion: !U.$('#pSinCocina', m.raiz).checked,
         });

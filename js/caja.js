@@ -170,7 +170,7 @@ NASCAR.Caja = (function () {
      ================================================================= */
   function carta() {
     const suc = sucursal();
-    return S.getCarta({ sucursalId: suc }).filter((p) => p.activo !== false && !p.agotado);
+    return S.getCarta({ sucursalId: suc, personal: true }).filter((p) => p.activo !== false && !p.agotado);
   }
 
   function pintarCategorias() {

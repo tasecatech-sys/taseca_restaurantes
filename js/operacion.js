@@ -206,7 +206,7 @@ NASCAR.Operacion = (function () {
 
     function pintarLista() {
       const q = (U.$('#tpBuscar', m.raiz).value || '').trim().toLowerCase();
-      let platos = S.getCartaDisponible(sucId);
+      let platos = S.getCartaDisponible(sucId, null, { personal: true }); // el mesero ve también lo «solo personal»
       if (categoriaMesero !== 'todos') platos = platos.filter((p) => p.cat === categoriaMesero);
       if (q) platos = platos.filter((p) => p.nombre.toLowerCase().includes(q));
 

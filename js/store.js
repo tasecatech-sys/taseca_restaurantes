@@ -1552,6 +1552,9 @@ NASCAR.Store = (function () {
          se comporta como siempre. Sólo lo que se marque como «se entrega en
          el acto» puede venderse sin pasar por cocina. */
       requierePreparacion: p.requierePreparacion !== false,
+      /* «Solo personal»: lo venden mesero y caja, pero el cliente no lo ve
+         (p. ej. una bebida en botella de vidrio). */
+      soloPersonal: p.soloPersonal === true,
     });
   }
 
@@ -1563,9 +1566,10 @@ NASCAR.Store = (function () {
   }
 
   /**
-   * getCarta({ todas, sucursalId })
+   * getCarta({ todas, sucursalId, personal })
    *   todas       incluye los productos desactivados (para el panel)
    *   sucursalId  filtra los que no se venden en esa sucursal
+   *   personal    incluye lo «solo personal» (mesero y caja)
    */
   function getCarta(opciones) {
     opciones = opciones || {};
@@ -1579,14 +1583,19 @@ NASCAR.Store = (function () {
     });
 
     if (!opciones.todas) lista = lista.filter((p) => p.activo);
+    /* Lo «solo personal» no sale en la carta del cliente (portal y QR de
+       mesa). Sólo lo piden mesero y caja con `personal: true`. Por defecto
+       se esconde: una pantalla nueva del cliente nace segura. */
+    if (!opciones.todas && !opciones.personal) lista = lista.filter((p) => !p.soloPersonal);
     // La carta es de la UNIDAD: la de un bar no aparece en una arepera
     if (opciones.sucursalId) lista = lista.filter((p) => esDeUnidad(p, opciones.sucursalId));
 
     return lista.sort((a, b) => (a.orden || 0) - (b.orden || 0));
   }
 
-  function getCartaDisponible(sucursalId, empresaId) {
-    return getCarta({ sucursalId: sucursalId, empresaId: empresaId }).filter((p) => p.disponible);
+  function getCartaDisponible(sucursalId, empresaId, extra) {
+    return getCarta(Object.assign({ sucursalId: sucursalId, empresaId: empresaId }, extra || {}))
+      .filter((p) => p.disponible);
   }
 
   function getPlatoCarta(platoId, empresaId) {
