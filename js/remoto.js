@@ -214,6 +214,8 @@ NASCAR.Remoto = (function () {
       activa: u.activa,
       // La cocina trabaja con comanda impresa (migración 52)
       comandaImpresa: u.comanda_impresa === true,
+      // Impresora con cajón monedero en la caja (migración 54)
+      cajonMonedero: u.cajon_monedero === true,
       branding: {
         logo: (logos[u.unidad_id] && logos[u.unidad_id].imagen) || u.logo_url || '',
         color: u.color_marca || '',
@@ -1077,6 +1079,14 @@ NASCAR.Remoto = (function () {
     /* ---- Comanda impresa (migración 52) ---- */
     configurarComanda: function (sucursalId, activa) {
       const r = rpc('configurar_comanda', { p_unidad_id: Number(sucursalId), p_activa: !!activa });
+      S.cargarRemoto({
+        sucursales: S.leerRemoto('sucursales', []).map((s) => (Number(s.id) === Number(sucursalId) ? aUnidad(r) : s)),
+      });
+      return aUnidad(r);
+    },
+
+    configurarCajon: function (sucursalId, activo) {
+      const r = rpc('configurar_cajon', { p_unidad_id: Number(sucursalId), p_activo: !!activo });
       S.cargarRemoto({
         sucursales: S.leerRemoto('sucursales', []).map((s) => (Number(s.id) === Number(sucursalId) ? aUnidad(r) : s)),
       });

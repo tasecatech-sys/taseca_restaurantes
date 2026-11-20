@@ -1429,6 +1429,13 @@
         return false; // el botón vuelve: se puede reintentar
       }
       m.cerrar();
+      /* Sede con cajón monedero: el efectivo que entra imprime el
+         comprobante, y con él la impresora abre el cajón. */
+      if (metodo === 'efectivo' && NASCAR.Caja && NASCAR.Caja.tieneCajon && NASCAR.Caja.tieneCajon(p.sucursalId)) {
+        NASCAR.Caja.imprimirRecibo([S.getPedido(pedidoId) || p], {
+          metodo: 'efectivo', recibido: efectivo && efectivo.recibido,
+        });
+      }
       U.toast(
         'Pago de ' + p.codigo + ' confirmado · ' +
         nombreCorto(metodos.find((x) => x.id === metodo) || { id: metodo }) +

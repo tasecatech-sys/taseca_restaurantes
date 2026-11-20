@@ -1330,6 +1330,29 @@ NASCAR.Gestion = (function () {
         return avisarCambio();
       }
 
+      const cj = e.target.closest('[data-cajon-suc]');
+      if (cj) {
+        if (!A.exigir('config_sucursales')) return;
+        const s = S.getSucursal(Number(cj.dataset.cajonSuc));
+        const activar = !s.cajonMonedero;
+        return U.confirmar(
+          activar
+            ? s.nombre + ' tiene cajón monedero: cada vez que la caja reciba efectivo se imprimirá el comprobante de pago ' +
+              'y la impresora abrirá el cajón. En el driver de la impresora tiene que estar activado «abrir el cajón al imprimir».'
+            : s.nombre + ' ya no usa cajón: al cobrar en efectivo no se imprimirá el comprobante.',
+          function () {
+            try {
+              S.configurarCajon(s.id, activar);
+            } catch (err) {
+              return U.toast(err.message, 'error');
+            }
+            U.toast(activar ? 'Cajón monedero activado en ' + s.nombre + '.' : 'Cajón monedero quitado en ' + s.nombre + '.');
+            avisarCambio();
+          },
+          activar ? 'Sí, tiene cajón' : 'Sí, quitarlo'
+        );
+      }
+
       const cm = e.target.closest('[data-comanda-suc]');
       if (cm) {
         if (!A.exigir('config_sucursales')) return;
@@ -1658,6 +1681,10 @@ NASCAR.Gestion = (function () {
           (s.comandaImpresa
             ? '<b class="verde">activa</b> <span class="mini tenue">(la cocina no toca el sistema; caja marca «Listo»)</span>'
             : '<span class="tenue">apagada</span>') + '</span></div>' +
+          '<div class="dato"><span class="dato__ico">💵</span><span>Cajón monedero: ' +
+          (s.cajonMonedero
+            ? '<b class="verde">activo</b> <span class="mini tenue">(al cobrar en efectivo sale el comprobante y se abre el cajón)</span>'
+            : '<span class="tenue">no tiene</span>') + '</span></div>' +
           '</div>' +
           '<div class="unidad__cifras">' +
           '<div class="unidad__cifra"><b>' + n.carta + '</b><span>en carta</span></div>' +
@@ -1671,7 +1698,9 @@ NASCAR.Gestion = (function () {
               '<button class="btn btn--fantasma btn--xs" data-activar-suc="' + s.id + '">' +
               (inactiva ? 'Activar' : 'Desactivar') + '</button>' +
               '<button class="btn btn--fantasma btn--xs" data-comanda-suc="' + s.id + '">🖨 ' +
-              (s.comandaImpresa ? 'Apagar comanda' : 'Activar comanda') + '</button>'
+              (s.comandaImpresa ? 'Apagar comanda' : 'Activar comanda') + '</button>' +
+              '<button class="btn btn--fantasma btn--xs" data-cajon-suc="' + s.id + '">💵 ' +
+              (s.cajonMonedero ? 'Quitar cajón' : 'Tiene cajón') + '</button>'
             : '') +
           (!inactiva && !esActual && !atado
             ? '<button class="btn btn--rojo btn--xs" data-usar-unidad="' + s.id + '">Trabajar aquí</button>'

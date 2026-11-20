@@ -2058,6 +2058,20 @@ NASCAR.Store = (function () {
     return hecha;
   }
 
+  function configurarCajon(sucursalId, activo) {
+    const eid = empresaActivaId();
+    const todas = leer(K.sucursales, null) || [];
+    let hecha = null;
+    escribir(K.sucursales, todas.map(function (s) {
+      if ((s.empresaId || EMPRESA_DEFECTO) !== eid || Number(s.id) !== Number(sucursalId)) return s;
+      hecha = Object.assign({}, s, { cajonMonedero: !!activo });
+      return hecha;
+    }));
+    hidratar();
+    if (!hecha) throw new Error('No se encontró la sede.');
+    return hecha;
+  }
+
   function comandaLista(pedidoId) {
     const p = getPedido(pedidoId);
     if (!p) throw new Error('No se encontró el pedido.');
@@ -6346,6 +6360,7 @@ NASCAR.Store = (function () {
     cambiarEstado: cambiarEstado,
     getDomiciliarios: getDomiciliarios,
     configurarComanda: configurarComanda,
+    configurarCajon: configurarCajon,
     comandaLista: comandaLista,
     reimprimirComanda: reimprimirComanda,
     tomarComandas: tomarComandas,

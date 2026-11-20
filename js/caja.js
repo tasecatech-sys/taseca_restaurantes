@@ -154,6 +154,12 @@ NASCAR.Caja = (function () {
       const b = e.target.closest('[data-caja-cobrar]');
       if (b) return ctx.cobrar(b.dataset.cajaCobrar, refrescar);
 
+      const rc = e.target.closest('[data-caja-recibo]');
+      if (rc) {
+        imprimirRecibo([S.getPedido(rc.dataset.cajaRecibo)]);
+        return U.toast('Imprimiendo el comprobante…');
+      }
+
       const r = e.target.closest('[data-caja-rechazar]');
       if (r) return ctx.rechazar(r.dataset.cajaRechazar, refrescar);
 
@@ -439,6 +445,9 @@ NASCAR.Caja = (function () {
     }
 
     const aCocina = ticket.some((x) => x.requierePreparacion);
+    if (metodo === 'efectivo') {
+      siCajonImprimir([venta], { metodo: 'efectivo', recibido: efectivo && efectivo.recibido });
+    }
     ticket = [];
     claveVenta = '';
     recibidoMostrador = null;   // lo del cliente anterior no es lo del siguiente
@@ -602,6 +611,9 @@ NASCAR.Caja = (function () {
         : '') +
       '<button class="btn btn--fantasma btn--sm' + (enCola ? '' : ' crece') +
       '" data-caja-ver="' + U.esc(p.id) + '">Ver pedido</button>' +
+      (p.estadoPago === 'confirmado' && tieneCajon(p.sucursalId)
+        ? '<button class="btn btn--fantasma btn--sm" data-caja-recibo="' + U.esc(p.id) + '">🖨 Recibo</button>'
+        : '') +
       '</div>' +
       '</div>'
     );
@@ -686,6 +698,12 @@ NASCAR.Caja = (function () {
           return U.toast(e.message, 'error');
         }
         marcados.clear();
+        const ok = new Set(((r && r.ok) || []).map((x) => String(x.id)));
+        const cobrados = sel.filter((p) => !r || !r.ok || ok.has(String(p.id)) || ok.has(String(p.idBase)))
+          .map((p) => S.getPedido(p.id) || p);
+        if (cobrados.some((p) => p.metodoPago === 'efectivo')) {
+          siCajonImprimir(cobrados, { titulo: 'Cobro de ' + cobrados.length + ' pedidos' });
+        }
         refrescar();
         if (ctx.alCobrar) ctx.alCobrar();
 
@@ -886,6 +904,7 @@ NASCAR.Caja = (function () {
         } catch (e) {
           return U.toast(e.message, 'error');
         }
+        siCajonImprimir(debe.map((p) => S.getPedido(p.id) || p), { titulo: 'Efectivo entregado por ' + nombre });
         refrescar();
         if (ctx.alCobrar) ctx.alCobrar();
         if (r && r.fallidos) {
@@ -1026,9 +1045,14 @@ NASCAR.Caja = (function () {
   /* Imprime en un marco oculto: con --kiosk-printing sale directo a la
      impresora predeterminada de Windows, sin cuadro de diálogo. */
   function imprimirComandaCocina(p, cocina) {
+    return imprimirHTML(htmlComanda(p, cocina), 'la comanda ' + p.codigo);
+  }
+
+  /* Imprime un documento en un marco oculto. Con Chrome --kiosk-printing
+     sale directo a la impresora predeterminada, sin cuadro de diálogo. Si
+     el marco nunca termina de cargar, a los 15 s se sigue con lo próximo. */
+  function imprimirHTML(html, que) {
     return new Promise(function (listo) {
-      /* Si el marco nunca termina de cargar, la cola no se queda parada:
-         a los 15 s se sigue con la siguiente comanda. */
       setTimeout(listo, 15000);
       const marco = document.createElement('iframe');
       marco.setAttribute('aria-hidden', 'true');
@@ -1038,14 +1062,97 @@ NASCAR.Caja = (function () {
           marco.contentWindow.focus();
           marco.contentWindow.print();
         } catch (err) {
-          U.toast('No se pudo imprimir la comanda ' + p.codigo + ': ' + err.message, 'error');
+          U.toast('No se pudo imprimir ' + (que || 'el documento') + ': ' + err.message, 'error');
         }
         setTimeout(function () { marco.remove(); }, 60000);
-        setTimeout(listo, 1500); // un respiro entre comandas
+        setTimeout(listo, 1500); // un respiro entre documentos
       };
-      marco.srcdoc = htmlComanda(p, cocina);
+      marco.srcdoc = html;
       document.body.appendChild(marco);
     });
+  }
+
+  /* =================================================================
+     💵 CAJÓN MONEDERO (migración 54)
+
+     En una sede con cajón, cada vez que la caja recibe efectivo se imprime
+     el comprobante de pago. El cajón va conectado a la impresora y se abre
+     cuando ella imprime (lo hace el driver de Windows, «abrir el cajón al
+     imprimir»): el sistema sólo tiene que imprimir.
+
+     El comprobante NO es una factura electrónica y lo dice.
+     ================================================================= */
+  function tieneCajon(sucursalId) {
+    return !!(U.sucursal(sucursalId || sucursal()) || {}).cajonMonedero;
+  }
+
+  function htmlRecibo(pedidos, extra) {
+    extra = extra || {};
+    const e = U.esc;
+    const emp = (S.getEmpresaActual && S.getEmpresaActual()) || {};
+    const suc = U.sucursal((pedidos[0] && pedidos[0].sucursalId) || sucursal()) || {};
+    const nit = NASCAR.CONFIG && NASCAR.CONFIG.pago && NASCAR.CONFIG.pago.nit;
+    const uno = pedidos.length === 1 ? pedidos[0] : null;
+    const total = pedidos.reduce((s, p) => s + (Number(p.total) || 0), 0);
+    const linea = (izq, der, cls) =>
+      '<div class="f' + (cls ? ' ' + cls : '') + '"><span>' + izq + '</span><span>' + der + '</span></div>';
+    // En el papel, «Efectivo» a secas: «contra entrega» es cosa del domicilio
+    const metodoCorto = (m) => (m === 'efectivo' ? 'Efectivo' : S.nombreDeMetodo(m));
+
+    let cuerpo;
+    if (uno) {
+      cuerpo =
+        linea('<b>#' + e(uno.codigo) + '</b>', e(nombreDelPedido(uno).toLowerCase())) +
+        '<hr>' +
+        (uno.items || []).map((it) =>
+          '<div class="it">' + linea(it.cantidad + ' × ' + e(String(it.nombre).replace(' (menú del día)', '')),
+            U.money((Number(it.precio) || 0) * (Number(it.cantidad) || 0))) +
+          (it.detalle ? '<div class="n">' + e(it.detalle) + '</div>' : '') + '</div>').join('') +
+        '<hr>' +
+        linea('Subtotal', U.money(uno.subtotal)) +
+        (uno.domicilio ? linea('Domicilio', U.money(uno.domicilio)) : '') +
+        (uno.recargo ? linea('Recargo del pago', U.money(uno.recargo)) : '');
+    } else {
+      cuerpo = (extra.titulo ? '<div class="c"><b>' + e(extra.titulo) + '</b></div><hr>' : '<hr>') +
+        pedidos.map((p) => linea('#' + e(p.codigo) + ' · ' + e(metodoCorto(p.metodoPago)), U.money(p.total))).join('') +
+        '<hr>';
+    }
+
+    return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Comprobante</title><style>' +
+      '@page{margin:0}body{font:13px/1.4 "Courier New",monospace;margin:0;padding:8px 10px;width:72mm;color:#000}' +
+      'h1{font:800 17px/1.2 Arial,Helvetica,sans-serif;margin:0;text-align:center}.c{text-align:center}' +
+      '.f{display:flex;justify-content:space-between;gap:8px}.tot{font-size:17px;font-weight:bold;margin-top:4px}' +
+      '.it{margin:4px 0}.n{font-size:11px;padding-left:12px}hr{border:0;border-top:1px dashed #000;margin:7px 0}' +
+      '.aviso{font-size:10px;text-align:center;margin-top:6px}' +
+      '</style></head><body>' +
+      '<h1>' + e(emp.nombre || '') + '</h1>' +
+      '<div class="c">' + e(suc.nombre || '') + (suc.direccion ? '<br>' + e(suc.direccion) : '') +
+      (nit ? '<br>NIT ' + e(nit) : '') + '</div>' +
+      '<hr><div class="c"><b>COMPROBANTE DE PAGO</b><br>' + new Date().toLocaleString('es-CO') + '</div><hr>' +
+      cuerpo +
+      linea('TOTAL', U.money(total), 'tot') +
+      (uno ? linea('Pagó con', e(metodoCorto(extra.metodo || uno.metodoPago))) : '') +
+      (extra.recibido ? linea('Recibido', U.money(extra.recibido)) : '') +
+      (extra.recibido && extra.recibido > total ? linea('Cambio', U.money(extra.recibido - total)) : '') +
+      (extra.atendio ? '<div class="c" style="margin-top:6px">Atendió: ' + e(extra.atendio) + '</div>' : '') +
+      '<hr><div class="c">¡Gracias por su compra!</div>' +
+      '<div class="aviso">Documento informativo. No es una factura electrónica.</div>' +
+      '</body></html>';
+  }
+
+  /* Lo usa el panel (confirmar pago en admin.js) y esta misma caja. */
+  function imprimirRecibo(pedidos, extra) {
+    const lista = (Array.isArray(pedidos) ? pedidos : [pedidos]).filter(Boolean);
+    if (!lista.length) return;
+    const firma = A.firma ? A.firma() : null;
+    const datos = Object.assign({ atendio: firma && firma.usuarioNombre }, extra || {});
+    imprimiendo = imprimiendo.then(() => imprimirHTML(htmlRecibo(lista, datos), 'el comprobante'));
+  }
+
+  /* Al recibir efectivo en una sede con cajón: comprobante y cajón abierto. */
+  function siCajonImprimir(pedidos, extra) {
+    if (!tieneCajon()) return;
+    imprimirRecibo(pedidos, extra);
   }
 
   function pintarCocina() {
@@ -1185,5 +1292,5 @@ NASCAR.Caja = (function () {
     }
   }
 
-  return { iniciar: iniciar, refrescar: refrescar };
+  return { iniciar: iniciar, refrescar: refrescar, imprimirRecibo: imprimirRecibo, tieneCajon: tieneCajon };
 })();
