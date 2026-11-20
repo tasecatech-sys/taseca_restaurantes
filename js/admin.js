@@ -1114,18 +1114,20 @@
     });
   }
 
-  /* --- Comanda para cocina --------------------------------------- */
+  /* --- Ticket del cliente (el «Imprimir comanda» del pedido) ------ */
+  /* Se imprime como la comanda de cocina: márgenes en cero y en un marco
+     oculto. Con los márgenes de Chrome, su pie de página (fecha, enlace)
+     caía al final de la hoja de 30 cm y el papel salía con ~20 cm en blanco. */
   function imprimirComanda(pedidoId) {
     const p = S.getPedido(pedidoId);
-    const suc = U.sucursal(p.sucursalId);
+    const suc = U.sucursal(p.sucursalId) || {};
+    const e = U.esc;
+    const cli = p.cliente || {};
 
-    const w = window.open('', '_blank', 'width=380,height=640');
-    if (!w) return U.toast('El navegador bloqueó la ventana de impresión.', 'error');
-
-    w.document.write(
-      '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Comanda ' + p.codigo + '</title>' +
+    const html =
+      '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Comanda ' + e(p.codigo) + '</title>' +
       '<style>' +
-      'body{font:13px/1.45 "Courier New",monospace;padding:14px;max-width:300px;margin:0 auto;color:#000}' +
+      '@page{margin:0}body{font:13px/1.45 "Courier New",monospace;margin:0;padding:8px 10px;width:72mm;color:#000}' +
       'h1{font-size:19px;margin:0;text-align:center;letter-spacing:2px}' +
       'hr{border:0;border-top:1px dashed #000;margin:9px 0}' +
       '.f{display:flex;justify-content:space-between;gap:8px}' +
@@ -1134,24 +1136,24 @@
       '</style></head><body>' +
 
       (NASCAR.Caja && NASCAR.Caja.htmlLogo ? NASCAR.Caja.htmlLogo(p.sucursalId) : '') +
-      '<h1>' + U.esc(((S.getEmpresaActual && S.getEmpresaActual()) || {}).nombre || '') + '</h1>' +
-      '<div class="c">' + U.esc(suc.nombre) + (suc.direccion ? '<br>' + U.esc(suc.direccion) : '') +
-      (NASCAR.CONFIG.pago && NASCAR.CONFIG.pago.nit ? '<br>NIT ' + U.esc(NASCAR.CONFIG.pago.nit) : '') + '</div>' +
+      '<h1>' + e(((S.getEmpresaActual && S.getEmpresaActual()) || {}).nombre || '') + '</h1>' +
+      '<div class="c">' + e(suc.nombre || '') + (suc.direccion ? '<br>' + e(suc.direccion) : '') +
+      (NASCAR.CONFIG.pago && NASCAR.CONFIG.pago.nit ? '<br>NIT ' + e(NASCAR.CONFIG.pago.nit) : '') + '</div>' +
       '<hr>' +
-      '<div class="f"><b>' + p.codigo + '</b><span>' + new Date(p.creado).toLocaleString('es-CO') + '</span></div>' +
-      '<div class="f"><span>' + U.etiquetaTipo(p).toUpperCase() + '</span>' +
-      '<span>' + (p.cliente.nombre || '') + '</span></div>' +
-      (p.cliente.direccion ? '<div>' + p.cliente.direccion + (p.cliente.zona ? ' (' + p.cliente.zona + ')' : '') + '</div>' : '') +
-      (p.cliente.telefono ? '<div>Tel: ' + p.cliente.telefono + '</div>' : '') +
+      '<div class="f"><b>' + e(p.codigo) + '</b><span>' + new Date(p.creado).toLocaleString('es-CO') + '</span></div>' +
+      '<div class="f"><span>' + e(U.etiquetaTipo(p).toUpperCase()) + '</span>' +
+      '<span>' + e(cli.nombre || '') + '</span></div>' +
+      (cli.direccion ? '<div>' + e(cli.direccion) + (cli.zona ? ' (' + e(cli.zona) + ')' : '') + '</div>' : '') +
+      (cli.telefono ? '<div>Tel: ' + e(cli.telefono) + '</div>' : '') +
       '<hr>' +
 
       p.items
         .map(
           (it) =>
-            '<div class="it"><div class="f"><span>' + it.cantidad + ' x ' + it.nombre + '</span>' +
+            '<div class="it"><div class="f"><span>' + it.cantidad + ' x ' + e(it.nombre) + '</span>' +
             '<span>' + U.money(it.precio * it.cantidad) + '</span></div>' +
-            (it.detalle ? '<div class="n">' + U.esc(it.detalle) + '</div>' : '') +
-            (it.notas ? '<div class="n">* ' + it.notas + '</div>' : '') + '</div>'
+            (it.detalle ? '<div class="n">' + e(it.detalle) + '</div>' : '') +
+            (it.notas ? '<div class="n">* ' + e(it.notas) + '</div>' : '') + '</div>'
         )
         .join('') +
 
@@ -1161,19 +1163,20 @@
       (p.recargo ? '<div class="f"><span>Recargo del pago</span><span>' + U.money(p.recargo) + '</span></div>' : '') +
       '<div class="f tot"><span>TOTAL</span><span>' + U.money(p.total) + '</span></div>' +
       '<hr>' +
-      '<div>Pago: ' + p.metodoPago.toUpperCase() + ' (' + p.estadoPago + ')</div>' +
-      (p.cliente.notas ? '<div><b>OBS:</b> ' + p.cliente.notas + '</div>' : '') +
+      '<div>Pago: ' + e(String(p.metodoPago || '').toUpperCase()) + ' (' + e(p.estadoPago || '') + ')</div>' +
+      (cli.notas ? '<div><b>OBS:</b> ' + e(cli.notas) + '</div>' : '') +
       '<hr><div class="c">Gracias por preferirnos</div>' +
-      '</body></html>'
-    );
+      '</body></html>';
+
+    // El mismo camino de la comanda de cocina (marco oculto, espera al logo)
+    if (NASCAR.Caja && NASCAR.Caja.imprimirHTML) return NASCAR.Caja.imprimirHTML(html, 'el ticket ' + p.codigo);
+
+    const w = window.open('', '_blank', 'width=380,height=640');
+    if (!w) return U.toast('El navegador bloqueó la ventana de impresión.', 'error');
+    w.document.write(html);
     w.document.close();
     w.focus();
-    // Con logo, se imprime cuando la imagen ya cargó (si no, saldría en blanco)
-    const img = w.document.images[0];
-    let impreso = false;
-    const imprimir = () => { if (impreso) return; impreso = true; setTimeout(() => w.print(), 120); };
-    if (img && !img.complete) { img.onload = img.onerror = imprimir; setTimeout(imprimir, 3000); }
-    else imprimir();
+    w.onload = () => w.print();
   }
 
   /* =================================================================

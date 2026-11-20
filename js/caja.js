@@ -1325,5 +1325,5 @@ NASCAR.Caja = (function () {
     }
   }
 
-  return { iniciar: iniciar, refrescar: refrescar, imprimirRecibo: imprimirRecibo, tieneCajon: tieneCajon, htmlLogo: htmlLogo };
+  return { iniciar: iniciar, refrescar: refrescar, imprimirRecibo: imprimirRecibo, tieneCajon: tieneCajon, htmlLogo: htmlLogo, imprimirHTML: imprimirHTML };
 })();
