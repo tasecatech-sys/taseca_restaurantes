@@ -345,6 +345,9 @@ NASCAR.Remoto = (function () {
       mesa: p.mesa,
       usuarioId: p.tomado_por_id || null,
       usuarioNombre: p.tomado_por || null,
+      // Quién llevó el domicilio: a él se le cobra el efectivo (migración 51)
+      domiciliarioId: p.domiciliario_id || null,
+      domiciliario: p.domiciliario || null,
       cliente: {
         nombre: p.cliente || '',
         telefono: p.cliente_telefono || '',
@@ -676,6 +679,23 @@ NASCAR.Remoto = (function () {
     }
     const traidos = delArranque('usuarios');
     S.cargarRemoto({ usuarios: (traidos || obtener('/usuarios?order=nombre')).map(aUsuario) });
+  }
+
+  /* Los domiciliarios (nombre y sedes): los necesita caja para asignarlos
+     y cobrarles, aunque no tenga permiso de ver usuarios. */
+  let domiciliarios = [];
+  function cargarDomiciliarios() {
+    if (!token()) {
+      domiciliarios = [];
+      return;
+    }
+    try {
+      domiciliarios = obtener('/domiciliarios?order=nombre').map((d) => ({
+        id: d.usuario_id, nombre: d.nombre, unidades: (d.unidades || []).map(Number),
+      }));
+    } catch (e) {
+      domiciliarios = []; // sin permiso o base sin la migración 51: la pantalla dice que no hay
+    }
   }
 
   /* El historial de 31 días, una sola vez y sin bloquear la pantalla. */
@@ -1034,6 +1054,19 @@ NASCAR.Remoto = (function () {
 
        La respuesta trae los pedidos YA actualizados, así que se meten en
        memoria aquí mismo y el panel no tiene que volver a preguntar. */
+    getDomiciliarios: function (sucursalId) {
+      return domiciliarios
+        .filter((d) => !sucursalId || !d.unidades.length || d.unidades.indexOf(Number(sucursalId)) >= 0)
+        .map((d) => ({ id: d.id, nombre: d.nombre }));
+    },
+
+    asignarDomiciliario: function (pedidoId, usuarioId) {
+      return ponerPedido(aPedido(rpc('asignar_domiciliario', {
+        p_pedido_id: idBase(pedidoId),
+        p_domiciliario_id: usuarioId ? Number(usuarioId) : null,
+      })));
+    },
+
     confirmarPagos: function (ids, referencia) {
       const r = rpc('confirmar_pagos', {
         p_pedidos: (ids || []).map(idBase),
@@ -2071,6 +2104,7 @@ NASCAR.Remoto = (function () {
     }
     cargarPedidos();
     cargarUsuarios();
+    cargarDomiciliarios();
     cargarInventario();
     cargarCaja();
     arranque = null; // de aquí en adelante, cada cosa se pide cuando toca

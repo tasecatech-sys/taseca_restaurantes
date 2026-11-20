@@ -163,6 +163,26 @@ NASCAR.Caja = (function () {
       const v = e.target.closest('[data-caja-ver]');
       if (v) return ctx.ver(v.dataset.cajaVer);
     });
+
+    /* 🛵 Domiciliarios: cobrarle a uno y asignar quién llevó cada domicilio */
+    const dom = $('#cajaDomiciliarios');
+    if (dom) {
+      dom.addEventListener('click', function (e) {
+        const b = e.target.closest('[data-cobrar-dom]');
+        if (b) cobrarADomiciliario(b.dataset.cobrarDom);
+      });
+      dom.addEventListener('change', function (e) {
+        const sel = e.target.closest('[data-asignar-dom]');
+        if (!sel) return;
+        try {
+          const p = S.asignarDomiciliario(sel.dataset.asignarDom, sel.value || null);
+          U.toast(p && p.domiciliario ? p.codigo + ' → ' + p.domiciliario : 'Domiciliario quitado.');
+        } catch (err) {
+          U.toast(err.message, 'error');
+        }
+        refrescar();
+      });
+    }
   }
 
   /* =================================================================
@@ -729,6 +749,150 @@ NASCAR.Caja = (function () {
   }
 
   /* =================================================================
+     🛵 DOMICILIARIOS
+
+     Qué domicilios llevó cada uno y cuánto EFECTIVO hay que cobrarle.
+     Sólo el efectivo: lo de Nequi, datáfono o transferencia no pasa por
+     sus manos, se confirma en «Por cobrar» como siempre.
+       · Te debe     entregado, en efectivo, pago sin confirmar.
+       · En la calle salió y aún no entrega (todavía no tiene el dinero).
+       · Cobrado hoy lo que ya se le cobró en la jornada.
+     ================================================================= */
+  function domiciliosDeSede() {
+    return S.getPedidos({ sucursalId: sucursal(), tipo: 'domicilio' })
+      .filter((p) => p.estado !== 'cancelado' && p.estado !== 'anulado');
+  }
+
+  const esEfectivo = (p) => (NASCAR.GRUPO_DE_METODO || {})[p.metodoPago] === 'efectivo' || p.metodoPago === 'efectivo';
+  const pagoAbierto = (p) => p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado';
+  const leDebe = (p) => p.estado === 'entregado' && esEfectivo(p) && pagoAbierto(p);
+
+  function deudaDomiciliarios() {
+    try {
+      return domiciliosDeSede().filter((p) => p.domiciliarioId && leDebe(p)).reduce((s, p) => s + p.total, 0);
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function selectorDomiciliario(p, lista) {
+    if (!pagoAbierto(p)) return '';
+    return '<select class="select select--sm" data-asignar-dom="' + U.esc(p.id) + '" style="max-width:170px">' +
+      '<option value="">' + (p.domiciliarioId ? '— Quitar —' : '— Asignar a… —') + '</option>' +
+      lista.map((d) => '<option value="' + d.id + '"' + (String(d.id) === String(p.domiciliarioId) ? ' selected' : '') + '>' +
+        U.esc(d.nombre) + '</option>').join('') +
+      '</select>';
+  }
+
+  function filaDomicilio(p, lista) {
+    return '<div class="fila" style="gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--borde, rgba(255,255,255,.08))">' +
+      '<span class="mono"><b>' + U.esc(p.codigo) + '</b></span>' +
+      '<span class="crece mini">' + U.esc(p.cliente.nombre || 'Domicilio') + ' · ' +
+      U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + ' · ' + U.esc(S.nombreDeMetodo(p.metodoPago)) + '</span>' +
+      '<b class="num">' + U.money(p.total) + '</b>' +
+      selectorDomiciliario(p, lista) +
+      '</div>';
+  }
+
+  function pintarDomiciliarios() {
+    const lista = S.getDomiciliarios ? S.getDomiciliarios(sucursal()) : [];
+    const pedidos = domiciliosDeSede();
+    const hoy = S.hoy();
+
+    /* Por domiciliario: los conocidos y los que aparezcan en pedidos (por si
+       alguien dejó de estar activo con plata pendiente). */
+    const grupos = {};
+    lista.forEach((d) => (grupos[d.id] = { id: d.id, nombre: d.nombre }));
+    pedidos.forEach(function (p) {
+      if (p.domiciliarioId && !grupos[p.domiciliarioId])
+        grupos[p.domiciliarioId] = { id: p.domiciliarioId, nombre: p.domiciliario || 'Domiciliario ' + p.domiciliarioId };
+    });
+
+    const filas = Object.keys(grupos).map(function (id) {
+      const g = grupos[id];
+      const suyos = pedidos.filter((p) => String(p.domiciliarioId) === String(id));
+      g.debe = suyos.filter(leDebe);
+      g.calle = suyos.filter((p) => p.estado === 'camino');
+      g.cobradoHoy = suyos.filter((p) => p.fecha === hoy && esEfectivo(p) && p.estadoPago === 'confirmado');
+      g.monto = g.debe.reduce((s, p) => s + p.total, 0);
+      return g;
+    }).sort((a, b) => b.monto - a.monto || a.nombre.localeCompare(b.nombre));
+
+    const sinAsignar = pedidos.filter((p) => !p.domiciliarioId && pagoAbierto(p) &&
+      (p.estado === 'listo' || p.estado === 'camino' || p.estado === 'entregado'));
+    const totalDebe = filas.reduce((s, g) => s + g.monto, 0);
+    const enCalle = filas.reduce((s, g) => s + g.calle.length, 0);
+
+    $('#kpisDomiciliarios').innerHTML =
+      kpi('Efectivo por cobrarles', U.money(totalDebe), 'Domicilios entregados en efectivo', totalDebe ? 'rojo' : 'verde') +
+      kpi('En la calle', enCalle, 'Salieron y aún no entregan', enCalle ? 'ambar' : 'verde') +
+      kpi('Sin domiciliario', sinAsignar.length, 'Asígnalos para saber a quién cobrar', sinAsignar.length ? 'ambar' : 'verde') +
+      kpi('Cobrado hoy', U.money(filas.reduce((s, g) => s + g.cobradoHoy.reduce((t, p) => t + p.total, 0), 0)), 'Efectivo ya recibido', 'verde');
+
+    let html = '';
+    if (!lista.length && !filas.length) {
+      html += '<div class="vacio"><div class="vacio__ico">🛵</div><h3>No hay domiciliarios</h3>' +
+        '<p class="mini">Crea los usuarios con el rol «Domiciliario» en Configuración → Usuarios y asígnales esta sede.</p></div>';
+    }
+
+    if (sinAsignar.length) {
+      html += '<div class="caja mb-16"><h3 style="margin:0 0 6px">⚠️ Sin domiciliario</h3>' +
+        '<p class="mini tenue" style="margin:0 0 6px">Elige quién lo llevó: si no, no hay a quién cobrarle.</p>' +
+        sinAsignar.map((p) => filaDomicilio(p, lista)).join('') + '</div>';
+    }
+
+    html += filas.map(function (g) {
+      const cobrado = g.cobradoHoy.reduce((s, p) => s + p.total, 0);
+      return '<div class="caja mb-16">' +
+        '<div class="fila fila--entre" style="align-items:center;gap:8px">' +
+        '<h3 style="margin:0">🛵 ' + U.esc(g.nombre) + '</h3>' +
+        '<span class="mini tenue">' + g.calle.length + ' en la calle · cobrado hoy ' + U.money(cobrado) + '</span></div>' +
+        (g.debe.length
+          ? '<p class="mini" style="margin:8px 0 4px">Te debe <b>' + U.money(g.monto) + '</b> de ' + g.debe.length +
+            ' domicilio' + (g.debe.length === 1 ? '' : 's') + ' entregado' + (g.debe.length === 1 ? '' : 's') + ' en efectivo:</p>' +
+            g.debe.map((p) => filaDomicilio(p, lista)).join('') +
+            '<button class="btn btn--bloque mt-8 caja-ticket__cobrar" data-cobrar-dom="' + U.esc(g.id) + '">' +
+            '💵 Recibí ' + U.money(g.monto) + ' de ' + U.esc(g.nombre) + '</button>'
+          : '<p class="mini tenue" style="margin:8px 0 0">No te debe efectivo.</p>') +
+        (g.calle.length
+          ? '<details class="mt-8"><summary class="mini">En la calle (' + g.calle.length + ')</summary>' +
+            g.calle.map((p) => filaDomicilio(p, lista)).join('') + '</details>'
+          : '') +
+        '</div>';
+    }).join('');
+
+    $('#cajaDomiciliarios').innerHTML = html;
+  }
+
+  function cobrarADomiciliario(id) {
+    const debe = domiciliosDeSede().filter((p) => String(p.domiciliarioId) === String(id) && leDebe(p));
+    if (!debe.length) return;
+    const nombre = debe[0].domiciliario || 'el domiciliario';
+    const monto = debe.reduce((s, p) => s + p.total, 0);
+    U.confirmar(
+      '¿Recibiste ' + U.money(monto) + ' en efectivo de ' + nombre + '? Se confirma el pago de ' + debe.length +
+      ' domicilio' + (debe.length === 1 ? '' : 's') + ' (' + debe.map((p) => p.codigo).join(', ') + ').',
+      function () {
+        let r;
+        try {
+          r = S.confirmarPagos(debe.map((p) => p.id), 'Efectivo entregado por ' + nombre, ctx.firma ? ctx.firma() : null);
+        } catch (e) {
+          return U.toast(e.message, 'error');
+        }
+        refrescar();
+        if (ctx.alCobrar) ctx.alCobrar();
+        if (r && r.fallidos) {
+          U.toast('Cobrados ' + r.cobrados + '. No se pudo con ' + r.fallidos + ': ' +
+                  (r.mal[0] ? r.mal[0].codigo + ' · ' + r.mal[0].motivo : ''), 'error');
+        } else {
+          U.toast('Recibido ' + U.money(monto) + ' de ' + nombre + '.');
+        }
+      },
+      'Sí, lo recibí'
+    );
+  }
+
+  /* =================================================================
      REPINTADO
      ================================================================= */
   function refrescar() {
@@ -739,15 +903,22 @@ NASCAR.Caja = (function () {
       '<button class="sub-tab' + (vista === 'vender' ? ' is-activo' : '') + '" data-caja-vista="vender">' +
       '🧾 Vender</button>' +
       '<button class="sub-tab' + (vista === 'cobrar' ? ' is-activo' : '') + '" data-caja-vista="cobrar">' +
-      '💳 Por cobrar' + (n ? ' <b>' + n + '</b>' : '') + '</button>';
+      '💳 Por cobrar' + (n ? ' <b>' + n + '</b>' : '') + '</button>' +
+      ($('#cajaDomiciliariosVista')
+        ? '<button class="sub-tab' + (vista === 'domiciliarios' ? ' is-activo' : '') + '" data-caja-vista="domiciliarios">' +
+          '🛵 Domiciliarios' + (deudaDomiciliarios() ? ' <b>' + U.money(deudaDomiciliarios()) + '</b>' : '') + '</button>'
+        : '');
 
     $('#cajaVender').classList.toggle('oculto', vista !== 'vender');
     $('#cajaCobrarVista').classList.toggle('oculto', vista !== 'cobrar');
+    if ($('#cajaDomiciliariosVista')) $('#cajaDomiciliariosVista').classList.toggle('oculto', vista !== 'domiciliarios');
 
     if (vista === 'vender') {
       pintarCategorias();
       pintarProductos();
       pintarTicket();
+    } else if (vista === 'domiciliarios') {
+      pintarDomiciliarios();
     } else {
       pintarPorCobrar();
     }

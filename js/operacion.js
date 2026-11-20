@@ -657,6 +657,9 @@ NASCAR.Operacion = (function () {
       '<div><span>Dirección</span><b>' + U.esc(p.cliente.direccion || '—') + '</b></div>' +
       '<div><span>Zona</span><b>' + U.esc(p.cliente.zona || '—') + '</b></div>' +
       '<div><span>Sucursal</span><b>' + U.esc(suc.corto) + '</b></div>' +
+      (p.estado === 'camino'
+        ? '<div><span>Lo lleva</span><b>' + (p.domiciliario ? '🛵 ' + U.esc(p.domiciliario) : '<span class="tenue">Sin asignar</span>') + '</b></div>'
+        : '') +
       '</div>' +
 
       (p.cliente.notas

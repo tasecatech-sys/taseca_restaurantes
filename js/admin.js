@@ -847,6 +847,11 @@
           ? '<div class="linea"><span class="tenue">Dirección</span><b class="derecha">' +
             U.esc(p.cliente.direccion) + '<br><span class="mini tenue">' + U.esc(p.cliente.zona || '') + '</span></b></div>'
           : '') +
+        (p.tipo === 'domicilio'
+          ? '<div class="linea"><span class="tenue">Domiciliario</span><b>' +
+            (p.domiciliario ? '🛵 ' + U.esc(p.domiciliario) : '<span class="tenue">Sin asignar · se asigna en Caja → Domiciliarios</span>') +
+            '</b></div>'
+          : '') +
         '<div class="linea"><span class="tenue">Recibido</span><b>' + U.hora(p.creado) + ' · ' + U.haceCuanto(p.creado) + '</b></div>' +
         (p.cliente.pagaCon
           ? '<div class="linea"><span class="tenue">Paga con</span><b>' + U.money(p.cliente.pagaCon) +
@@ -2453,7 +2458,7 @@
 
     const cab = [
       'Codigo', 'Fecha', 'Hora', 'Tipo', 'Mesa', 'Sucursal', 'Cliente', 'Telefono',
-      'Zona', 'Items', 'Subtotal', 'Domicilio', 'Total', 'MetodoPago', 'EstadoPago', 'Estado',
+      'Zona', 'Items', 'Subtotal', 'Domicilio', 'Total', 'MetodoPago', 'EstadoPago', 'Estado', 'Domiciliario',
     ];
 
     const filas = pedidos.map((p) => [
@@ -2473,6 +2478,7 @@
       p.metodoPago,
       p.estadoPago,
       p.estado,
+      p.domiciliario || '',
     ]);
 
     const csv =

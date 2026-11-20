@@ -2038,6 +2038,41 @@ NASCAR.Store = (function () {
     return opciones.todos ? lista : lista.filter((u) => u.activo !== false);
   }
 
+  /* Los domiciliarios activos que trabajan en esa sede (sin sede = todas). */
+  function getDomiciliarios(sucursalId) {
+    return getUsuarios()
+      .filter((u) => u.rol === 'domiciliario')
+      .filter(function (u) {
+        const unidades = (u.unidades && u.unidades.length ? u.unidades : u.sucursalId ? [u.sucursalId] : []).map(Number);
+        return !sucursalId || !unidades.length || unidades.indexOf(Number(sucursalId)) >= 0;
+      })
+      .map((u) => ({ id: u.id, nombre: u.nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  /* Caja asigna, cambia o quita (null) el domiciliario de un domicilio. */
+  function asignarDomiciliario(pedidoId, usuarioId) {
+    const p = getPedido(pedidoId);
+    if (!p) throw new Error('No se encontró el pedido.');
+    if (p.tipo !== 'domicilio') throw new Error('La factura ' + p.codigo + ' no es un domicilio.');
+    if (p.estado === 'cancelado' || p.estado === 'anulado')
+      throw new Error('La factura ' + p.codigo + ' está ' + p.estado + ': ya no se asigna.');
+    if (p.estadoPago === 'confirmado')
+      throw new Error('El pago de la factura ' + p.codigo + ' ya se cobró: no cambia de domiciliario.');
+    const nuevo = usuarioId ? getDomiciliarios(p.sucursalId).find((d) => String(d.id) === String(usuarioId)) : null;
+    if (usuarioId && !nuevo) throw new Error('Ese usuario no es domiciliario activo de esta sede.');
+    const antes = p.domiciliario || '';
+    return _mutar(pedidoId, function (x) {
+      x.domiciliarioId = nuevo ? nuevo.id : null;
+      x.domiciliario = nuevo ? nuevo.nombre : null;
+      x.historial.push({
+        ts: new Date().toISOString(),
+        texto: !nuevo ? 'Domiciliario quitado (era ' + antes + ')'
+          : antes ? 'Domiciliario: ' + antes + ' → ' + nuevo.nombre : 'Domiciliario: ' + nuevo.nombre,
+      });
+    });
+  }
+
   function getUsuario(usuarioId) {
     // Busca en el almacén completo: también los de plataforma. Se compara
     // como texto: los ids de la base son números y los botones los pasan
@@ -3822,6 +3857,14 @@ NASCAR.Store = (function () {
         ts: new Date().toISOString(),
         texto: 'Estado: ' + (ETIQUETA_ESTADO[estado] || estado),
       });
+      /* Un domiciliario que sale con el pedido queda como quien lo lleva
+         (igual que en la base, migración 51): a él se le cobra el efectivo. */
+      const s = getSesion();
+      if (estado === 'camino' && p.tipo === 'domicilio' && !p.domiciliarioId && s && s.rol === 'domiciliario') {
+        p.domiciliarioId = s.usuarioId;
+        p.domiciliario = s.nombre || '';
+        p.historial.push({ ts: new Date().toISOString(), texto: 'Lo lleva: ' + (s.nombre || '') });
+      }
       /* Entregar NO cobra, ni siquiera en efectivo: el pedido queda entregado
          para el cliente y pendiente de pago para caja, hasta que la cajera
          reciba el dinero y lo confirme. */
@@ -6233,6 +6276,8 @@ NASCAR.Store = (function () {
     getPedidoPorCodigo: getPedidoPorCodigo,
     crearPedido: crearPedido,
     cambiarEstado: cambiarEstado,
+    getDomiciliarios: getDomiciliarios,
+    asignarDomiciliario: asignarDomiciliario,
     avanzarEstado: avanzarEstado,
     cancelarPedido: cancelarPedido,
     anularPedido: anularPedido,

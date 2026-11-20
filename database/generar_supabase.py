@@ -82,6 +82,10 @@ PARTES = [
     # core.fn_recargo_pago, que no existe hasta la 30. No hay donde
     # corregirla antes.
     ('40_el_recargo_sigue_al_metodo.sql',    'Si caja cambia el metodo de pago, el recargo lo sigue'),
+    # La 37 (cobrar varios pedidos de una vez) ya corría en producción pero
+    # faltaba aquí: una instalación nueva quedaba sin rest.confirmar_pagos.
+    # Va después de la 40 porque llama a api.sp_actualizar_pago.
+    ('37_cobrar_en_lote.sql',                'Cobrar varios pedidos de una vez'),
 
     # La 42 va despues de la 24 (rest.arranque) y de la ultima recreacion de la
     # vista rest.empresas (la 31), para quitarle a anon el SELECT directo y que
@@ -118,6 +122,11 @@ PARTES = [
     # el trigger de entradas inmutables (de la 13, con su search_path de la 43)
     # y crea dos tablas con RLS encendida a mano (la 19 ya pasó).
     ('50_despiece_de_entradas.sql',           'Despieces: comprar un pollo entero y que se llenen las presas'),
+
+    # Qué domiciliario llevó cada pedido, para cobrarle el efectivo. Va al
+    # final: redefine core.fn_pedido_json (de la 09) y pone un trigger nuevo
+    # en core.pedidos.
+    ('51_domiciliario_del_pedido.sql',        'Qué domiciliario llevó cada pedido, para cobrarle el efectivo'),
 ]
 
 CABECERA = '''/* ============================================================================

@@ -14397,6 +14397,162 @@ NOTIFY pgrst, 'reload schema';
 
 
 /* ============================================================================
+   37_COBRAR_EN_LOTE
+   Cobrar varios pedidos de una vez
+   ============================================================================ */
+
+/* ============================================================================
+   TASECA · 37 · COBRAR VARIOS PEDIDOS DE UNA VEZ
+   ----------------------------------------------------------------------------
+   EL PROBLEMA, MEDIDO
+
+     Confirmar un pago tarda unos 460 ms desde el navegador. De esos:
+
+         trabajo de la base .......... ~16 ms
+         ida y vuelta por la red ..... ~445 ms
+
+     O sea que el servidor no tiene la culpa: es el viaje. Y como la
+     llamada va en XHR SÍNCRONO, el navegador se queda congelado todo ese
+     rato -ni gira el indicador de espera-. Con veinte pedidos por cobrar
+     son veinte congelones de medio segundo, uno detrás de otro: unos
+     nueve segundos de caja sintiéndose colgada.
+
+   EL ARREGLO
+
+     Un solo viaje para todos. Veinte cobros pasan de ~9 s a ~0,5 s,
+     porque lo que cuesta es el viaje y no el trabajo.
+
+   TRES DECISIONES QUE IMPORTAN
+
+     1. CADA PEDIDO CONSERVA SU MÉTODO. No se fuerza uno común: en la cola
+        hay efectivo, Nequi y Daviplata mezclados, y machacarlos con un
+        solo método falsearía la caja. Por eso se pasa NULL como método:
+        sp_actualizar_pago entiende «déjalo como está».
+
+     2. UNO MALO NO TUMBA A LOS DEMÁS. Si entre los veinte hay uno
+        cancelado, se cobran los diecinueve y se devuelve por qué falló
+        ese. Cada pedido va en su propio subbloque. Lo contrario -todo o
+        nada- obligaría a la cajera a adivinar cuál era.
+
+     3. SE DEVUELVEN LOS PEDIDOS YA ACTUALIZADOS. Así el panel se refresca
+        con lo que vino en la misma respuesta y no hace OTRO viaje para
+        enterarse de lo que acaba de hacer.
+
+   NO ES UN ATAJO A LA REGLA DE CAJA
+
+     Cada pedido sigue pasando por api.sp_actualizar_pago, que es la única
+     puerta: comprueba el permiso, valida el método y deja registrado
+     quién cobró y cuándo. Lo que cambia es cuántos viajes hace el
+     navegador, no qué se comprueba.
+
+   Se puede ejecutar más de una vez.
+   Requiere: 00 … 36 instalados.
+   ============================================================================ */
+
+SET search_path = core, public;
+
+
+/* ============================================================================
+   1. LA FUNCIÓN
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION rest.confirmar_pagos(
+    p_pedidos    BIGINT[],
+    p_referencia TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'core', 'public'
+AS $fn$
+DECLARE
+    v_usuario INTEGER := core.fn_exigir_sesion();
+    v_id      BIGINT;
+    v_cod     VARCHAR;
+    v_ok      JSONB := '[]'::JSONB;
+    v_mal     JSONB := '[]'::JSONB;
+    v_hechos  BIGINT[] := '{}';
+BEGIN
+    IF p_pedidos IS NULL OR COALESCE(array_length(p_pedidos, 1), 0) = 0 THEN
+        RAISE EXCEPTION 'No llegó ningún pedido que cobrar.';
+    END IF;
+
+    /* Un tope para que un error de la pantalla no mande mil de golpe y
+       deje la petición colgada medio minuto. */
+    IF array_length(p_pedidos, 1) > 100 THEN
+        RAISE EXCEPTION 'Son demasiados de una vez (%). El tope es 100.', array_length(p_pedidos, 1);
+    END IF;
+
+    FOREACH v_id IN ARRAY p_pedidos LOOP
+        SELECT codigo INTO v_cod FROM core.pedidos WHERE id = v_id;
+        BEGIN
+            /* El método va en NULL: cada pedido se cobra con el suyo. */
+            CALL api.sp_actualizar_pago(v_id, 'confirmado', v_usuario, p_referencia, NULL);
+            v_hechos := v_hechos || v_id;
+            v_ok := v_ok || jsonb_build_object('id', v_id, 'codigo', v_cod);
+        EXCEPTION WHEN OTHERS THEN
+            /* Este pedido no se pudo: se anota el porqué y se sigue con
+               el resto. Su subbloque se deshace; los demás no. */
+            v_mal := v_mal || jsonb_build_object('id',     v_id,
+                                                 'codigo', COALESCE(v_cod, v_id::TEXT),
+                                                 'motivo', SQLERRM);
+        END;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'cobrados', jsonb_array_length(v_ok),
+        'fallidos', jsonb_array_length(v_mal),
+        'ok',       v_ok,
+        'mal',      v_mal,
+        /* Los pedidos ya actualizados, para que el panel no tenga que
+           volver a preguntar por ellos. */
+        'pedidos',  COALESCE((SELECT jsonb_agg(core.fn_pedido_json(x))
+                                FROM unnest(v_hechos) AS x), '[]'::JSONB)
+    );
+END;
+$fn$;
+
+GRANT EXECUTE ON FUNCTION rest.confirmar_pagos(BIGINT[], TEXT) TO taseca_app;
+
+COMMENT ON FUNCTION rest.confirmar_pagos(BIGINT[], TEXT) IS
+    'Confirma el pago de varios pedidos en un solo viaje. Cada uno conserva su método; uno que falle no tumba a los demás.';
+
+
+/* ============================================================================
+   2. REVISIÓN
+
+   Sólo de forma. El comportamiento se prueba en 37_pruebas_cobro_lote.sql,
+   que mueve pedidos de verdad y se deshace con ROLLBACK -y por eso va en
+   otro archivo: el editor de Supabase corre todo en una transacción y al
+   deshacerse se llevaría esta función por delante-.
+   ============================================================================ */
+DO $blk$
+DECLARE
+    v_def TEXT;
+BEGIN
+    SELECT pg_get_functiondef(p.oid) INTO v_def
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'rest' AND p.proname = 'confirmar_pagos';
+
+    IF v_def IS NULL THEN
+        RAISE EXCEPTION 'rest.confirmar_pagos no quedó creada.';
+    END IF;
+
+    /* Que el método vaya en NULL es la decisión 1: si alguien lo cambia
+       por un método fijo, la caja empezaría a mentir. */
+    IF position('v_usuario, p_referencia, NULL' IN v_def) = 0 THEN
+        RAISE EXCEPTION 'confirmar_pagos no está respetando el método de cada pedido.';
+    END IF;
+
+    IF NOT has_function_privilege('taseca_app', 'rest.confirmar_pagos(bigint[], text)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'taseca_app no puede ejecutar rest.confirmar_pagos.';
+    END IF;
+
+    RAISE NOTICE 'OK · rest.confirmar_pagos lista. Ahora corre 37_pruebas_cobro_lote.sql.';
+END;
+$blk$;
+
+
+/* ============================================================================
    42_EL_ESCAPARATE_NO_FILTRA
    El escaparate anonimo no filtra razon social, correo ni la vista entera
    ============================================================================ */
@@ -16854,6 +17010,241 @@ $$;
 
 GRANT EXECUTE ON FUNCTION rest.guardar_despiece(JSONB), rest.borrar_despiece(INTEGER),
                           rest.registrar_entrada_despiece(JSONB) TO taseca_app;
+
+
+/* ============================================================================
+   51_DOMICILIARIO_DEL_PEDIDO
+   Qué domiciliario llevó cada pedido, para cobrarle el efectivo
+   ============================================================================ */
+
+/* ============================================================================
+   51 · QUÉ DOMICILIARIO LLEVÓ CADA PEDIDO (para cobrarle el efectivo)
+
+   Lo que pidió el cliente: saber qué domiciliario llevó cada domicilio, para
+   cobrarle a él en caja el efectivo que recibió en la calle.
+
+   CÓMO QUEDA ASIGNADO
+     · Solo: cuando un usuario con rol DOMICILIARIO pasa el domicilio a
+       «En camino» («🛵 Salgo con este pedido»), el pedido queda a su nombre.
+       Lo hace un trigger, así que da igual por qué procedimiento cambie el
+       estado (avanzar o cambiar).
+     · A mano: caja (permiso «pagos») asigna o cambia el domiciliario con
+       rest.asignar_domiciliario —para el que no usa el celular, o si salió
+       otro—. Un pago ya cobrado no cambia de domiciliario: ese dinero ya se
+       le cobró a alguien.
+   Todo queda en el historial del pedido.
+
+   QUIÉN ES DOMICILIARIO
+     Un usuario activo de la empresa con rol «domiciliario» que trabaje en la
+     sede del pedido. rest.domiciliarios los lista (sin datos de acceso) para
+     caja, aunque caja no tenga permiso de ver usuarios.
+
+   EL COBRO
+     No hay dinero nuevo: el panel agrupa por domiciliario lo que falta cobrar
+     y lo cobra con rest.confirmar_pagos (la 37), por la puerta de siempre.
+
+   Idempotente. Requiere: 09 (fn_pedido_json) y 16 (pagos en caja).
+   ============================================================================ */
+
+SET search_path = core, public;
+
+ALTER TABLE core.pedidos ADD COLUMN IF NOT EXISTS domiciliario_id INTEGER REFERENCES core.usuarios (id) ON DELETE RESTRICT;
+ALTER TABLE core.pedidos ADD COLUMN IF NOT EXISTS domiciliario_asignado_en TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS ix_pedidos_domiciliario ON core.pedidos (domiciliario_id, fecha_operativa) WHERE domiciliario_id IS NOT NULL;
+COMMENT ON COLUMN core.pedidos.domiciliario_id IS 'Quién llevó el domicilio: a él se le cobra en caja el efectivo que recibió.';
+
+/* ¿Es domiciliario de esa empresa y trabaja en esa sede? */
+CREATE OR REPLACE FUNCTION core.fn_es_domiciliario(p_usuario_id INTEGER, p_unidad_id INTEGER)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE
+SET search_path = core, public
+AS $$
+    SELECT EXISTS (SELECT 1 FROM core.usuarios u
+                     JOIN core.roles r    ON r.id = u.rol_id
+                     JOIN core.unidades un ON un.id = p_unidad_id
+                    WHERE u.id = p_usuario_id AND u.activo AND r.codigo = 'domiciliario'
+                      AND u.empresa_id = un.empresa_id
+                      AND core.fn_usuario_en_unidad(u.id, p_unidad_id));
+$$;
+
+
+/* ============================================================================
+   1. EL TRIGGER: se asigna solo al salir, y nunca a alguien de otra empresa
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION core.tg_pedidos_domiciliario()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = core, public
+AS $$
+DECLARE
+    v_usr    INTEGER;
+    v_nombre VARCHAR;
+BEGIN
+    -- Red de seguridad: un domiciliario de otra empresa o que no es domiciliario, nunca
+    IF NEW.domiciliario_id IS DISTINCT FROM OLD.domiciliario_id AND NEW.domiciliario_id IS NOT NULL
+       AND NOT core.fn_es_domiciliario(NEW.domiciliario_id, NEW.unidad_id) THEN
+        RAISE EXCEPTION 'Ese usuario no es domiciliario activo de esta sede.';
+    END IF;
+
+    -- Sale a la calle: si lo saca un domiciliario y nadie lo tenía, queda a su nombre
+    IF NEW.estado_pedido_id IS DISTINCT FROM OLD.estado_pedido_id
+       AND NEW.estado_pedido_id = core.fn_id_catalogo('estados_pedido', 'camino')
+       AND NEW.domiciliario_id IS NULL THEN
+        v_usr := NULLIF(core.fn_jwt_claims() ->> 'usuario_id', '')::INTEGER;
+        IF v_usr IS NOT NULL AND core.fn_es_domiciliario(v_usr, NEW.unidad_id) THEN
+            NEW.domiciliario_id := v_usr;
+            NEW.domiciliario_asignado_en := now();
+            SELECT nombre INTO v_nombre FROM core.usuarios WHERE id = v_usr;
+            INSERT INTO core.pedido_historial (pedido_id, descripcion, usuario_id)
+            VALUES (NEW.id, 'Lo lleva: ' || v_nombre, v_usr);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_pedidos_domiciliario ON core.pedidos;
+CREATE TRIGGER trg_pedidos_domiciliario
+    BEFORE UPDATE ON core.pedidos
+    FOR EACH ROW EXECUTE FUNCTION core.tg_pedidos_domiciliario();
+
+
+/* ============================================================================
+   2. ASIGNAR O CAMBIAR A MANO (caja)
+
+   POST /rpc/asignar_domiciliario { p_pedido_id, p_domiciliario_id }
+   p_domiciliario_id NULL = quitarlo.
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION rest.asignar_domiciliario(p_pedido_id BIGINT, p_domiciliario_id INTEGER)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = core, public
+AS $$
+DECLARE
+    v_usuario INTEGER := core.fn_exigir_sesion();
+    v_p       RECORD;
+    v_antes   VARCHAR;
+    v_nuevo   VARCHAR;
+BEGIN
+    SELECT p.id, p.codigo, p.unidad_id, p.empresa_id, p.domiciliario_id, tp.codigo AS tipo,
+           ep.codigo AS estado, pg.codigo AS pago
+      INTO v_p
+      FROM core.pedidos p
+      JOIN core.tipos_pedido tp   ON tp.id = p.tipo_pedido_id
+      JOIN core.estados_pedido ep ON ep.id = p.estado_pedido_id
+      JOIN core.estados_pago pg   ON pg.id = p.estado_pago_id
+     WHERE p.id = p_pedido_id AND p.empresa_id = core.fn_jwt_empresa();
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el pedido.';
+    END IF;
+
+    PERFORM core.fn_preparar_operacion(v_usuario, 'pagos', v_p.unidad_id);
+
+    IF v_p.tipo <> 'domicilio' THEN
+        RAISE EXCEPTION 'La factura % no es un domicilio.', v_p.codigo;
+    END IF;
+    IF v_p.estado IN ('cancelado', 'anulado') THEN
+        RAISE EXCEPTION 'La factura % está %: ya no se asigna.', v_p.codigo, v_p.estado;
+    END IF;
+    IF v_p.pago = 'confirmado' THEN
+        RAISE EXCEPTION 'El pago de la factura % ya se cobró: no cambia de domiciliario.', v_p.codigo;
+    END IF;
+    IF p_domiciliario_id IS NOT DISTINCT FROM v_p.domiciliario_id THEN
+        RETURN core.fn_pedido_json(p_pedido_id);  -- nada que cambiar
+    END IF;
+    IF p_domiciliario_id IS NOT NULL AND NOT core.fn_es_domiciliario(p_domiciliario_id, v_p.unidad_id) THEN
+        RAISE EXCEPTION 'Ese usuario no es domiciliario activo de esta sede.';
+    END IF;
+
+    SELECT nombre INTO v_antes FROM core.usuarios WHERE id = v_p.domiciliario_id;
+    SELECT nombre INTO v_nuevo FROM core.usuarios WHERE id = p_domiciliario_id;
+
+    UPDATE core.pedidos
+       SET domiciliario_id = p_domiciliario_id,
+           domiciliario_asignado_en = CASE WHEN p_domiciliario_id IS NULL THEN NULL ELSE now() END
+     WHERE id = p_pedido_id;
+
+    INSERT INTO core.pedido_historial (pedido_id, descripcion, usuario_id)
+    VALUES (p_pedido_id,
+            CASE WHEN v_nuevo IS NULL THEN 'Domiciliario quitado (era ' || v_antes || ')'
+                 WHEN v_antes IS NULL THEN 'Domiciliario: ' || v_nuevo
+                 ELSE 'Domiciliario: ' || v_antes || ' → ' || v_nuevo END,
+            v_usuario);
+
+    RETURN core.fn_pedido_json(p_pedido_id);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION rest.asignar_domiciliario(BIGINT, INTEGER) TO taseca_app;
+
+
+/* ============================================================================
+   3. LA LISTA DE DOMICILIARIOS (sólo nombre y sedes, sin datos de acceso)
+   ============================================================================ */
+CREATE OR REPLACE VIEW rest.domiciliarios AS
+WITH sesion AS MATERIALIZED (
+    SELECT core.fn_jwt_usuario() AS usuario_id, core.fn_jwt_empresa() AS empresa_id
+)
+SELECT u.id AS usuario_id, u.empresa_id, u.nombre,
+       COALESCE((SELECT jsonb_agg(uu.unidad_id ORDER BY uu.unidad_id)
+                   FROM core.usuario_unidades uu WHERE uu.usuario_id = u.id), '[]'::JSONB) AS unidades
+  FROM core.usuarios u
+  JOIN core.roles r ON r.id = u.rol_id
+  JOIN sesion s ON s.empresa_id = u.empresa_id
+ WHERE u.activo AND r.codigo = 'domiciliario'
+   AND EXISTS (SELECT 1 FROM unnest(ARRAY['pagos', 'pedidos_gestionar', 'pedidos_domicilio']) x(p)
+                WHERE api.fn_tiene_permiso(s.usuario_id, x.p::VARCHAR));
+GRANT SELECT ON rest.domiciliarios TO taseca_app;
+
+
+/* ============================================================================
+   4. EL PEDIDO COMO LO VE EL PANEL: + domiciliario
+   (la misma fn_pedido_json de la 09, con dos claves más al final)
+   ============================================================================ */
+CREATE OR REPLACE FUNCTION core.fn_pedido_json(p_pedido_id BIGINT)
+RETURNS JSONB
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = core, public
+AS $$
+    SELECT to_jsonb(vp)
+        || jsonb_build_object(
+               'empresa_codigo', e.codigo,
+               'mesa_id', p.mesa_id,
+               'zona_id', p.zona_domicilio_id,
+               'tomado_por_id', p.tomado_por_id,
+               'items', COALESCE((
+                    SELECT jsonb_agg(jsonb_build_object(
+                               'pedido_item_id', i.pedido_item_id, 'origen', i.origen,
+                               'producto_id', i.producto_id, 'plato_dia_id', i.plato_dia_id,
+                               'menu_dia_id', i.menu_dia_id, 'nombre', i.nombre,
+                               'precio_unitario', i.precio_unitario, 'cantidad', i.cantidad,
+                               'notas', i.notas, 'detalle', i.detalle,
+                               'opciones', COALESCE((SELECT jsonb_agg(x.menu_opcion_id ORDER BY x.menu_opcion_id)
+                                                       FROM core.pedido_item_opciones x
+                                                      WHERE x.pedido_item_id = i.pedido_item_id), '[]'))
+                           ORDER BY i.pedido_item_id)
+                      FROM api.v_pedido_items i WHERE i.pedido_id = vp.pedido_id), '[]'),
+               'historial', COALESCE((
+                    SELECT jsonb_agg(jsonb_build_object('ts', h.creado_en, 'texto', h.descripcion) ORDER BY h.id)
+                      FROM core.pedido_historial h WHERE h.pedido_id = vp.pedido_id), '[]'),
+               'tiene_comprobante', EXISTS (SELECT 1 FROM core.comprobantes_pago c
+                                             WHERE c.pedido_id = vp.pedido_id AND c.archivo_url IS NOT NULL),
+               'referencia_pago', (SELECT c.referencia FROM core.comprobantes_pago c
+                                    WHERE c.pedido_id = vp.pedido_id ORDER BY c.id DESC LIMIT 1),
+               'anulacion', (SELECT jsonb_build_object('motivo', a.motivo, 'jornada_original', a.jornada_original,
+                                                       'jornada_retorno', a.jornada_retorno,
+                                                       'diferido', a.jornada_retorno <> a.jornada_original,
+                                                       'creado_en', a.creado_en)
+                               FROM core.anulaciones a WHERE a.pedido_id = vp.pedido_id),
+               'domiciliario_id', p.domiciliario_id,
+               'domiciliario', (SELECT u.nombre FROM core.usuarios u WHERE u.id = p.domiciliario_id)
+           )
+      FROM api.v_pedidos vp
+      JOIN core.pedidos p  ON p.id = vp.pedido_id
+      JOIN core.empresas e ON e.id = vp.empresa_id
+     WHERE vp.pedido_id = p_pedido_id;
+$$;
 
 
 /* ============================================================================
