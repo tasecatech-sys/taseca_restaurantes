@@ -203,6 +203,18 @@ NASCAR.Operacion = (function () {
     }
 
     let armadoAbierto = false; // el menú armado desplegado en la lista
+    let chefAbierto = null;    // el plato del chef cuyo «Elegir» está desplegado
+
+    /* Lo que trae un plato del chef, para que el mesero lo lea en voz alta:
+       la descripción y la composición fija (sopa, principio, proteína,
+       bebida). Las meseras no tienen que acordarse de memoria. */
+    function traePlato(p) {
+      const fijo = [['Sopa', p.sopa], ['Principio', p.principio], ['Proteína', p.proteina], ['Bebida', p.bebida]]
+        .filter((c) => c[1])
+        .map((c) => '<b>' + c[0] + ':</b> ' + U.esc(c[1]));
+      return (p.desc ? '<div class="mini tenue" style="margin-top:2px">' + U.esc(p.desc) + '</div>' : '') +
+        (fijo.length ? '<div class="mini" style="margin-top:2px">🍽️ ' + fijo.join(' · ') + '</div>' : '');
+    }
 
     function pintarLista() {
       const q = (U.$('#tpBuscar', m.raiz).value || '').trim().toLowerCase();
@@ -226,13 +238,33 @@ NASCAR.Operacion = (function () {
               'data-add-armado-mesero>Agregar al pedido</button></div></div>'
             : '');
       } else if (menuHoy.tipo === 'chef') {
+        /* Si el menú deja elegir acompañamientos (entrada, bebida…), el plato
+           se agrega desde «Elegir», con los mismos grupos que ve el cliente;
+           si no, entra completo con «+». En los dos casos se ve qué trae. */
+        const cats = menuHoy.pideAcompanamientos && menuHoy.acompanamientos
+          ? (menuHoy.acompanamientos.categorias || []) : [];
         lineasDia = menuHoy.platos
-          .map(
-            (p) =>
-              '<div class="op-linea"><div class="crece"><b>' + (p.emoji ? U.esc(p.emoji) + ' ' : '') + U.esc(p.nombre) + '</b>' +
-              '<span class="mini tenue"> · ' + U.money(p.precio) + '</span></div>' +
-              '<button class="btn btn--rojo btn--xs" data-add-dia="' + p.id + '">+</button></div>'
-          )
+          .map(function (p) {
+            const abierto = cats.length && chefAbierto === p.id;
+            return '<div class="op-linea" style="flex-wrap:wrap;align-items:flex-start">' +
+              '<div class="crece"><b>' + (p.emoji ? U.esc(p.emoji) + ' ' : '') + U.esc(p.nombre) + '</b>' +
+              '<span class="mini tenue"> · ' + U.money(p.precio) + '</span>' +
+              traePlato(p) +
+              (cats.length
+                ? '<div class="mini" style="margin-top:2px">✋ Elige: ' + cats.map((c) => U.esc(c.nombre)).join(' · ') + '</div>'
+                : '') +
+              '</div>' +
+              (cats.length
+                ? '<button class="btn btn--rojo btn--xs" data-abrir-chef="' + p.id + '">' + (abierto ? 'Cerrar' : 'Elegir') + '</button>'
+                : '<button class="btn btn--rojo btn--xs" data-add-dia="' + p.id + '">+</button>') +
+              (abierto
+                ? '<div class="md-mesero" data-chef-mesero="' + p.id + '" style="flex-basis:100%">' +
+                  M.gruposAcompanamiento(menuHoy, p, 'mesero') +
+                  '<button class="btn btn--rojo btn--sm btn--bloque" data-add-chef-mesero="' + p.id + '">' +
+                  'Agregar ' + U.esc(p.nombre) + '</button></div>'
+                : '') +
+              '</div>';
+          })
           .join('');
       }
 
@@ -313,6 +345,28 @@ NASCAR.Operacion = (function () {
         return agregar({
           refId: p.id, nombre: p.nombre + ' (menú del día)', precio: p.precio, origen: 'dia',
         });
+      }
+
+      const ac = e.target.closest('[data-abrir-chef]');
+      if (ac) {
+        chefAbierto = chefAbierto === ac.dataset.abrirChef ? null : ac.dataset.abrirChef;
+        return pintarLista();
+      }
+
+      const ach = e.target.closest('[data-add-chef-mesero]');
+      if (ach) {
+        const menu = S.getMenuPublico(S.hoy(), sucId);
+        const p = (menu.platos || []).find((x) => x.id === ach.dataset.addChefMesero);
+        if (!p) return U.toast('Ese plato ya no está disponible.', 'error');
+        const bloque = ach.closest('[data-chef-mesero]');
+        const sel = M.leerSeleccion(bloque, menu, p.id);
+        if (!sel.ok) return U.toast('Falta elegir: ' + sel.faltan.join(', ') + '.', 'error');
+        agregar(M.itemChef(menu, p, sel.elegidas));
+        U.toast(p.nombre + ' agregado' + (sel.elegidas.length
+          ? ': ' + sel.elegidas.map((x) => x.opciones.map((o) => o.nombre).join(', ')).join(' · ') : '') + '.');
+        /* Queda abierto y limpio: la mesa suele pedir varios con distinta
+           entrada o bebida. */
+        return M.reiniciar(bloque);
       }
 
       if (e.target.closest('[data-armar-menu]')) {

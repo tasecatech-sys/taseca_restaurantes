@@ -374,8 +374,18 @@
       const d = e.target.closest('[data-add-dia]');
       if (d) {
         // Sólo lo que esta sucursal publica hoy como menú del chef
-        const p = S.getMenuPublico(S.hoy(), sucursalId).platos.find((x) => x.id === d.dataset.addDia);
+        const menu = S.getMenuPublico(S.hoy(), sucursalId);
+        const p = menu.platos.find((x) => x.id === d.dataset.addDia);
         if (!p) return U.toast('Ese plato ya no está disponible.', 'error');
+        /* Si el menú pide acompañamientos, se lee lo elegido en la tarjeta de
+           ESTE plato (igual que en el portal): antes se ignoraba y el plato
+           entraba sin entrada ni bebida. */
+        if (menu.pideAcompanamientos) {
+          const sel = M.leerSeleccion(d.closest('.plato-dia'), menu, p.id);
+          if (!sel.ok) return U.toast('Te falta elegir: ' + sel.faltan.join(', ') + '.', 'error');
+          carrito.agregar(Object.assign(M.itemChef(menu, p, sel.elegidas), { sucursalId: sucursalId }), 1);
+          return U.toast(p.nombre + ' agregado.');
+        }
         carrito.agregar({
           refId: p.id,
           nombre: p.nombre + ' (menú del día)',
