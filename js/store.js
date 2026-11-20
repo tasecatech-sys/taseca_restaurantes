@@ -3103,8 +3103,23 @@ NASCAR.Store = (function () {
     const eid = empresaId || empresaActivaId();
     const suc = Number(sucursalId);
 
+    /* Sólo cuenta un menú con contenido de verdad. Abrir el editor o cambiar
+       la modalidad crea un documento VACÍO (con las categorías por defecto y
+       sin precio ni opciones), y el texto de la unidad también vive aquí: si
+       contaran, un local sin menú del día mostraría la sección con «todavía
+       no publicamos» para siempre. Los platos del chef se miran abajo. */
+    const armadoConContenido = (m) => {
+      const a = m.armado;
+      return (
+        m.tipo === 'armado' && a && a.precio > 0 &&
+        (a.categorias || []).some(
+          (c) => c.activa !== false && (c.opciones || []).some((o) => o.activa !== false && o.nombre)
+        )
+      );
+    };
     const hayDoc = leer(K.menusDia, []).some(
-      (m) => (m.empresaId || EMPRESA_DEFECTO) === eid && Number(m.sucursalId) === suc
+      (m) =>
+        (m.empresaId || EMPRESA_DEFECTO) === eid && Number(m.sucursalId) === suc && armadoConContenido(m)
     );
     if (hayDoc) return true;
 
