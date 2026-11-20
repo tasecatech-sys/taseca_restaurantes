@@ -1252,7 +1252,15 @@ NASCAR.Caja = (function () {
     if (r) {
       try {
         S.reimprimirComanda(r.dataset.comandaReimp);
-        U.toast('La comanda vuelve a salir por la impresora de cocina.');
+        /* Reimprimir la devuelve a la cola de la ESTACIÓN. Si no hay ninguna
+           conectada (ni este equipo lo es), no saldrá nada: hay que decirlo. */
+        const soyEstacion = !!estacionDeEsteEquipo();
+        if (soyEstacion || (estadoEstacion && estadoEstacion.activa && !estacionCaida())) {
+          U.toast('La comanda vuelve a salir por la impresora de cocina.');
+        } else {
+          U.toast('Quedó en cola, pero ningún equipo está imprimiendo comandas. Toca «🖨 Este equipo imprime las comandas» ' +
+                  'en el computador de la impresora.', 'error');
+        }
       } catch (err) {
         U.toast(err.message, 'error');
       }
