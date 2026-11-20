@@ -74,6 +74,7 @@ BEGIN
             p_cliente_nombre => 'Lote ' || i,
             p_cliente_telefono => '30011122' || lpad(i::TEXT, 2, '0'),
             p_direccion      => 'Cra 1 # 1-' || i,
+            p_paga_con       => 100000,  -- desde la 53, obligatorio en efectivo a domicilio
             p_clave          => 'lote-prueba-' || i,
             p_pedido_id      => v_id,
             p_codigo         => v_cod);
@@ -120,14 +121,14 @@ BEGIN
         p_unidad_id => v_uni, p_tipo => 'domicilio', p_metodo_pago => 'efectivo',
         p_items => jsonb_build_array(jsonb_build_object('producto_id', v_prod, 'cantidad', 1)),
         p_cliente_nombre => 'Para cancelar', p_cliente_telefono => '3001112299',
-        p_direccion => 'Cra 9 # 9-99', p_clave => 'lote-cancelado',
+        p_direccion => 'Cra 9 # 9-99', p_paga_con => 100000, p_clave => 'lote-cancelado',
         p_pedido_id => v_cancel, p_codigo => v_cod);
 
     CALL api.sp_crear_pedido(
         p_unidad_id => v_uni, p_tipo => 'domicilio', p_metodo_pago => 'efectivo',
         p_items => jsonb_build_array(jsonb_build_object('producto_id', v_prod, 'cantidad', 1)),
         p_cliente_nombre => 'Este si se cobra', p_cliente_telefono => '3001112288',
-        p_direccion => 'Cra 8 # 8-88', p_clave => 'lote-bueno',
+        p_direccion => 'Cra 8 # 8-88', p_paga_con => 100000, p_clave => 'lote-bueno',
         p_pedido_id => v_id, p_codigo => v_cod);
 
     /* Por la puerta de siempre, no con un UPDATE crudo: la base exige el

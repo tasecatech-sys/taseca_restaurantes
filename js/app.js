@@ -991,13 +991,17 @@
         conectarAdjunto();
       } else if (borrador.metodoPago === 'efectivo') {
         /* Decirlo aquí es lo que hace que el domiciliario salga con las
-           vueltas contadas. Es opcional: quien no lo sepa aún, lo deja
-           en blanco y paga igual. */
+           vueltas contadas. A domicilio es OBLIGATORIO (migración 53: la
+           base tampoco lo deja pasar); para recoger sigue opcional, porque
+           se paga en el mostrador. */
+        const aDomicilio = !esRecoger();
         d.innerHTML =
-          '<label class="campo"><span>¿Con cuánto vas a pagar?</span>' +
+          '<label class="campo"><span>¿Con cuánto vas a pagar?' + (aDomicilio ? ' <i class="req">*</i>' : '') + '</span>' +
           '<input class="input" id="fPagaCon" inputmode="numeric" autocomplete="off" ' +
           'placeholder="Ej. 100000 (para llevar tus vueltas)" value="' + U.esc(borrador.pagaCon) + '">' +
-          '<small class="mini tenue">Opcional. Así el domiciliario sale con tus vueltas listas.</small>' +
+          '<small class="mini tenue">' + (aDomicilio
+            ? 'Obligatorio para pagar en efectivo: así el domiciliario sale con tus vueltas listas.'
+            : 'Opcional. Así te tenemos las vueltas listas.') + '</small>' +
           '<div class="mini" id="avisoPagaCon"></div></label>';
 
         /* Cuánto va a devolver, o que no alcanza. El cliente lo ve ANTES
@@ -1248,6 +1252,22 @@
     /* La clave es de este INTENTO de pedido, y vive con el borrador: si el
        envío falla y el cliente vuelve a confirmar, va la misma y la base no
        crea una segunda factura. Se suelta sólo cuando el pedido entra. */
+    /* Efectivo a domicilio: hay que decir con cuánto se paga, y que
+       alcance. Se revisa aquí, antes de crear nada, y se lleva al campo. */
+    if (borrador.metodoPago === 'efectivo' && !esRecoger()) {
+      const dado = borrador.pagaCon === '' || borrador.pagaCon == null ? 0 : Number(borrador.pagaCon);
+      const tot = totalPedido();
+      const msg = !dado
+        ? 'Indica con cuánto vas a pagar en efectivo, para que el domiciliario lleve tus vueltas.'
+        : dado < tot ? 'Con ' + U.money(dado) + ' no alcanza: el total es ' + U.money(tot) + '.' : '';
+      if (msg) {
+        U.toast(msg, 'error');
+        const campo = $('#fPagaCon');
+        if (campo) campo.focus();
+        return false;
+      }
+    }
+
     if (!borrador.clave) borrador.clave = U.claveEnvio();
 
     let pedido;

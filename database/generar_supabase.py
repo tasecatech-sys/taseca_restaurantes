@@ -131,6 +131,7 @@ PARTES = [
     # Comanda impresa por sede (opcional). Va al final: redefine las dos
     # rest.crear_pedido (de la 30) y la vista rest.unidades.
     ('52_comanda_impresa.sql',                'Comanda impresa: la cocina no toca el sistema, caja marca «Listo»'),
+    ('53_paga_con_obligatorio.sql',           'Domicilio en efectivo: el cliente dice con cuánto paga'),
 ]
 
 CABECERA = '''/* ============================================================================

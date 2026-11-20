@@ -84,7 +84,7 @@ BEGIN
   CALL api.sp_crear_pedido(p_unidad_id => v_unidad, p_tipo => 'domicilio', p_metodo_pago => 'efectivo',
       p_items => jsonb_build_array(jsonb_build_object('producto_id', v_prod, 'cantidad', 2)),
       p_cliente_nombre => 'Recargo B', p_cliente_telefono => '3002220000',
-      p_direccion => 'Cra 8 # 8-8', p_clave => 'recB-' || clock_timestamp()::TEXT,
+      p_direccion => 'Cra 8 # 8-8', p_paga_con => 100000, p_clave => 'recB-' || clock_timestamp()::TEXT,
       p_pedido_id => v_id, p_codigo => v_cod);
   UPDATE core.pedidos p SET recargo_pago = core.fn_recargo_pago(p.empresa_id, p.metodo_pago_id,
              COALESCE((SELECT SUM(i.precio_unitario * i.cantidad) FROM core.pedido_items i
