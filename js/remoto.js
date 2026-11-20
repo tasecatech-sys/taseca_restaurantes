@@ -155,6 +155,24 @@ NASCAR.Remoto = (function () {
   const obtener = (ruta, conSesion) => pedir('GET', ruta, undefined, conSesion);
   const rpc = (fn, params, conSesion) => pedir('POST', '/rpc/' + fn, params || {}, conSesion);
 
+  /* Una función de la base sin congelar la pantalla (la estación de
+     comandas pregunta cada pocos segundos). */
+  function rpcAsync(fn, params) {
+    const h = cabeceras('POST');
+    h['Content-Type'] = 'application/json';
+    const t = token();
+    if (t) h.Authorization = 'Bearer ' + t;
+    return fetch(CFG.url + '/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(params || {}) })
+      .then(function (r) {
+        if (r.status === 401) throw new Error('sesión vencida');
+        return r.text().then(function (txt) {
+          const datos = txt ? JSON.parse(txt) : null;
+          if (!r.ok) throw new Error((datos && datos.message) || 'HTTP ' + r.status);
+          return datos;
+        });
+      });
+  }
+
   /* Petición asíncrona para los refrescos en segundo plano. */
   function obtenerAsync(ruta) {
     const h = cabeceras('GET');
@@ -194,6 +212,8 @@ NASCAR.Remoto = (function () {
       color: u.color || 'azul',
       zonas: (u.zonas || []).map((z) => ({ id: z.zona_id, nombre: z.nombre, costo: n(z.costo), min: n(z.pedido_minimo) })),
       activa: u.activa,
+      // La cocina trabaja con comanda impresa (migración 52)
+      comandaImpresa: u.comanda_impresa === true,
       branding: {
         logo: (logos[u.unidad_id] && logos[u.unidad_id].imagen) || u.logo_url || '',
         color: u.color_marca || '',
@@ -1054,6 +1074,38 @@ NASCAR.Remoto = (function () {
 
        La respuesta trae los pedidos YA actualizados, así que se meten en
        memoria aquí mismo y el panel no tiene que volver a preguntar. */
+    /* ---- Comanda impresa (migración 52) ---- */
+    configurarComanda: function (sucursalId, activa) {
+      const r = rpc('configurar_comanda', { p_unidad_id: Number(sucursalId), p_activa: !!activa });
+      S.cargarRemoto({
+        sucursales: S.leerRemoto('sucursales', []).map((s) => (Number(s.id) === Number(sucursalId) ? aUnidad(r) : s)),
+      });
+      return aUnidad(r);
+    },
+
+    comandaLista: function (pedidoId) {
+      return ponerPedido(aPedido(rpc('comanda_lista', { p_pedido_id: idBase(pedidoId) })));
+    },
+
+    reimprimirComanda: function (pedidoId) {
+      return ponerPedido(aPedido(rpc('reimprimir_comanda', { p_pedido_id: idBase(pedidoId) })));
+    },
+
+    /* Asíncronas: las usa la estación en segundo plano */
+    tomarComandas: function (sucursalId) {
+      return rpcAsync('tomar_comandas', { p_unidad_id: Number(sucursalId) }).then(function (lista) {
+        return (lista || []).map(function (x) {
+          const p = aPedido(x.pedido);
+          ponerPedido(p);
+          return { pedido: p, cocina: (x.cocina || []).map(Number) };
+        });
+      });
+    },
+
+    estadoComandas: function (sucursalId) {
+      return rpcAsync('estado_comandas', { p_unidad_id: Number(sucursalId) });
+    },
+
     getDomiciliarios: function (sucursalId) {
       return domiciliarios
         .filter((d) => !sucursalId || !d.unidades.length || d.unidades.indexOf(Number(sucursalId)) >= 0)

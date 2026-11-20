@@ -1330,6 +1330,30 @@ NASCAR.Gestion = (function () {
         return avisarCambio();
       }
 
+      const cm = e.target.closest('[data-comanda-suc]');
+      if (cm) {
+        if (!A.exigir('config_sucursales')) return;
+        const s = S.getSucursal(Number(cm.dataset.comandaSuc));
+        const activar = !s.comandaImpresa;
+        return U.confirmar(
+          activar
+            ? 'Activar la comanda impresa en ' + s.nombre + ': los pedidos nuevos entran directo a preparación y salen por ' +
+              'la impresora de la estación de comandas (Caja → 🍳 Cocina). La cocina ya no los acepta en pantalla; caja ' +
+              'marca «Listo» cuando la cocina avisa.'
+            : 'Apagar la comanda impresa en ' + s.nombre + ': los pedidos vuelven a esperar a que la cocina los acepte en pantalla.',
+          function () {
+            try {
+              S.configurarComanda(s.id, activar);
+            } catch (err) {
+              return U.toast(err.message, 'error');
+            }
+            U.toast(activar ? 'Comanda impresa activada en ' + s.nombre + '.' : 'Comanda impresa apagada en ' + s.nombre + '.');
+            avisarCambio();
+          },
+          activar ? 'Sí, activar' : 'Sí, apagar'
+        );
+      }
+
       const ac = e.target.closest('[data-activar-suc]');
       if (ac) {
         if (!A.exigir('config_sucursales')) return;
@@ -1630,6 +1654,10 @@ NASCAR.Gestion = (function () {
           '</span></div>' +
           '<div class="dato"><span class="dato__ico">📞</span><span>' +
           (contacto ? U.esc(contacto) : '<span class="tenue">Sin contacto</span>') + '</span></div>' +
+          '<div class="dato"><span class="dato__ico">🖨</span><span>Comanda impresa: ' +
+          (s.comandaImpresa
+            ? '<b class="verde">activa</b> <span class="mini tenue">(la cocina no toca el sistema; caja marca «Listo»)</span>'
+            : '<span class="tenue">apagada</span>') + '</span></div>' +
           '</div>' +
           '<div class="unidad__cifras">' +
           '<div class="unidad__cifra"><b>' + n.carta + '</b><span>en carta</span></div>' +
@@ -1641,7 +1669,9 @@ NASCAR.Gestion = (function () {
           (puedeEditar
             ? '<button class="btn btn--fantasma btn--xs" data-editar-suc="' + s.id + '">Editar</button>' +
               '<button class="btn btn--fantasma btn--xs" data-activar-suc="' + s.id + '">' +
-              (inactiva ? 'Activar' : 'Desactivar') + '</button>'
+              (inactiva ? 'Activar' : 'Desactivar') + '</button>' +
+              '<button class="btn btn--fantasma btn--xs" data-comanda-suc="' + s.id + '">🖨 ' +
+              (s.comandaImpresa ? 'Apagar comanda' : 'Activar comanda') + '</button>'
             : '') +
           (!inactiva && !esActual && !atado
             ? '<button class="btn btn--rojo btn--xs" data-usar-unidad="' + s.id + '">Trabajar aquí</button>'

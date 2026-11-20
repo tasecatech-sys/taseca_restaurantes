@@ -2038,6 +2038,66 @@ NASCAR.Store = (function () {
     return opciones.todos ? lista : lista.filter((u) => u.activo !== false);
   }
 
+  /* ===============================================================
+     COMANDA IMPRESA (modo local; en la nube lo hace la base, migración 52)
+     =============================================================== */
+  function configurarComanda(sucursalId, activa) {
+    const eid = empresaActivaId();
+    const todas = leer(K.sucursales, null) || [];
+    let hecha = null;
+    escribir(K.sucursales, todas.map(function (s) {
+      if ((s.empresaId || EMPRESA_DEFECTO) !== eid || Number(s.id) !== Number(sucursalId)) return s;
+      hecha = Object.assign({}, s, {
+        comandaImpresa: !!activa,
+        comandaDesde: activa && !s.comandaImpresa ? new Date().toISOString() : s.comandaDesde,
+      });
+      return hecha;
+    }));
+    hidratar();
+    if (!hecha) throw new Error('No se encontró la sede.');
+    return hecha;
+  }
+
+  function comandaLista(pedidoId) {
+    const p = getPedido(pedidoId);
+    if (!p) throw new Error('No se encontró el pedido.');
+    if (p.estado !== 'nuevo' && p.estado !== 'preparacion')
+      throw new Error('El pedido ' + p.codigo + ' ya está en «' + (ETIQUETA_ESTADO[p.estado] || p.estado) + '».');
+    return cambiarEstado(pedidoId, 'listo');
+  }
+
+  function reimprimirComanda(pedidoId) {
+    return _mutar(pedidoId, function (p) {
+      p.comandaImpresaEn = null;
+      p.historial.push({ ts: new Date().toISOString(), texto: 'Comanda enviada de nuevo a la impresora' });
+    });
+  }
+
+  function vaACocina(p) {
+    const carta = soloDeEmpresa(cartaGuardada(), p.empresaId || EMPRESA_DEFECTO);
+    return (p.items || []).some(function (it) {
+      if (it.origen !== 'carta') return true;
+      const prod = carta.find((x) => x.id === it.refId);
+      return !prod || prod.requierePreparacion !== false;
+    });
+  }
+
+  function tomarComandas(sucursalId) {
+    const sede = getSucursal(sucursalId);
+    if (!sede || !sede.comandaImpresa) return Promise.resolve([]);
+    const desde = sede.comandaDesde || '';
+    const tomadas = getPedidos({ sucursalId: sucursalId }).filter((p) =>
+      !p.comandaImpresaEn && (p.estado === 'nuevo' || p.estado === 'preparacion') && p.creado >= desde && vaACocina(p));
+    const ahora = new Date().toISOString();
+    tomadas.forEach((p) => _mutar(p.id, (x) => (x.comandaImpresaEn = ahora)));
+    return Promise.resolve(tomadas.map((p) => ({ pedido: getPedido(p.id), cocina: null })));
+  }
+
+  function estadoComandas(sucursalId) {
+    const sede = getSucursal(sucursalId);
+    return Promise.resolve({ activa: !!(sede && sede.comandaImpresa), segundos_sin_estacion: 0, sin_imprimir: 0 });
+  }
+
   /* Los domiciliarios activos que trabajan en esa sede (sin sede = todas). */
   function getDomiciliarios(sucursalId) {
     return getUsuarios()
@@ -3799,6 +3859,14 @@ NASCAR.Store = (function () {
         texto: 'Pago confirmado en caja (' + pedido.metodoPago + ')' +
                (datos.usuarioNombre ? ' por ' + datos.usuarioNombre : ''),
       });
+    }
+
+    /* ---- COMANDA IMPRESA (migración 52) ---------------------------
+       En una sede que trabaja con comanda, el pedido no espera a que la
+       cocina lo acepte: entra directo a preparación. */
+    const sedeDelPedido = getSucursal(pedido.sucursalId, eid);
+    if (sedeDelPedido && sedeDelPedido.comandaImpresa && pedido.estado === 'nuevo') {
+      pedido.estado = 'preparacion';
     }
 
     const lista = leer(K.pedidos, []);
@@ -6277,6 +6345,11 @@ NASCAR.Store = (function () {
     crearPedido: crearPedido,
     cambiarEstado: cambiarEstado,
     getDomiciliarios: getDomiciliarios,
+    configurarComanda: configurarComanda,
+    comandaLista: comandaLista,
+    reimprimirComanda: reimprimirComanda,
+    tomarComandas: tomarComandas,
+    estadoComandas: estadoComandas,
     asignarDomiciliario: asignarDomiciliario,
     avanzarEstado: avanzarEstado,
     cancelarPedido: cancelarPedido,

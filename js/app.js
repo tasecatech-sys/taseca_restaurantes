@@ -1435,7 +1435,14 @@
         camino: { ico: '🛵', corto: 'En camino', titulo: 'Tu pedido va en camino', texto: 'El domiciliario va hacia tu dirección. Ten tu teléfono a la mano.' },
         entregado: { ico: '✅', corto: 'Entregado', titulo: '¡Pedido entregado!', texto: 'Gracias por pedir con nosotros. ¡Buen provecho!' },
       };
-      return S.ESTADOS.filter((e) => e !== 'camino' || dom).map(
+      /* Sede con comanda impresa: el pedido entra directo a la cocina, así
+         que «Recibido» y «Preparando» son un solo paso para el cliente. */
+      const conComanda = (U.sucursal(p.sucursalId) || {}).comandaImpresa;
+      if (conComanda) {
+        info.preparacion = { ico: '👨‍🍳', corto: 'Recibido', titulo: 'Pedido recibido · en preparación',
+                             texto: 'Tu pedido ya está en la cocina.' };
+      }
+      return S.ESTADOS.filter((e) => (e !== 'camino' || dom) && !(conComanda && e === 'nuevo')).map(
         (e) => Object.assign({ id: e }, info[e] || { ico: '•', corto: e, titulo: e, texto: '' })
       );
     }

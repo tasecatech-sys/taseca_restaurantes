@@ -1133,8 +1133,9 @@
       '.tot{font-size:16px;font-weight:bold}.c{text-align:center}' +
       '</style></head><body>' +
 
-      '<h1>NASCAR</h1>' +
-      '<div class="c">' + suc.nombre + '<br>' + suc.direccion + '<br>NIT ' + NASCAR.CONFIG.pago.nit + '</div>' +
+      '<h1>' + U.esc(((S.getEmpresaActual && S.getEmpresaActual()) || {}).nombre || '') + '</h1>' +
+      '<div class="c">' + U.esc(suc.nombre) + (suc.direccion ? '<br>' + U.esc(suc.direccion) : '') +
+      (NASCAR.CONFIG.pago && NASCAR.CONFIG.pago.nit ? '<br>NIT ' + U.esc(NASCAR.CONFIG.pago.nit) : '') + '</div>' +
       '<hr>' +
       '<div class="f"><b>' + p.codigo + '</b><span>' + new Date(p.creado).toLocaleString('es-CO') + '</span></div>' +
       '<div class="f"><span>' + U.etiquetaTipo(p).toUpperCase() + '</span>' +

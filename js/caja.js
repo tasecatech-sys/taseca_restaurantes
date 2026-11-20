@@ -164,6 +164,13 @@ NASCAR.Caja = (function () {
       if (v) return ctx.ver(v.dataset.cajaVer);
     });
 
+    /* 🍳 Cocina con comanda: listo, reimprimir y la estación de este equipo */
+    const coc = $('#cajaCocinaVista');
+    if (coc) {
+      coc.addEventListener('click', accionCocina);
+      arrancarEstacion();
+    }
+
     /* 🛵 Domiciliarios: cobrarle a uno y asignar quién llevó cada domicilio */
     const dom = $('#cajaDomiciliarios');
     if (dom) {
@@ -893,6 +900,247 @@ NASCAR.Caja = (function () {
   }
 
   /* =================================================================
+     🍳 COCINA CON COMANDA IMPRESA (migración 52)
+
+     En una sede con comanda, la cocina no toca el sistema: el pedido entra
+     directo a «En preparación» y sale impreso. Aquí caja ve lo que está en
+     cocina y marca «Listo» cuando la cocina le avisa.
+
+     LA ESTACIÓN: el equipo junto a la impresora. Se marca UNA vez en ese
+     equipo («Este equipo imprime las comandas») y, mientras el panel esté
+     abierto, pregunta cada pocos segundos y manda a imprimir. Con Chrome en
+     modo --kiosk-printing la comanda sale sin preguntar; sin él, aparece el
+     cuadro de imprimir (sirve para probar). La base reparte cada comanda
+     una sola vez aunque haya dos equipos marcados.
+     ================================================================= */
+  const CLAVE_ESTACION = 'taseca.estacionComandas.v1';
+  let estadoEstacion = null;     // lo último que dijo la base: latido y pendientes
+  let estadoPedidoEn = 0;
+  let sondeo = null;
+  let imprimiendo = Promise.resolve();
+
+  function enPreparacion() {
+    return S.getPedidos({ sucursalId: sucursal() })
+      .filter((p) => p.estado === 'nuevo' || p.estado === 'preparacion')
+      .sort((a, b) => (a.creado < b.creado ? -1 : 1));
+  }
+
+  /* La estación de ESTE equipo: { empresa, sede } o null. Vive en el
+     navegador a propósito: es una propiedad del equipo, no del usuario. */
+  function estacionDeEsteEquipo() {
+    try {
+      const e = JSON.parse(localStorage.getItem(CLAVE_ESTACION) || 'null');
+      const emp = (S.getEmpresaActual && S.getEmpresaActual()) || {};
+      return e && e.empresa === (emp.codigo || emp.id) ? e : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function marcarEstacion(activa) {
+    try {
+      const emp = (S.getEmpresaActual && S.getEmpresaActual()) || {};
+      if (activa) localStorage.setItem(CLAVE_ESTACION, JSON.stringify({ empresa: emp.codigo || emp.id, sede: Number(sucursal()) }));
+      else localStorage.removeItem(CLAVE_ESTACION);
+    } catch (err) {
+      U.toast('Este navegador no deja guardar la preferencia (modo incógnito).', 'error');
+    }
+  }
+
+  function estacionCaida() {
+    return !!(estadoEstacion && estadoEstacion.activa &&
+      (estadoEstacion.segundos_sin_estacion == null || estadoEstacion.segundos_sin_estacion > 90));
+  }
+
+  /* Cada 20 s, si la sede usa comanda: ¿la estación está viva? */
+  function consultarEstacion() {
+    const suc = sucursal();
+    if (!(U.sucursal(suc) || {}).comandaImpresa || !S.estadoComandas) return;
+    if (Date.now() - estadoPedidoEn < 20000) return;
+    estadoPedidoEn = Date.now();
+    S.estadoComandas(suc).then(function (r) {
+      const antes = estacionCaida();
+      estadoEstacion = r;
+      if (antes !== estacionCaida() || vista === 'cocina') refrescar();
+    }).catch(function () { /* sin red: se intenta en la próxima vuelta */ });
+  }
+
+  /* La estación: toma lo pendiente y lo imprime, en orden. */
+  function vueltaEstacion() {
+    const e = estacionDeEsteEquipo();
+    if (e && S.tomarComandas && (U.sucursal(e.sede) || {}).comandaImpresa) {
+      S.tomarComandas(e.sede).then(function (lista) {
+        lista.forEach(function (x) {
+          imprimiendo = imprimiendo.then(() => imprimirComandaCocina(x.pedido, x.cocina));
+        });
+        if (lista.length) refrescar();
+      }).catch(function (err) {
+        if (vista === 'cocina') U.toast('Estación de comandas: ' + err.message, 'error');
+      });
+    }
+    consultarEstacion();
+  }
+
+  function arrancarEstacion() {
+    if (sondeo) return;
+    sondeo = setInterval(vueltaEstacion, 6000);
+    setTimeout(vueltaEstacion, 1500);
+  }
+
+  function nombreDelPedido(p) {
+    if (p.tipo === 'mesa') return 'MESA ' + (p.mesa || '');
+    if (p.tipo === 'domicilio') return 'DOMICILIO';
+    if (p.tipo === 'recoger') return 'PARA LLEVAR';
+    return 'MOSTRADOR';
+  }
+
+  /* La comanda de cocina: grande, sin precios, sólo lo que se prepara. */
+  function htmlComanda(p, cocina) {
+    const items = (p.items || []).filter((it) => !cocina || cocina.indexOf(Number(it.itemId)) >= 0);
+    const emp = (S.getEmpresaActual && S.getEmpresaActual()) || {};
+    const suc = U.sucursal(p.sucursalId) || {};
+    const e = U.esc;
+    return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Comanda ' + e(p.codigo) + '</title><style>' +
+      '@page{margin:0}body{font:14px/1.35 Arial,Helvetica,sans-serif;margin:0;padding:6px 8px;width:72mm;color:#000}' +
+      '.cab{text-align:center;font-size:12px}.quien{font-size:24px;font-weight:900;text-align:center;margin:4px 0}' +
+      '.cod{display:flex;justify-content:space-between;font-size:13px}hr{border:0;border-top:2px dashed #000;margin:6px 0}' +
+      '.it{margin:6px 0}.it b{font-size:18px}.det{font-size:15px;font-weight:bold;padding-left:10px}' +
+      '.nota{font-size:14px;font-style:italic;padding-left:10px}.gen{font-size:15px;font-weight:bold;border:2px solid #000;padding:4px;margin-top:6px}' +
+      '</style></head><body>' +
+      '<div class="cab">' + e(emp.nombre || '') + ' · ' + e(suc.corto || suc.nombre || '') + '</div>' +
+      '<div class="quien">' + e(nombreDelPedido(p)) + '</div>' +
+      (p.tipo !== 'mesa' && p.cliente && p.cliente.nombre ? '<div class="cab"><b>' + e(p.cliente.nombre) + '</b></div>' : '') +
+      '<div class="cod"><b>#' + e(p.codigo) + '</b><span>' +
+      new Date(p.creado).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) + '</span></div>' +
+      (p.usuarioNombre ? '<div class="cab">Tomó: ' + e(p.usuarioNombre) + '</div>' : '') +
+      '<hr>' +
+      items.map((it) =>
+        '<div class="it"><b>' + it.cantidad + ' × ' + e(it.nombre.replace(' (menú del día)', '')) + '</b>' +
+        (it.detalle ? '<div class="det">' + e(it.detalle) + '</div>' : '') +
+        (it.notas ? '<div class="nota">* ' + e(it.notas) + '</div>' : '') + '</div>').join('') +
+      (p.cliente && p.cliente.notas ? '<div class="gen">📌 ' + e(p.cliente.notas) + '</div>' : '') +
+      '<hr><div class="cab">' + new Date().toLocaleString('es-CO') + '</div>' +
+      '</body></html>';
+  }
+
+  /* Imprime en un marco oculto: con --kiosk-printing sale directo a la
+     impresora predeterminada de Windows, sin cuadro de diálogo. */
+  function imprimirComandaCocina(p, cocina) {
+    return new Promise(function (listo) {
+      /* Si el marco nunca termina de cargar, la cola no se queda parada:
+         a los 15 s se sigue con la siguiente comanda. */
+      setTimeout(listo, 15000);
+      const marco = document.createElement('iframe');
+      marco.setAttribute('aria-hidden', 'true');
+      marco.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+      marco.onload = function () {
+        try {
+          marco.contentWindow.focus();
+          marco.contentWindow.print();
+        } catch (err) {
+          U.toast('No se pudo imprimir la comanda ' + p.codigo + ': ' + err.message, 'error');
+        }
+        setTimeout(function () { marco.remove(); }, 60000);
+        setTimeout(listo, 1500); // un respiro entre comandas
+      };
+      marco.srcdoc = htmlComanda(p, cocina);
+      document.body.appendChild(marco);
+    });
+  }
+
+  function pintarCocina() {
+    const suc = sucursal();
+    const sede = U.sucursal(suc) || {};
+    const e = estacionDeEsteEquipo();
+    const soyEstacion = !!(e && Number(e.sede) === Number(suc));
+    const st = estadoEstacion;
+
+    let aviso;
+    if (soyEstacion) {
+      aviso = '<div class="caja-datos" style="border-left:4px solid var(--verde)"><b>🖨 Este equipo imprime las comandas de ' +
+        U.esc(sede.nombre || '') + '.</b><br><span class="mini tenue">Déjalo con el panel abierto. Para que salgan sin el cuadro ' +
+        'de imprimir, abre Chrome con <code>--kiosk-printing</code> y la impresora térmica como predeterminada.</span>' +
+        '<div class="mt-8"><button class="btn btn--fantasma btn--xs" data-estacion="no">Dejar de imprimir en este equipo</button> ' +
+        '<button class="btn btn--fantasma btn--xs" data-estacion="prueba">🖨 Imprimir una prueba</button></div></div>';
+    } else if (st && st.activa && !estacionCaida()) {
+      aviso = '<div class="caja-datos" style="border-left:4px solid var(--verde)">🟢 <b>Estación de comandas conectada.</b> ' +
+        '<span class="mini tenue">Los pedidos nuevos salen por la impresora de cocina.</span>' +
+        '<div class="mt-8"><button class="btn btn--fantasma btn--xs" data-estacion="si">Usar este equipo como estación</button></div></div>';
+    } else {
+      aviso = '<div class="caja-datos" style="border-left:4px solid var(--rojo)">⚠️ <b>Ninguna estación de comandas está imprimiendo' +
+        (st && st.segundos_sin_estacion != null ? ' (la última respondió hace ' + Math.round(st.segundos_sin_estacion / 60) + ' min)' : '') +
+        '.</b><br><span class="mini">Los pedidos se guardan y saldrán apenas se conecte. Si este es el equipo de la impresora, márcalo:</span>' +
+        (st && st.sin_imprimir ? '<br><span class="mini"><b>' + st.sin_imprimir + '</b> comanda(s) esperando impresión.</span>' : '') +
+        '<div class="mt-8"><button class="btn btn--rojo btn--xs" data-estacion="si">🖨 Este equipo imprime las comandas</button></div></div>';
+    }
+    $('#cajaEstacion').innerHTML = aviso;
+
+    const lista = enPreparacion();
+    $('#cajaCocina').innerHTML = lista.length
+      ? '<p class="mini tenue" style="margin:12px 0 6px">Cuando la cocina avise que un pedido está listo, márcalo aquí: ' +
+        'el cliente, la mesera y el domiciliario lo ven al instante.</p>' +
+        lista.map(function (p) {
+          return '<div class="op-card op-card--' + p.estado + '">' +
+            '<div class="op-card__top"><span class="op-card__codigo">' + U.esc(p.codigo) + '</span>' +
+            '<span class="badge badge--ambar">' + U.esc(nombreDelPedido(p)) + '</span></div>' +
+            '<div class="mini tenue">' + quienEs(p) + ' · ' + U.esc(U.haceCuanto(p.creado)) +
+            (p.comandaImpresaEn === null ? ' · <b>sin imprimir</b>' : '') + '</div>' +
+            '<div class="mt-8">' + (p.items || []).map((it) =>
+              '<div><b>' + it.cantidad + ' ×</b> ' + U.esc(it.nombre) +
+              (it.detalle ? '<br><span class="mini">' + U.esc(it.detalle) + '</span>' : '') +
+              (it.notas ? '<br><span class="mini tenue">* ' + U.esc(it.notas) + '</span>' : '') + '</div>').join('') + '</div>' +
+            '<div class="fila mt-8" style="gap:8px">' +
+            '<button class="btn btn--bloque crece caja-ticket__cobrar" data-comanda-lista="' + U.esc(p.id) + '">✓ Listo</button>' +
+            '<button class="btn btn--fantasma btn--sm" data-comanda-reimp="' + U.esc(p.id) + '">🖨 Reimprimir</button>' +
+            '</div></div>';
+        }).join('')
+      : '<div class="vacio"><div class="vacio__ico">🍳</div><h3>Nada en cocina</h3>' +
+        '<p class="mini">Los pedidos nuevos entran aquí directo, en preparación.</p></div>';
+  }
+
+  function accionCocina(e) {
+    const est = e.target.closest('[data-estacion]');
+    if (est) {
+      const que = est.dataset.estacion;
+      if (que === 'prueba') {
+        imprimiendo = imprimiendo.then(() => imprimirComandaCocina({
+          codigo: 'PRUEBA', tipo: 'mesa', mesa: '0', sucursalId: sucursal(), creado: new Date().toISOString(),
+          usuarioNombre: 'Prueba de impresora', cliente: { notas: 'Si lees esto, la estación imprime bien.' },
+          items: [{ cantidad: 1, nombre: 'Comanda de prueba', detalle: 'Entrada: Sopa · Bebida: Limonada' }],
+        }, null));
+        return;
+      }
+      marcarEstacion(que === 'si');
+      estadoPedidoEn = 0;
+      U.toast(que === 'si' ? 'Este equipo imprimirá las comandas.' : 'Este equipo ya no imprime comandas.');
+      if (que === 'si') vueltaEstacion();
+      return refrescar();
+    }
+
+    const l = e.target.closest('[data-comanda-lista]');
+    if (l) {
+      try {
+        const p = S.comandaLista(l.dataset.comandaLista);
+        U.toast((p ? p.codigo : 'El pedido') + ' está listo: el cliente ya lo ve.');
+      } catch (err) {
+        U.toast(err.message, 'error');
+      }
+      return refrescar();
+    }
+
+    const r = e.target.closest('[data-comanda-reimp]');
+    if (r) {
+      try {
+        S.reimprimirComanda(r.dataset.comandaReimp);
+        U.toast('La comanda vuelve a salir por la impresora de cocina.');
+      } catch (err) {
+        U.toast(err.message, 'error');
+      }
+      return refrescar();
+    }
+  }
+
+  /* =================================================================
      REPINTADO
      ================================================================= */
   function refrescar() {
@@ -909,11 +1157,24 @@ NASCAR.Caja = (function () {
           '🛵 Domiciliarios' + (deudaDomiciliarios() ? ' <b>' + U.money(deudaDomiciliarios()) + '</b>' : '') + '</button>'
         : '');
 
+    const conComanda = !!(U.sucursal(sucursal()) || {}).comandaImpresa && !!$('#cajaCocinaVista');
+    if (!conComanda && vista === 'cocina') vista = 'cobrar';
+    if (conComanda) {
+      const enCocina = enPreparacion().length;
+      $('#cajaSub').innerHTML +=
+        '<button class="sub-tab' + (vista === 'cocina' ? ' is-activo' : '') + '" data-caja-vista="cocina">' +
+        '🍳 Cocina' + (enCocina ? ' <b>' + enCocina + '</b>' : '') +
+        (estacionCaida() ? ' <b title="La estación de comandas no responde">⚠️</b>' : '') + '</button>';
+    }
+
     $('#cajaVender').classList.toggle('oculto', vista !== 'vender');
     $('#cajaCobrarVista').classList.toggle('oculto', vista !== 'cobrar');
     if ($('#cajaDomiciliariosVista')) $('#cajaDomiciliariosVista').classList.toggle('oculto', vista !== 'domiciliarios');
+    if ($('#cajaCocinaVista')) $('#cajaCocinaVista').classList.toggle('oculto', vista !== 'cocina');
 
-    if (vista === 'vender') {
+    if (vista === 'cocina') {
+      pintarCocina();
+    } else if (vista === 'vender') {
       pintarCategorias();
       pintarProductos();
       pintarTicket();

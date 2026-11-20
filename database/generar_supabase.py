@@ -127,6 +127,10 @@ PARTES = [
     # final: redefine core.fn_pedido_json (de la 09) y pone un trigger nuevo
     # en core.pedidos.
     ('51_domiciliario_del_pedido.sql',        'Qué domiciliario llevó cada pedido, para cobrarle el efectivo'),
+
+    # Comanda impresa por sede (opcional). Va al final: redefine las dos
+    # rest.crear_pedido (de la 30) y la vista rest.unidades.
+    ('52_comanda_impresa.sql',                'Comanda impresa: la cocina no toca el sistema, caja marca «Listo»'),
 ]
 
 CABECERA = '''/* ============================================================================
