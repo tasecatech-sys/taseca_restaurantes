@@ -4943,6 +4943,7 @@ NASCAR.Store = (function () {
       estado: datos.estado || 'completado',
       productos: normalizarProductosCierre(datos.productos),
       observaciones: datos.observaciones || '',
+      despieces: datos.despieces || [],
       historial: [
         {
           ts: ahora,
@@ -4992,6 +4993,7 @@ NASCAR.Store = (function () {
 
     if (cambios.productos) c.productos = normalizarProductosCierre(cambios.productos);
     if (cambios.observaciones !== undefined) c.observaciones = cambios.observaciones;
+    if (cambios.despieces !== undefined) c.despieces = cambios.despieces;
     if (cambios.estado) c.estado = cambios.estado;
     if (cambios.usuarioNombre) c.usuarioNombre = cambios.usuarioNombre;
 

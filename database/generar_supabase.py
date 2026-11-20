@@ -134,6 +134,8 @@ PARTES = [
     ('53_paga_con_obligatorio.sql',           'Domicilio en efectivo: el cliente dice con cuánto paga'),
     # Redefine rest.unidades (de la 52): va después.
     ('54_cajon_monedero.sql',                 'Cajón monedero: comprobante al cobrar en efectivo, por sede'),
+    # Redefine rest.despieces (de la 50), rest.cierres y rest.registrar_cierre (de la 13).
+    ('55_cierre_por_despiece.sql',            'Cierre de inventario contando pollos enteros y presas sueltas'),
 ]
 
 CABECERA = '''/* ============================================================================

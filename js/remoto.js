@@ -1294,6 +1294,8 @@ NASCAR.Remoto = (function () {
       usuarioNombre: c.registrado_por || '—',
       estado: c.estado,
       productos: (c.productos || []).map((p) => ({ codigo: p.codigo, nombre: p.nombre, saldo: n(p.saldo) })),
+      // Lo que se contó entero (pollos sin despresar), ya sumado en cada presa (migración 55)
+      despieces: c.conteo_despieces || [],
       observaciones: c.observacion || '',
       aplicadoAStock: !!c.aplicado_a_stock,
       actualizado: c.actualizado_en,
@@ -1535,6 +1537,7 @@ NASCAR.Remoto = (function () {
             estado: datos.estado || 'completado',
             observacion: datos.observaciones || '',
             productos: (datos.productos || []).map((p) => ({ codigo: p.codigo, saldo: p.saldo })),
+            despieces: datos.despieces || [],
             nuevo: true,
           },
         });
@@ -1566,6 +1569,7 @@ NASCAR.Remoto = (function () {
           estado: cambios.estado || (c.estado === 'borrador' ? 'borrador' : 'completado'),
           observacion: cambios.observaciones !== undefined ? cambios.observaciones : c.observaciones,
           productos: (cambios.productos || c.productos).map((p) => ({ codigo: p.codigo, saldo: p.saldo })),
+          despieces: cambios.despieces !== undefined ? cambios.despieces : (c.despieces || []),
           nuevo: false,
         },
       });

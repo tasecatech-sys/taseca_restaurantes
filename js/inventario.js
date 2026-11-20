@@ -279,7 +279,8 @@ NASCAR.Inventario = (function () {
       fechaCierre: S.hoyOperativo(),
       areas: [], // ['comidas'] | ['bar'] | ['comidas','bar']
       usuario: sesion ? sesion.nombre : '',
-      saldos: {}, // codigo -> número | null
+      saldos: {}, // codigo -> número | null (en una presa de despiece: las SUELTAS)
+      enteros: {}, // despieceId -> número | null (pollos enteros sin despresar)
       edicion: {}, // area -> id del cierre que se está corrigiendo
       soloPendientes: false,
       busqueda: '',
@@ -465,11 +466,24 @@ NASCAR.Inventario = (function () {
     function irAPaso2() {
       // Precargar saldos si se está corrigiendo un cierre existente
       st.saldos = {};
+      st.enteros = {};
       st.areas.forEach(function (a) {
         const existente = S.buscarCierre(st.sucursalId, st.fechaCierre, a);
         if (existente && existente.estado !== 'revisado') {
           st.edicion[a] = existente.id;
           existente.productos.forEach((p) => (st.saldos[p.codigo] = p.saldo));
+          /* El saldo guardado ya incluye los enteros: se separan otra vez
+             para que corregir no los sume dos veces. */
+          (existente.despieces || []).forEach(function (f) {
+            const d = (S.getDespieces ? S.getDespieces({ todos: true }) : [])
+              .find((x) => String(x.idBase || x.id) === String(f.despiece_id) || x.id === f.despiece_id);
+            if (!d) return;
+            st.enteros[d.id] = Number(f.cantidad) || 0;
+            (f.componentes || []).forEach(function (c) {
+              if (st.saldos[c.codigo] != null)
+                st.saldos[c.codigo] = Math.max(0, st.saldos[c.codigo] - (Number(f.cantidad) || 0) * (Number(c.cantidad) || 0));
+            });
+          });
         }
       });
 
@@ -544,6 +558,18 @@ NASCAR.Inventario = (function () {
       const porArea = agrupar(visibles, (p) => p.area);
       let html = '';
 
+      /* Lo que está ENTERO (pollos sin despresar) se cuenta aquí, una vez;
+         abajo, en cada presa, sólo las sueltas. El saldo de la presa es la
+         suma: así nada se cuenta dos veces. */
+      const dsp = despiecesDelCierre();
+      if (dsp.length && !q) {
+        html +=
+          '<div class="prod-grupo"><div class="prod-grupo__titulo">🐔 Enteros sin despresar</div>' +
+          '<p class="mini tenue" style="margin:0 0 8px">Cuenta aquí lo que está entero. En las presas de abajo pon sólo las ' +
+          '<b>sueltas</b>: el sistema suma las dos cosas.</p><div class="prod-lista">' +
+          dsp.map(tarjetaEntero).join('') + '</div></div>';
+      }
+
       st.areas.forEach(function (area) {
         const deArea = porArea[area];
         if (!deArea || !deArea.length) return;
@@ -568,30 +594,128 @@ NASCAR.Inventario = (function () {
       actualizarProgreso();
     }
 
-    function esRegistrado(codigo) {
+    /* Lo escrito en el campo de la presa (en una presa de despiece, las
+       SUELTAS). */
+    function tieneValor(codigo) {
       const v = st.saldos[codigo];
       return v !== undefined && v !== null && v !== '';
     }
 
+    /* Despieces activos con alguna presa en este cierre, sólo con esas presas. */
+    function despiecesDelCierre() {
+      if (!S.getDespieces) return [];
+      const codigos = new Set(productosDelCierre().map((p) => p.codigo));
+      return S.getDespieces()
+        .map((d) => Object.assign({}, d, { componentes: (d.componentes || []).filter((c) => codigos.has(c.codigo)) }))
+        .filter((d) => d.componentes.length);
+    }
+
+    function enterosEn(codigo) {
+      let n = 0;
+      despiecesDelCierre().forEach(function (d) {
+        const v = st.enteros[d.id];
+        if (v == null || v === '') return;
+        const c = d.componentes.find((x) => x.codigo === codigo);
+        if (c) n += Number(v) * Number(c.cantidad);
+      });
+      return n;
+    }
+
+    function hayEnteroContado(codigo) {
+      return despiecesDelCierre().some((d) =>
+        st.enteros[d.id] != null && st.enteros[d.id] !== '' && d.componentes.some((c) => c.codigo === codigo));
+    }
+
+    function esComponente(codigo) {
+      return despiecesDelCierre().some((d) => d.componentes.some((c) => c.codigo === codigo));
+    }
+
+    /* Contado = escribió las sueltas, o contó los enteros de los que sale. */
+    function esRegistrado(codigo) {
+      return tieneValor(codigo) || hayEnteroContado(codigo);
+    }
+
+    /* El saldo que se guarda: sueltas + enteros × lo que sale de cada uno. */
+    function saldoTotal(codigo) {
+      return (tieneValor(codigo) ? Number(st.saldos[codigo]) : 0) + enterosEn(codigo);
+    }
+
+    function lineaTotal(codigo) {
+      const ent = enterosEn(codigo);
+      if (!hayEnteroContado(codigo)) return 'Sueltas, fuera de los enteros';
+      return 'Total <b>' + saldoTotal(codigo) + '</b> = ' + ent + ' de enteros + ' +
+        (tieneValor(codigo) ? st.saldos[codigo] : 0) + ' sueltas';
+    }
+
+    function tarjetaEntero(d) {
+      const v = st.enteros[d.id];
+      const hay = v != null && v !== '';
+      return (
+        '<div class="prod-card' + (hay ? ' is-registrado' : '') + '" data-card-entero="' + U.esc(d.id) + '">' +
+        '<div class="prod-card__info">' +
+        '<div class="prod-card__codigo">ENTERO</div>' +
+        '<div class="prod-card__nombre">' + U.esc(d.nombre) + '</div>' +
+        '<div class="prod-card__unidad">1 = ' + d.componentes.map((c) => c.cantidad + ' ' + U.esc(c.nombre)).join(' + ') + '</div>' +
+        '</div>' +
+        '<div class="stepper">' +
+        '<button type="button" data-entero-menos="' + U.esc(d.id) + '" aria-label="Restar uno">−</button>' +
+        '<input type="number" inputmode="numeric" min="0" step="1" class="' + (hay ? '' : 'is-vacio') + '" ' +
+        'data-entero="' + U.esc(d.id) + '" value="' + (hay ? v : '') + '" placeholder="—" ' +
+        'aria-label="Enteros de ' + U.esc(d.nombre) + '">' +
+        '<button type="button" data-entero-mas="' + U.esc(d.id) + '" aria-label="Sumar uno">+</button>' +
+        '</div></div>'
+      );
+    }
+
     function tarjetaProducto(p) {
-      const valor = esRegistrado(p.codigo) ? st.saldos[p.codigo] : '';
+      const valor = tieneValor(p.codigo) ? st.saldos[p.codigo] : '';
+      const comp = esComponente(p.codigo);
       return (
         '<div class="prod-card' + (esRegistrado(p.codigo) ? ' is-registrado' : '') +
         '" data-card="' + p.codigo + '">' +
         '<div class="prod-card__info">' +
         '<div class="prod-card__codigo">' + U.esc(p.codigo) + '</div>' +
         '<div class="prod-card__nombre">' + U.esc(p.nombre) + '</div>' +
-        '<div class="prod-card__unidad">Saldo físico en ' + U.esc(p.unidad || 'unidades') + '</div>' +
+        '<div class="prod-card__unidad" data-total="' + p.codigo + '">' +
+        (comp ? lineaTotal(p.codigo) : 'Saldo físico en ' + U.esc(p.unidad || 'unidades')) + '</div>' +
         '</div>' +
         '<div class="stepper">' +
         '<button type="button" data-menos="' + p.codigo + '" aria-label="Restar uno">−</button>' +
         '<input type="number" inputmode="numeric" min="0" step="1" ' +
-        'class="' + (esRegistrado(p.codigo) ? '' : 'is-vacio') + '" ' +
+        'class="' + (tieneValor(p.codigo) ? '' : 'is-vacio') + '" ' +
         'data-saldo="' + p.codigo + '" value="' + valor + '" placeholder="—" ' +
-        'aria-label="Saldo de ' + U.esc(p.nombre) + '">' +
+        'aria-label="' + (comp ? 'Sueltas de ' : 'Saldo de ') + U.esc(p.nombre) + '">' +
         '<button type="button" data-mas="' + p.codigo + '" aria-label="Sumar uno">+</button>' +
         '</div></div>'
       );
+    }
+
+    /* Refresca, sin repintar la lista, lo que depende de los enteros. */
+    function refrescarPresa(codigo) {
+      const card = $('[data-card="' + codigo + '"]');
+      if (!card) return;
+      card.classList.toggle('is-registrado', esRegistrado(codigo));
+      const t = card.querySelector('[data-total]');
+      if (t && esComponente(codigo)) t.innerHTML = lineaTotal(codigo);
+    }
+
+    function fijarEntero(id, valor, repintar) {
+      if (valor === '' || valor === null || valor === undefined) st.enteros[id] = null;
+      else {
+        const n = Math.floor(Number(valor));
+        st.enteros[id] = isFinite(n) && n >= 0 ? n : 0;
+      }
+      const card = $('[data-card-entero="' + id + '"]');
+      if (card) {
+        const hay = st.enteros[id] != null;
+        card.classList.toggle('is-registrado', hay);
+        const inp = card.querySelector('[data-entero]');
+        inp.classList.toggle('is-vacio', !hay);
+        if (repintar) inp.value = hay ? st.enteros[id] : '';
+      }
+      const d = despiecesDelCierre().find((x) => x.id === id);
+      if (d) d.componentes.forEach((c) => refrescarPresa(c.codigo));
+      actualizarProgreso();
     }
 
     function actualizarProgreso() {
@@ -623,9 +747,10 @@ NASCAR.Inventario = (function () {
       if (card) {
         card.classList.toggle('is-registrado', esRegistrado(codigo));
         const input = card.querySelector('[data-saldo]');
-        input.classList.toggle('is-vacio', !esRegistrado(codigo));
-        if (repintarTarjeta) input.value = esRegistrado(codigo) ? st.saldos[codigo] : '';
+        input.classList.toggle('is-vacio', !tieneValor(codigo));
+        if (repintarTarjeta) input.value = tieneValor(codigo) ? st.saldos[codigo] : '';
       }
+      refrescarPresa(codigo);
       actualizarProgreso();
     }
 
@@ -694,9 +819,19 @@ NASCAR.Inventario = (function () {
       try {
         st.areas.forEach(function (area) {
           // Sólo los productos de esta área que tengan saldo
-          const productos = S.getProductosInventario({ area: area, sucursalId: st.sucursalId })
+          const delArea = S.getProductosInventario({ area: area, sucursalId: st.sucursalId });
+          const productos = delArea
             .filter((p) => esRegistrado(p.codigo))
-            .map((p) => ({ codigo: p.codigo, nombre: p.nombre, saldo: st.saldos[p.codigo] }));
+            .map((p) => ({ codigo: p.codigo, nombre: p.nombre, saldo: saldoTotal(p.codigo) }));
+          /* El desglose de lo contado entero en esta área (foto). Va
+             siempre, aunque vacío: corregir quitando los enteros lo limpia. */
+          const codArea = new Set(delArea.map((p) => p.codigo));
+          const despieces = despiecesDelCierre()
+            .filter((d) => Number(st.enteros[d.id]) > 0 && d.componentes.some((c) => codArea.has(c.codigo)))
+            .map((d) => ({
+              despiece_id: d.idBase || d.id, nombre: d.nombre, cantidad: Number(st.enteros[d.id]),
+              componentes: d.componentes.filter((c) => codArea.has(c.codigo)).map((c) => ({ codigo: c.codigo, cantidad: Number(c.cantidad) })),
+            }));
 
           if (!productos.length) return; // esa área no se contó
 
@@ -709,6 +844,7 @@ NASCAR.Inventario = (function () {
             usuarioNombre: st.usuario || (sesion ? sesion.nombre : 'Mesera'),
             estado: estado,
             productos: productos,
+            despieces: despieces,
             observaciones: observaciones,
           };
 
@@ -717,6 +853,7 @@ NASCAR.Inventario = (function () {
             const eraBorrador = previo && previo.estado === 'borrador';
             S.actualizarCierre(st.edicion[area], {
               productos: productos,
+              despieces: despieces,
               observaciones: observaciones,
               usuarioNombre: datos.usuarioNombre,
               // Un borrador que se termina pasa a completado; lo que ya
@@ -912,18 +1049,35 @@ NASCAR.Inventario = (function () {
       const mas = e.target.closest('[data-mas]');
       if (mas) {
         const cod = mas.dataset.mas;
-        fijarSaldo(cod, (esRegistrado(cod) ? st.saldos[cod] : 0) + 1, true);
+        fijarSaldo(cod, (tieneValor(cod) ? Number(st.saldos[cod]) : 0) + 1, true);
         return;
       }
       const menos = e.target.closest('[data-menos]');
       if (menos) {
         const cod = menos.dataset.menos;
-        const actual = esRegistrado(cod) ? st.saldos[cod] : 0;
+        const actual = tieneValor(cod) ? Number(st.saldos[cod]) : 0;
         fijarSaldo(cod, Math.max(0, actual - 1), true);
+        return;
+      }
+      const em = e.target.closest('[data-entero-mas]');
+      if (em) {
+        const id = em.dataset.enteroMas;
+        return fijarEntero(id, (st.enteros[id] != null ? Number(st.enteros[id]) : 0) + 1, true);
+      }
+      const en = e.target.closest('[data-entero-menos]');
+      if (en) {
+        const id = en.dataset.enteroMenos;
+        return fijarEntero(id, Math.max(0, (st.enteros[id] != null ? Number(st.enteros[id]) : 0) - 1), true);
       }
     });
 
     $('#cLista').addEventListener('input', function (e) {
+      const ent = e.target.closest('[data-entero]');
+      if (ent) {
+        const limpio = ent.value.replace(/[^\d]/g, '');
+        if (limpio !== ent.value) ent.value = limpio;
+        return fijarEntero(ent.dataset.entero, limpio, false);
+      }
       const inp = e.target.closest('[data-saldo]');
       if (!inp) return;
       // Se limpia cualquier cosa que no sea dígito (teclados de celular)
@@ -986,6 +1140,13 @@ NASCAR.Inventario = (function () {
         '<div class="linea"><span class="tenue">Identificador</span><b class="mini mono">' + U.esc(c.id) + '</b></div>' +
         '</div>' +
 
+        ((c.despieces || []).length
+          ? '<div class="caja-datos"><b>🐔 Contado entero</b>' +
+            c.despieces.map((f) =>
+              '<p class="mini" style="margin:4px 0 0"><b>' + f.cantidad + ' × ' + U.esc(f.nombre) + '</b> = ' +
+              (f.componentes || []).map((x) => (x.cantidad * f.cantidad) + ' ' + U.esc(x.codigo)).join(' + ') + '</p>').join('') +
+            '<p class="mini tenue" style="margin:4px 0 0">Ya está sumado en el saldo de cada presa; el resto son sueltas.</p></div>'
+          : '') +
         (c.observaciones
           ? '<div class="caja-datos" style="border-color:var(--ambar)"><b class="ambar">Observaciones</b>' +
             '<p class="mini" style="margin:4px 0 0">' + U.esc(c.observaciones) + '</p></div>'
