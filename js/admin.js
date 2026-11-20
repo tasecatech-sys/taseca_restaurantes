@@ -904,7 +904,10 @@
           : '') +
         '<div class="crece"></div>' +
         '<button class="btn btn--fantasma btn--sm" id="detImprimir">🖨 Comanda</button>' +
-        (p.estado !== 'cancelado' && p.estado !== 'anulado'
+        /* Lo entregado o ya cobrado no se cancela: se anula, para que quede
+           en el cruce de caja (cancelado no cuenta en ningún lado). */
+        (p.estado !== 'cancelado' && p.estado !== 'anulado' && p.estado !== 'entregado' &&
+         p.estadoPago !== 'confirmado'
           ? '<button class="btn btn--fantasma btn--sm" id="detCancelar" style="border-color:var(--rojo);color:var(--rojo-claro)">Cancelar</button>'
           : '') +
         /* Anular es sólo del Admin: es echar atrás una venta hecha y
@@ -929,7 +932,12 @@
       if (bc)
         bc.addEventListener('click', function () {
           U.confirmar('¿Cancelar el pedido ' + p.codigo + '? No se contará en las ventas.', function () {
-            S.cancelarPedido(pedidoId, 'Cancelado desde el panel');
+            try {
+              S.cancelarPedido(pedidoId, 'Cancelado desde el panel');
+            } catch (e) {
+              U.toast(e.message, 'error');
+              return;
+            }
             U.toast('Pedido cancelado.', 'info');
             pintar();
           }, 'Sí, cancelar');

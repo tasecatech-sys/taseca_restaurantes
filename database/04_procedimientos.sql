@@ -700,6 +700,13 @@ BEGIN
          WHERE p.id = p_pedido_id) = 'entregado' THEN
         RAISE EXCEPTION 'Un pedido entregado ya es una venta: no se cancela, se anula.';
     END IF;
+    /* Un pedido COBRADO tampoco se cancela: cancelado no cuenta en ventas ni
+       en anuladas, así que su dinero desaparecería del cruce de caja. Se
+       anula, y queda en el cruce como factura anulada (la 48). */
+    IF (SELECT ep.codigo FROM core.pedidos p JOIN core.estados_pago ep ON ep.id = p.estado_pago_id
+         WHERE p.id = p_pedido_id) = 'confirmado' THEN
+        RAISE EXCEPTION 'Ese pedido ya se cobró: no se cancela, se anula (así queda en el cruce de caja como factura anulada).';
+    END IF;
     UPDATE core.pedidos
        SET estado_pedido_id   = core.fn_id_catalogo('estados_pedido', 'cancelado'),
            motivo_cancelacion = trim(p_motivo)

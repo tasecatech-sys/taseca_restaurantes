@@ -3843,6 +3843,13 @@ NASCAR.Store = (function () {
   }
 
   function cancelarPedido(pedidoId, motivo) {
+    /* Igual que la base (la 48): lo entregado o cobrado se anula, no se
+       cancela; cancelado no cuenta en el cruce y el dinero se perdería. */
+    const actual = leer(K.pedidos, []).find((x) => x.id === pedidoId);
+    if (actual && actual.estado === 'entregado')
+      throw new Error('Un pedido entregado ya es una venta: no se cancela, se anula.');
+    if (actual && actual.estadoPago === 'confirmado')
+      throw new Error('Ese pedido ya se cobró: no se cancela, se anula (así queda en el cruce de caja como factura anulada).');
     return _mutar(pedidoId, function (p) {
       p.estado = 'cancelado';
       p.motivoCancelacion = motivo || '';
