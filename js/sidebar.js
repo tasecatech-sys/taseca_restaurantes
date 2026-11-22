@@ -97,6 +97,21 @@ NASCAR.Sidebar = (function () {
 
     let colapsado = leerPreferencia(clave);
 
+    /* ---- Lo que se queda quieto al bajar ----
+       La cabecera de arriba (.app-top) ya va pegada. Los filtros de cada
+       módulo y el ticket de caja se pegan JUSTO DEBAJO de ella, y para eso
+       hay que saber cuánto mide: cambia con el ancho (en celular se parte
+       en dos renglones) y con el tema. Se publica en --alto-top. */
+    const cabecera = shell.querySelector('.app-top');
+    if (cabecera) {
+      const medir = function () {
+        document.documentElement.style.setProperty('--alto-top', cabecera.offsetHeight + 'px');
+      };
+      medir();
+      if (window.ResizeObserver) new ResizeObserver(medir).observe(cabecera);
+      else window.addEventListener('resize', medir);
+    }
+
     // Los grupos arrancan como el usuario los dejó (abiertos si nunca los tocó)
     const gruposGuardados = leerGrupos(clave);
     shell.querySelectorAll('[data-grupo]').forEach(function (g) {

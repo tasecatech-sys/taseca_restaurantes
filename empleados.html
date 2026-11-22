@@ -338,8 +338,11 @@
       <!-- Vender -->
       <div id="cajaVender" class="caja-pos">
         <div class="caja-pos__carta">
-          <input class="input mb-8" id="cajaBuscar" placeholder="Buscar producto…" autocomplete="off">
-          <div class="filtros" id="cajaCategorias"></div>
+          <!-- Buscador y categorías se quedan pegados arriba al bajar -->
+          <div class="caja-pos__buscador">
+            <input class="input mb-8" id="cajaBuscar" placeholder="Buscar producto…" autocomplete="off">
+            <div class="filtros" id="cajaCategorias"></div>
+          </div>
           <div class="caja-grid" id="cajaProductos"></div>
         </div>
         <aside class="caja-pos__ticket" id="cajaTicket"></aside>
