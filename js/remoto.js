@@ -1269,8 +1269,17 @@ NASCAR.Remoto = (function () {
           return { refId: 'p' + x.producto_id, cantidad: Number(x.cantidad) || 1 };
         return { refId: 'p' + x, cantidad: 1 };
       }),
+      /* El stock es de CADA unidad. `stockActual` y `stockMinimo` son los
+         de la primera sólo como valor por defecto: quien mira una sede
+         los toma de `porUnidad` (store.getStock con sucursalId). Antes se
+         usaba siempre la primera, y la sede 2 veía y editaba el número
+         de la sede principal. */
       stockActual: n(u.stock_actual),
       stockMinimo: n(u.stock_minimo),
+      porUnidad: unidades.reduce(function (acc, x) {
+        acc[x.unidad_id] = { stockActual: n(x.stock_actual), stockMinimo: n(x.stock_minimo) };
+        return acc;
+      }, {}),
       sucursales: unidades.map((x) => x.unidad_id),
     };
   }
@@ -1475,11 +1484,16 @@ NASCAR.Remoto = (function () {
       const buscado = String(codigoOriginal || datos.codigo || '').trim().toUpperCase();
       const base = S.leerRemoto('stock', []).find((p) => p.codigo === buscado) || null;
       const cambios = Object.assign({}, datos);
+      // La sede cuyo stock se está editando (la que se mira en el panel)
+      const uStock = Number(cambios.unidadStock) || Number(S.unidadActivaId());
+      delete cambios.unidadStock;
       if (Array.isArray(cambios.sucursales) && !cambios.sucursales.length) delete cambios.sucursales;
       const r = Object.assign({}, base || {}, cambios);
       const unidades = (r.sucursales && r.sucursales.length ? r.sucursales : [S.unidadActivaId()])
         .map(Number)
         .filter(Boolean);
+      // Lo que esa sede tiene hoy, para mandar sólo lo que cambió
+      const actual = (base && base.porUnidad && base.porUnidad[uStock]) || base;
 
       const insumo = {
         insumo_id: base ? base.idBase : null,
@@ -1492,10 +1506,23 @@ NASCAR.Remoto = (function () {
         unidades: unidades,
       };
       // Sólo lo que cambió: el stock de los demás productos no se toca
-      if (cambios.stockActual !== undefined && (!base || Number(cambios.stockActual) !== Number(base.stockActual)))
+      if (cambios.stockActual !== undefined && (!actual || Number(cambios.stockActual) !== Number(actual.stockActual)))
         insumo.stock_actual = Number(cambios.stockActual);
-      if (cambios.stockMinimo !== undefined && (!base || Number(cambios.stockMinimo) !== Number(base.stockMinimo)))
+      if (cambios.stockMinimo !== undefined && (!actual || Number(cambios.stockMinimo) !== Number(actual.stockMinimo)))
         insumo.stock_minimo = Number(cambios.stockMinimo);
+
+      /* La base escribe el stock en TODAS las unidades que se le pasen
+         (sp_guardar_insumo), y las unidades sólo se agregan, nunca se
+         quitan. Así que, para un producto que ya existe, si cambió el
+         stock se le pasa sólo la sede que se está editando: las demás
+         quedan como estaban. Antes se pasaban todas y el número de una
+         sede se copiaba en las otras. */
+      if (base && (insumo.stock_actual !== undefined || insumo.stock_minimo !== undefined)) {
+        const destino = unidades.indexOf(uStock) >= 0 ? uStock : unidades.length === 1 ? unidades[0] : null;
+        if (!destino)
+          throw new Error('Este producto está en varias sedes: elige arriba la sede cuyo stock quieres cambiar.');
+        insumo.unidades = [destino];
+      }
       if (cambios.ventaRefIds !== undefined) insumo.productos = productosDeCarta(cambios.ventaRefIds);
 
       rpc('guardar_insumo', { p_insumo: insumo });

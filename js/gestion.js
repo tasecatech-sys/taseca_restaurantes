@@ -938,8 +938,12 @@ NASCAR.Gestion = (function () {
 
   function editarProductoStock(codigo) {
     if (!A.exigir('stock')) return;
+    /* El stock que se ve y se edita es el de la sede elegida en el panel.
+       Si el producto no es de esa sede, se cae al catálogo completo. */
+    const uStock = unidadCtx();
     const p = codigo
-      ? S.getStock({ todos: true }).find((x) => x.codigo === codigo)
+      ? S.getStock({ todos: true, sucursalId: uStock }).find((x) => x.codigo === codigo) ||
+        S.getStock({ todos: true }).find((x) => x.codigo === codigo)
       : { codigo: '', nombre: '', categoria: '', area: 'comidas', unidad: 'unidad',
           activo: true, stockActual: 0, stockMinimo: 0, ventaRefIds: [], sucursales: [unidadCtx()] };
 
@@ -968,7 +972,9 @@ NASCAR.Gestion = (function () {
         '</select></label>' +
         '<label class="campo"><span>Unidad de conteo</span>' +
         '<input class="input" id="sUnidad" value="' + U.esc(p.unidad) + '" placeholder="unidad, botella, porción…"></label>' +
-        '<label class="campo"><span>Stock actual (lo último contado)</span>' +
+        '<label class="campo"><span>Stock actual' +
+        ((p.sucursales || []).length > 1 ? ' en ' + U.esc((U.sucursal(uStock) || {}).nombre || 'esta sede') : '') +
+        '</span>' +
         '<input class="input" type="number" min="0" step="1" id="sActual" value="' + Number(p.stockActual) + '"></label>' +
         '<label class="campo"><span>Stock mínimo</span>' +
         '<input class="input" type="number" min="0" step="1" id="sMinimo" value="' + Number(p.stockMinimo) + '"></label>' +
@@ -1089,6 +1095,7 @@ NASCAR.Gestion = (function () {
             ventaRefIds: marcados(),
             activo: U.$('#sActivo', m.raiz).checked,
             sucursales: p.sucursales,
+            unidadStock: uStock,
           },
           codigo
         );

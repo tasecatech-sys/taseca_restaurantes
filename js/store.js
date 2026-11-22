@@ -1904,7 +1904,16 @@ NASCAR.Store = (function () {
     if (!opciones.todos) lista = lista.filter((p) => p.activo);
     if (opciones.area) lista = lista.filter((p) => p.area === opciones.area);
     // El stock es de la UNIDAD: lo del bar no aparece en la arepera
-    if (opciones.sucursalId) lista = lista.filter((p) => esDeUnidad(p, opciones.sucursalId));
+    if (opciones.sucursalId) {
+      lista = lista.filter((p) => esDeUnidad(p, opciones.sucursalId));
+      /* Y el número también: con base de datos cada sede tiene su propio
+         stock (`porUnidad`, ver remoto.aStock). Sin esto todas veían el
+         de la primera sede. */
+      lista = lista.map(function (p) {
+        const u = p.porUnidad && p.porUnidad[Number(opciones.sucursalId)];
+        return u ? Object.assign({}, p, { stockActual: u.stockActual, stockMinimo: u.stockMinimo }) : p;
+      });
+    }
     if (opciones.bajoMinimo)
       lista = lista.filter((p) => p.stockMinimo > 0 && p.stockActual <= p.stockMinimo);
     if (opciones.texto) {
@@ -1930,6 +1939,7 @@ NASCAR.Store = (function () {
 
     const base = i >= 0 ? lista[i] : {};
     const cambios = sinUnidadesVacias(datos);
+    delete cambios.unidadStock; // sólo lo usa el modo base de datos (remoto.js)
     const resultado = conEmpresa(normalizarProductoStock(Object.assign({}, base, cambios)), eid);
     // Un producto nuevo nace en UNA unidad: la indicada o la activa
     if (i < 0) resultado.sucursales = unidadesParaNuevo(cambios.sucursales, eid);
