@@ -303,6 +303,198 @@ NASCAR.UI = (function () {
     return function () { return estado; };
   }
 
+  /* =================================================================
+     PAGO DIVIDIDO (migración 56)
+
+     Una fila por método: «Efectivo 20.000» + «Nequi …». La ÚLTIMA fila no
+     se escribe: se llena sola con lo que falta de la cuenta, así la caja
+     sólo dice cuánto le dieron por un lado y el resto sale solo.
+
+     `cuenta` es subtotal + domicilio, SIN recargo. Si un método tiene
+     recargo, se calcula sobre su parte y se muestra en su fila; el total
+     a recibir es la cuenta más esos recargos.
+
+     montarPagoDividido(raiz, {
+       pre, cuenta, metodos: [{id, nombre}], empresaId, inicial: [m1, m2],
+       alCambiar(r)
+     })
+     Devuelve leer(), que da lo de store.calcularPagoDividido más:
+       efectivo  lo que entra en billete (para el cambio y el cajón)
+       cambio    { recibido, cambio, falta } del efectivo
+     ================================================================= */
+  function bloquePagoDividido(pre) {
+    pre = pre || 'pd';
+    return (
+      '<div class="pago-dividido" id="' + pre + 'Div">' +
+      '<div class="pago-dividido__filas" id="' + pre + 'DivFilas"></div>' +
+      '<button type="button" class="btn btn--fantasma btn--xs" id="' + pre + 'DivMas">+ Otro método</button>' +
+      '<div class="pago-dividido__resumen" id="' + pre + 'DivResumen" aria-live="polite"></div>' +
+      '<div id="' + pre + 'DivCambio"></div>' +
+      '</div>'
+    );
+  }
+
+  function montarPagoDividido(raiz, op) {
+    const pre = op.pre || 'pd';
+    const S = NASCAR.Store;
+    const cuenta = Math.round(Number(op.cuenta) || 0);
+    const metodos = op.metodos || [];
+    const caja = $('#' + pre + 'Div', raiz);
+    const cajaFilas = $('#' + pre + 'DivFilas', caja);
+    const resumen = $('#' + pre + 'DivResumen', caja);
+    const marcoCambio = $('#' + pre + 'DivCambio', caja);
+    const botonMas = $('#' + pre + 'DivMas', caja);
+
+    // Lo sugerido sólo vale si está entre los métodos que se ofrecen
+    const ini = (op.inicial || []).filter((id) => metodos.some((m) => m.id === id));
+    const primero = ini[0] || (metodos[0] || {}).id;
+    const segundo = (ini[1] !== primero && ini[1]) || (metodos.find((m) => m.id !== primero) || {}).id;
+    // La última fila no guarda base: es lo que falta
+    const filas = [{ metodo: primero, base: null }, { metodo: segundo, base: null }];
+
+    let efectivoMontado = null;
+    let leerCambio = function () { return { recibido: null, cambio: 0, falta: 0 }; };
+    let ultimoRecibido = null;
+    let resultado = null;
+
+    const esEfectivo = (id) => id === 'efectivo' || (NASCAR.GRUPO_DE_METODO || {})[id] === 'efectivo';
+    const nombre = (id) => ((metodos.find((m) => m.id === id) || {}).nombre) || id;
+
+    function restante() {
+      const escrito = filas.slice(0, -1).reduce((s, f) => s + (Number(f.base) || 0), 0);
+      return cuenta - escrito;
+    }
+
+    function partes() {
+      return filas.map((f, i) => ({
+        metodo: f.metodo,
+        base: i === filas.length - 1 ? restante() : Number(f.base) || 0,
+      }));
+    }
+
+    function pintarFilas() {
+      cajaFilas.innerHTML = filas
+        .map(function (f, i) {
+          const ultima = i === filas.length - 1;
+          return (
+            '<div class="pago-dividido__fila" data-fila="' + i + '">' +
+            '<select class="select" data-pd-metodo="' + i + '" aria-label="Método de la parte ' + (i + 1) + '">' +
+            metodos.map((m) => '<option value="' + esc(m.id) + '"' + (m.id === f.metodo ? ' selected' : '') + '>' +
+              esc(m.nombre) + '</option>').join('') +
+            '</select>' +
+            '<input class="input cambio__monto" type="text" inputmode="numeric" autocomplete="off" ' +
+            'data-pd-base="' + i + '"' +
+            (ultima
+              ? ' readonly tabindex="-1" title="Se llena sola con lo que falta de la cuenta"'
+              : ' placeholder="¿Cuánto?" value="' + (f.base ? esc(conMiles(f.base)) : '') + '"') +
+            '>' +
+            (filas.length > 2
+              ? '<button type="button" class="btn btn--fantasma btn--xs" data-pd-quitar="' + i + '" aria-label="Quitar esta parte">✕</button>'
+              : '') +
+            '<span class="pago-dividido__nota mini tenue" data-pd-nota="' + i + '"></span>' +
+            '</div>'
+          );
+        })
+        .join('');
+      botonMas.classList.toggle('oculto', filas.length >= metodos.length);
+      recalcular();
+    }
+
+    function recalcular() {
+      const r = S.calcularPagoDividido(partes(), cuenta, op.empresaId);
+      resultado = r;
+
+      // La última fila muestra lo que falta (o el exceso, en rojo)
+      const ultimaInput = $('[data-pd-base="' + (filas.length - 1) + '"]', cajaFilas);
+      const falta = restante();
+      if (ultimaInput) {
+        ultimaInput.value = conMiles(Math.max(0, falta));
+        ultimaInput.classList.toggle('input--error', falta <= 0);
+      }
+
+      r.partes.forEach(function (x, i) {
+        const nota = $('[data-pd-nota="' + i + '"]', cajaFilas);
+        if (nota) nota.textContent = x.recargo > 0 && x.base > 0
+          ? '+ recargo ' + money(x.recargo) + ' = ' + money(x.valor)
+          : '';
+      });
+
+      resumen.innerHTML = r.error
+        ? '<span class="ambar">' + esc(falta <= 0 && !r.error.includes('dos veces')
+            ? 'Lo escrito ya cubre toda la cuenta: baja una parte o quítala.'
+            : r.error) + '</span>'
+        : 'Total a recibir <b>' + esc(money(r.total)) + '</b>' +
+          (r.recargo > 0 ? ' <span class="tenue">(incluye ' + esc(money(r.recargo)) + ' de recargo)</span>' : '') +
+          '<br><span class="tenue">' + esc(r.partes.map((x) => nombre(x.metodo) + ' ' + money(x.valor)).join(' + ')) + '</span>';
+
+      // Cambio sólo para lo que entra en billete
+      const efectivo = r.error ? 0 : r.partes.filter((x) => esEfectivo(x.metodo)).reduce((s, x) => s + x.valor, 0);
+      if (efectivo !== efectivoMontado) {
+        ultimoRecibido = leerCambio().recibido || ultimoRecibido;
+        efectivoMontado = efectivo;
+        if (efectivo > 0) {
+          marcoCambio.innerHTML = '<p class="mini tenue" style="margin:8px 0 0">En efectivo: <b>' +
+            esc(money(efectivo)) + '</b></p>' + bloqueCambio(efectivo, pre + 'Ef', ultimoRecibido);
+          leerCambio = montarCambio(marcoCambio, efectivo, pre + 'Ef');
+        } else {
+          marcoCambio.innerHTML = '';
+          leerCambio = function () { return { recibido: null, cambio: 0, falta: 0 }; };
+        }
+      }
+
+      if (op.alCambiar) op.alCambiar(leer());
+    }
+
+    function leer() {
+      const r = resultado || S.calcularPagoDividido(partes(), cuenta, op.empresaId);
+      return Object.assign({}, r, { efectivo: efectivoMontado || 0, cambio: leerCambio() });
+    }
+
+    cajaFilas.addEventListener('change', function (ev) {
+      const s = ev.target.closest('[data-pd-metodo]');
+      if (!s) return;
+      filas[Number(s.dataset.pdMetodo)].metodo = s.value;
+      recalcular();
+    });
+    cajaFilas.addEventListener('input', function (ev) {
+      const c = ev.target.closest('[data-pd-base]');
+      if (!c || c.readOnly) return;
+      filas[Number(c.dataset.pdBase)].base = montoEscrito(c.value);
+      recalcular();
+    });
+    cajaFilas.addEventListener('focusout', function (ev) {
+      const c = ev.target.closest('[data-pd-base]');
+      if (!c || c.readOnly) return;
+      const v = montoEscrito(c.value);
+      c.value = v ? conMiles(v) : '';
+    });
+    cajaFilas.addEventListener('click', function (ev) {
+      const q = ev.target.closest('[data-pd-quitar]');
+      if (!q) return;
+      ev.preventDefault();
+      filas.splice(Number(q.dataset.pdQuitar), 1);
+      // La que quede de última pasa a ser «lo que falta»
+      filas[filas.length - 1].base = null;
+      pintarFilas();
+    });
+    botonMas.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      const usados = filas.map((f) => f.metodo);
+      const libre = (metodos.find((m) => usados.indexOf(m.id) < 0) || {}).id;
+      if (!libre) return;
+      // La que era última deja de serlo: se queda con lo que faltaba
+      const anterior = filas[filas.length - 1];
+      anterior.base = Math.max(0, restante());
+      filas.push({ metodo: libre, base: null });
+      pintarFilas();
+    });
+
+    pintarFilas();
+    const primerCampo = $('[data-pd-base="0"]', cajaFilas);
+    if (primerCampo && op.enfocar !== false) primerCampo.focus();
+    return leer;
+  }
+
   function el(tag, attrs, html) {
     const n = document.createElement(tag);
     if (attrs) Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
@@ -836,6 +1028,8 @@ NASCAR.UI = (function () {
     montosProbables: montosProbables,
     bloqueCambio: bloqueCambio,
     montarCambio: montarCambio,
+    bloquePagoDividido: bloquePagoDividido,
+    montarPagoDividido: montarPagoDividido,
     fechaLarga: fechaLarga,
     hora: hora,
     haceCuanto: haceCuanto,

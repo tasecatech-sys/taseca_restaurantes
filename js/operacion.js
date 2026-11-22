@@ -750,7 +750,7 @@ NASCAR.Operacion = (function () {
   }
 
   function etiquetaMetodo(m) {
-    return { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[m] || m;
+    return { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono', mixto: 'Pago dividido' }[m] || m;
   }
 
   function verDetalleEntrega(pedidoId) {

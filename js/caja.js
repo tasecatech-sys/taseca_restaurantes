@@ -344,29 +344,40 @@ NASCAR.Caja = (function () {
           'al cobrar se va a cocina y el cliente espera.</p>'
         : '') +
 
-      '<label class="campo"><span>¿Con qué paga?</span><select class="select" id="cajaMetodo">' +
-      metodos
-        .map((m) => '<option value="' + U.esc(m.id) + '"' + (m.id === metodo ? ' selected' : '') + '>' +
-          U.esc(nombreCorto(m)) + '</option>')
-        .join('') +
-      '</select></label>' +
+      (dividido && ticket.length
+        /* Pago dividido (migración 56): las filas «método + cuánto»
+           reemplazan al método único, su recargo y su cambio. */
+        ? '<div class="caja-ticket__total"><span>Total</span><b id="cajaTotalDiv">' +
+          U.money(subtotalTicket()) + '</b></div>' +
+          U.bloquePagoDividido('cmd')
+        : '<label class="campo"><span>¿Con qué paga?</span><select class="select" id="cajaMetodo">' +
+          metodos
+            .map((m) => '<option value="' + U.esc(m.id) + '"' + (m.id === metodo ? ' selected' : '') + '>' +
+              U.esc(nombreCorto(m)) + '</option>')
+            .join('') +
+          '</select></label>' +
 
-      /* El recargo sólo se nombra si lo hay: una línea en cero no informa
-         y hace dudar de si se está cobrando algo de más. Pero si lo hay,
-         tiene que verse, porque es lo que la caja le va a decir al
-         cliente que pague. */
-      (recargoTicket() > 0
-        ? '<div class="caja-ticket__recargo"><span>Recargo · ' +
-          U.esc(nombreCorto(metodosActivos().find((m) => m.id === metodo) || { id: metodo })) +
-          '</span><b>' + U.money(recargoTicket()) + '</b></div>'
+          /* El recargo sólo se nombra si lo hay: una línea en cero no informa
+             y hace dudar de si se está cobrando algo de más. Pero si lo hay,
+             tiene que verse, porque es lo que la caja le va a decir al
+             cliente que pague. */
+          (recargoTicket() > 0
+            ? '<div class="caja-ticket__recargo"><span>Recargo · ' +
+              U.esc(nombreCorto(metodosActivos().find((m) => m.id === metodo) || { id: metodo })) +
+              '</span><b>' + U.money(recargoTicket()) + '</b></div>'
+            : '') +
+
+          '<div class="caja-ticket__total"><span>Total</span><b>' + U.money(total()) + '</b></div>' +
+
+          /* En el mostrador el cliente paga de frente y casi siempre con un
+             billete. Sin ticket no hay nada que cobrar, así que tampoco hay
+             cambio que calcular. */
+          (ticket.length ? U.bloqueCambio(total(), 'cm', recibidoMostrador) : '')) +
+
+      (ticket.length && metodos.length >= 2
+        ? '<p class="pago-dividido__alternar mt-8"><button type="button" class="btn btn--fantasma btn--xs" id="cajaDividir">' +
+          (dividido ? '↩ Un solo método' : '➗ Pagar con dos métodos') + '</button></p>'
         : '') +
-
-      '<div class="caja-ticket__total"><span>Total</span><b>' + U.money(total()) + '</b></div>' +
-
-      /* En el mostrador el cliente paga de frente y casi siempre con un
-         billete. Sin ticket no hay nada que cobrar, así que tampoco hay
-         cambio que calcular. */
-      (ticket.length ? U.bloqueCambio(total(), 'cm', recibidoMostrador) : '') +
 
       '<button class="btn btn--bloque caja-ticket__cobrar" id="cajaCobrar"' +
       (ticket.length ? '' : ' disabled') + '>' +
@@ -394,10 +405,33 @@ NASCAR.Caja = (function () {
         pintarTicket();
       });
 
-    leerCambio = ticket.length
+    leerCambio = ticket.length && !dividido
       ? U.montarCambio(caja, total(), 'cm', function (e) { recibidoMostrador = e.recibido; })
       : null;
     seguirMetodo();
+
+    /* Se rearma con cada cambio del ticket: si la cuenta cambia, lo que
+       se había repartido ya no vale y hay que volver a escribirlo. */
+    leerDividido = dividido && ticket.length
+      ? U.montarPagoDividido(caja, {
+          pre: 'cmd',
+          cuenta: subtotalTicket(),
+          metodos: metodos.map((m) => ({ id: m.id, nombre: nombreCorto(m) })),
+          empresaId: S.empresaActivaId ? S.empresaActivaId() : undefined,
+          inicial: ['efectivo', (metodos.find((m) => m.id !== 'efectivo') || {}).id],
+          enfocar: false,
+          alCambiar: function (r) {
+            const t = $('#cajaTotalDiv');
+            if (t) t.textContent = U.money(r.error ? subtotalTicket() : r.total);
+          },
+        })
+      : null;
+    const botonDividir = $('#cajaDividir');
+    if (botonDividir)
+      botonDividir.addEventListener('click', function () {
+        dividido = !dividido;
+        pintarTicket();
+      });
 
     U.unaVez($('#cajaCobrar'), '⏳ Cobrando…', cobrar);
   }
@@ -407,14 +441,32 @@ NASCAR.Caja = (function () {
      ================================================================= */
   /* Lo devuelve montarCambio; se rellena en cada repintado del ticket. */
   let leerCambio = null;
+  /* Pago dividido en el mostrador (migración 56): si está encendido y lo
+     que devuelve montarPagoDividido. */
+  let dividido = false;
+  let leerDividido = null;
 
   function cobrar() {
     if (!ticket.length) return false;
     if (!A.exigir('pagos')) return false;
 
+    /* Pago dividido: las partes tienen que cuadrar con la cuenta, y lo
+       que se paga en billete tiene que alcanzar. */
+    const partes = dividido && leerDividido ? leerDividido() : null;
+    if (partes && partes.error) {
+      U.toast(partes.error, 'error');
+      return false;
+    }
+    if (partes && partes.efectivo > 0 && partes.cambio.falta > 0) {
+      U.toast('No alcanza el efectivo: faltan ' + U.money(partes.cambio.falta) + '.', 'error');
+      return false;
+    }
+
     /* La venta de mostrador NACE cobrada: una vez registrada no hay dónde
        volver a cobrar. Si lo que hay en la mano no alcanza, se para aquí. */
-    const efectivo = metodo === 'efectivo' && leerCambio ? leerCambio() : null;
+    const efectivo = partes
+      ? (partes.efectivo > 0 ? partes.cambio : null)
+      : metodo === 'efectivo' && leerCambio ? leerCambio() : null;
     if (efectivo && efectivo.falta > 0) {
       U.toast('No alcanza: faltan ' + U.money(efectivo.falta) + '.', 'error');
       return false;
@@ -435,7 +487,9 @@ NASCAR.Caja = (function () {
         items: ticket.map((x) => ({
           refId: x.refId, nombre: x.nombre, precio: x.precio, cantidad: x.cantidad, origen: 'carta',
         })),
-        metodoPago: metodo,
+        metodoPago: partes ? partes.partes[0].metodo : metodo,
+        // Pago dividido (56): [{ metodo, base }]; sin esto, un solo método
+        pagos: partes ? partes.partes.map((x) => ({ metodo: x.metodo, base: x.base })) : undefined,
         usuarioId: firma.usuarioId,
         usuarioNombre: firma.usuarioNombre,
       });
@@ -445,14 +499,16 @@ NASCAR.Caja = (function () {
     }
 
     const aCocina = ticket.some((x) => x.requierePreparacion);
-    if (metodo === 'efectivo') {
+    if (partes ? partes.efectivo > 0 : metodo === 'efectivo') {
       siCajonImprimir([venta], { metodo: 'efectivo', recibido: efectivo && efectivo.recibido });
     }
     ticket = [];
     claveVenta = '';
     recibidoMostrador = null;   // lo del cliente anterior no es lo del siguiente
+    dividido = false;           // la siguiente venta arranca con un solo método
     U.toast(
-      'Venta ' + venta.codigo + ' cobrada · ' + U.money(venta.total) +
+      'Venta ' + venta.codigo + ' cobrada · ' +
+      (partes ? S.textoPartes(partes.partes) : U.money(venta.total)) +
       (efectivo && efectivo.cambio > 0 ? ' · devuelve ' + U.money(efectivo.cambio) : '') +
       (aCocina ? '. Va a cocina.' : '. Entregada.'),
       aCocina ? 'info' : 'ok'
@@ -582,7 +638,7 @@ NASCAR.Caja = (function () {
       '<div><span>Quién</span><b>' + quienEs(p) + '</b></div>' +
       '<div><span>Total</span><b>' + U.money(p.total) + '</b></div>' +
       '<div><span>' + (p.estadoPago === 'confirmado' ? 'Pagó con' : 'Dice pagar con') +
-      '</span><b>' + U.esc(S.nombreDeMetodo(p.metodoPago)) + '</b></div>' +
+      '</span><b>' + U.esc(p.pagos && p.pagos.length ? S.textoPartes(p.pagos) : S.nombreDeMetodo(p.metodoPago)) + '</b></div>' +
       '<div><span>' + (enCola ? 'Esperando' : 'Cuándo') + '</span><b>' +
       (enCola ? U.haceCuanto(p.creado) : U.esc(p.fecha) + ' · ' + U.hora(p.creado)) +
       '</b></div>' +
@@ -788,13 +844,17 @@ NASCAR.Caja = (function () {
       .filter((p) => p.estado !== 'cancelado' && p.estado !== 'anulado');
   }
 
-  const esEfectivo = (p) => (NASCAR.GRUPO_DE_METODO || {})[p.metodoPago] === 'efectivo' || p.metodoPago === 'efectivo';
+  const metodoEnEfectivo = (m) => (NASCAR.GRUPO_DE_METODO || {})[m] === 'efectivo' || m === 'efectivo';
+  /* Lo que pasa por las manos del domiciliario: el pedido entero si es en
+     efectivo, o sólo la parte en efectivo de un pago dividido (56). */
+  const efectivoDe = (p) => S.partesDePago(p).filter((x) => metodoEnEfectivo(x.metodo)).reduce((s, x) => s + x.valor, 0);
+  const esEfectivo = (p) => efectivoDe(p) > 0;
   const pagoAbierto = (p) => p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado';
   const leDebe = (p) => p.estado === 'entregado' && esEfectivo(p) && pagoAbierto(p);
 
   function deudaDomiciliarios() {
     try {
-      return domiciliosDeSede().filter((p) => p.domiciliarioId && leDebe(p)).reduce((s, p) => s + p.total, 0);
+      return domiciliosDeSede().filter((p) => p.domiciliarioId && leDebe(p)).reduce((s, p) => s + efectivoDe(p), 0);
     } catch (e) {
       return 0;
     }
@@ -813,7 +873,7 @@ NASCAR.Caja = (function () {
     return '<div class="fila" style="gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--borde, rgba(255,255,255,.08))">' +
       '<span class="mono"><b>' + U.esc(p.codigo) + '</b></span>' +
       '<span class="crece mini">' + U.esc(p.cliente.nombre || 'Domicilio') + ' · ' +
-      U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + ' · ' + U.esc(S.nombreDeMetodo(p.metodoPago)) + '</span>' +
+      U.esc(S.ETIQUETA_ESTADO[p.estado] || p.estado) + ' · ' + U.esc(p.pagos && p.pagos.length ? S.textoPartes(p.pagos) : S.nombreDeMetodo(p.metodoPago)) + '</span>' +
       '<b class="num">' + U.money(p.total) + '</b>' +
       selectorDomiciliario(p, lista) +
       '</div>';
@@ -852,7 +912,7 @@ NASCAR.Caja = (function () {
       kpi('Efectivo por cobrarles', U.money(totalDebe), 'Domicilios entregados en efectivo', totalDebe ? 'rojo' : 'verde') +
       kpi('En la calle', enCalle, 'Salieron y aún no entregan', enCalle ? 'ambar' : 'verde') +
       kpi('Sin domiciliario', sinAsignar.length, 'Asígnalos para saber a quién cobrar', sinAsignar.length ? 'ambar' : 'verde') +
-      kpi('Cobrado hoy', U.money(filas.reduce((s, g) => s + g.cobradoHoy.reduce((t, p) => t + p.total, 0), 0)), 'Efectivo ya recibido', 'verde');
+      kpi('Cobrado hoy', U.money(filas.reduce((s, g) => s + g.cobradoHoy.reduce((t, p) => t + efectivoDe(p), 0), 0)), 'Efectivo ya recibido', 'verde');
 
     let html = '';
     if (!lista.length && !filas.length) {
@@ -867,7 +927,7 @@ NASCAR.Caja = (function () {
     }
 
     html += filas.map(function (g) {
-      const cobrado = g.cobradoHoy.reduce((s, p) => s + p.total, 0);
+      const cobrado = g.cobradoHoy.reduce((s, p) => s + efectivoDe(p), 0);
       return '<div class="caja mb-16">' +
         '<div class="fila fila--entre" style="align-items:center;gap:8px">' +
         '<h3 style="margin:0">🛵 ' + U.esc(g.nombre) + '</h3>' +
@@ -1109,6 +1169,13 @@ NASCAR.Caja = (function () {
       '<div class="f' + (cls ? ' ' + cls : '') + '"><span>' + izq + '</span><span>' + der + '</span></div>';
     // En el papel, «Efectivo» a secas: «contra entrega» es cosa del domicilio
     const metodoCorto = (m) => (m === 'efectivo' ? 'Efectivo' : S.nombreDeMetodo(m));
+    /* Pago dividido (56): se imprime cada parte, y el cambio se calcula
+       contra lo que se pagó en billete, no contra el total. */
+    const partesUno = uno && uno.pagos && uno.pagos.length ? uno.pagos : null;
+    const enEfectivo = partesUno
+      ? partesUno.filter((x) => x.metodo === 'efectivo' || (NASCAR.GRUPO_DE_METODO || {})[x.metodo] === 'efectivo')
+          .reduce((s, x) => s + (Number(x.valor) || 0), 0)
+      : total;
 
     let cuerpo;
     if (uno) {
@@ -1143,9 +1210,11 @@ NASCAR.Caja = (function () {
       '<hr><div class="c"><b>COMPROBANTE DE PAGO</b><br>' + new Date().toLocaleString('es-CO') + '</div><hr>' +
       cuerpo +
       linea('TOTAL', U.money(total), 'tot') +
-      (uno ? linea('Pagó con', e(metodoCorto(extra.metodo || uno.metodoPago))) : '') +
-      (extra.recibido ? linea('Recibido', U.money(extra.recibido)) : '') +
-      (extra.recibido && extra.recibido > total ? linea('Cambio', U.money(extra.recibido - total)) : '') +
+      (uno && partesUno
+        ? linea('Pagó con', '') + partesUno.map((x) => linea('&nbsp; ' + e(metodoCorto(x.metodo)), U.money(x.valor))).join('')
+        : uno ? linea('Pagó con', e(metodoCorto(extra.metodo || uno.metodoPago))) : '') +
+      (extra.recibido ? linea('Recibido' + (partesUno ? ' en efectivo' : ''), U.money(extra.recibido)) : '') +
+      (extra.recibido && extra.recibido > enEfectivo ? linea('Cambio', U.money(extra.recibido - enEfectivo)) : '') +
       (extra.atendio ? '<div class="c" style="margin-top:6px">Atendió: ' + e(extra.atendio) + '</div>' : '') +
       '<hr><div class="c">¡Gracias por su compra!</div>' +
       '<div class="aviso">Documento informativo. No es una factura electrónica.</div>' +

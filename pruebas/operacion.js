@@ -749,6 +749,84 @@
     );
   }
 
+  /* ================================================================
+     PAGO DIVIDIDO (migración 56)
+     Una parte en efectivo y otra por Nequi: cada parte va a su columna
+     del cruce, y el recargo de Nequi sólo sobre lo que se paga con Nequi.
+     ================================================================ */
+  function pruebasPagoDividido() {
+    grupo('Pago dividido');
+
+    const cfg = S.getConfig();
+    S.guardarConfig({
+      metodosPago: (cfg.metodosPago || []).map(function (m) {
+        if (m.id === 'nequi') return Object.assign({}, m, { recargo: 500, recargoTipo: 'fijo', activo: true });
+        if (m.id === 'efectivo') return Object.assign({}, m, { recargo: 0, activo: true });
+        return m;
+      }),
+    });
+
+    // Dos platos: así la cuenta se puede partir en pedazos enteros
+    const p = S.crearPedido(unPedido({
+      clave: 'pd-' + Date.now(), tipo: 'recoger', metodoPago: 'efectivo',
+      items: [{ refId: PLATO.id, nombre: PLATO.nombre, precio: PLATO.precio, cantidad: 2 }],
+    }));
+    const cuenta = p.subtotal + p.domicilio;
+    const ef = Math.round(cuenta / 3);
+
+    const c = S.calcularPagoDividido([{ metodo: 'efectivo', base: ef }, { metodo: 'nequi', base: cuenta - ef }], cuenta);
+    probar('La cuenta partida cuadra y lleva sólo el recargo de Nequi',
+      !c.error && c.recargo === 500 && c.total === cuenta + 500, JSON.stringify({ error: c.error, total: c.total }));
+    probar('Una sola parte no es un pago dividido',
+      /al menos dos/.test(S.calcularPagoDividido([{ metodo: 'efectivo', base: cuenta }], cuenta).error));
+    probar('Partes que no suman la cuenta: no se acepta',
+      /tienen que dar lo mismo/.test(S.calcularPagoDividido([{ metodo: 'efectivo', base: ef }, { metodo: 'nequi', base: 1 }], cuenta).error));
+    probar('El mismo método dos veces: no se acepta',
+      /dos veces/.test(S.calcularPagoDividido([{ metodo: 'nequi', base: ef }, { metodo: 'nequi', base: cuenta - ef }], cuenta).error));
+
+    const antes = S.informeCaja(S.hoy(), UNIDAD);
+    const r = S.confirmarPagoDividido(p.id, [{ metodo: 'efectivo', base: ef }, { metodo: 'nequi', base: cuenta - ef }], 'REF', null);
+    const q = S.getPedido(p.id);
+    probar('Cobrado en partes: confirmado, «mixto» y con sus dos partes',
+      q.estadoPago === 'confirmado' && q.metodoPago === 'mixto' && q.pagos.length === 2,
+      q.metodoPago + ' · ' + S.textoPartes(q.pagos));
+    probar('El total sube sólo el recargo de la parte de Nequi',
+      q.total === cuenta + 500 && q.recargo === 500, 'total ' + q.total);
+    probar('No se cobra dos veces',
+      /ya fue confirmado/.test(revienta(() => S.confirmarPagoDividido(p.id, [{ metodo: 'efectivo', base: ef }, { metodo: 'nequi', base: cuenta - ef }]))));
+    probar('Se llama «Pago dividido»', S.nombreDeMetodo('mixto') === 'Pago dividido');
+
+    const despues = S.informeCaja(S.hoy(), UNIDAD);
+    const dEf = despues.ventas.cobrado.efectivo - antes.ventas.cobrado.efectivo;
+    const dTr = despues.ventas.cobrado.transferencia - antes.ventas.cobrado.transferencia;
+    probar('El cruce suma al cajón SÓLO la parte en efectivo', dEf === ef, 'efectivo +' + dEf + ' (esperado ' + ef + ')');
+    probar('Y a transferencias la parte de Nequi con su recargo', dTr === cuenta - ef + 500,
+      'transferencia +' + dTr + ' (esperado ' + (cuenta - ef + 500) + ')');
+    probar('«mixto» no aparece como método en el cruce', !despues.ventas.porMetodo.mixto);
+
+    const v = S.ventas(S.hoy(), S.hoy());
+    probar('Ventas por método tampoco lo muestra como «mixto»', !v.porPago.mixto,
+      Object.keys(v.porPago).join(', '));
+
+    // Mostrador: nace cobrada en partes
+    const venta = S.crearPedido(unPedido({
+      clave: 'pdm-' + Date.now(), tipo: 'mostrador', metodoPago: 'efectivo', cliente: {}, costoDomicilio: 0,
+      pagos: [{ metodo: 'efectivo', base: 1 }, { metodo: 'nequi', base: PLATO.precio - 1 }],
+    }));
+    probar('Venta de mostrador dividida: nace cobrada en dos partes',
+      venta.estadoPago === 'confirmado' && venta.metodoPago === 'mixto' && venta.pagos.length === 2 &&
+      venta.total === PLATO.precio + 500, venta.metodoPago + ' · total ' + venta.total);
+
+    const claveMala = 'pdx-' + Date.now();
+    const error = revienta(() => S.crearPedido(unPedido({
+      clave: claveMala, tipo: 'mostrador', metodoPago: 'efectivo', cliente: {}, costoDomicilio: 0,
+      pagos: [{ metodo: 'efectivo', base: 1 }, { metodo: 'nequi', base: 1 }],
+    })));
+    probar('Venta con partes que no cuadran: no queda registrada',
+      /tienen que dar lo mismo/.test(error || '') &&
+      !S.getPedidos({}).some((x) => x.claveEnvio === claveMala), error);
+  }
+
   function arrancar() {
     if (!S) {
       marcador.textContent = 'No se cargó NASCAR.Store. ¿Están los /js/*.js en su sitio?';
@@ -773,7 +851,7 @@
 
     const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes,
                      pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo, pruebasPagaCon,
-                     pruebasRecargoVisible];
+                     pruebasRecargoVisible, pruebasPagoDividido];
     bloques.forEach(function (fn) {
       try {
         fn();

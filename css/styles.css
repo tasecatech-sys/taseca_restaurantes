@@ -2635,6 +2635,48 @@ textarea {
   font-size: var(--txt-lg);
 }
 
+/* ── Pago dividido (migración 56) ─────────────────────────────────────
+   Una fila por método: selector, cuánto, y el recargo de esa parte debajo.
+   La última fila se llena sola con lo que falta: se ve atenuada para que
+   no parezca un campo por escribir. */
+.pago-dividido {
+  margin: 4px 0 12px;
+}
+.pago-dividido__filas {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pago-dividido__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+.pago-dividido__fila .cambio__monto[readonly] {
+  opacity: 0.75;
+  cursor: default;
+}
+.pago-dividido__fila .input--error {
+  border-color: var(--peligro);
+}
+.pago-dividido__nota {
+  grid-column: 1 / -1;
+}
+.pago-dividido__nota:empty {
+  display: none;
+}
+.pago-dividido__resumen {
+  margin-top: 10px;
+  font-size: var(--txt-sm);
+}
+.pago-dividido__resumen:empty {
+  display: none;
+}
+.pago-dividido__alternar {
+  margin: -4px 0 10px;
+}
+
 .caja-ticket__cobrar {
   background: var(--verde);
   border-color: var(--verde);

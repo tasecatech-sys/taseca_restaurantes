@@ -394,6 +394,10 @@ NASCAR.Remoto = (function () {
       recargo: n(p.recargo_pago),
       total: n(p.total),
       metodoPago: p.metodo_pago,
+      // Las partes de un pago dividido (migración 56); vacío si no se dividió
+      pagos: (p.pagos || []).map((x) => ({
+        metodo: x.metodo, base: n(x.base), recargo: n(x.recargo), valor: n(x.valor),
+      })),
       estadoPago: p.estado_pago,
       comprobante: p.referencia_pago || '',
       tieneComprobante: !!p.tiene_comprobante,
@@ -878,6 +882,21 @@ NASCAR.Remoto = (function () {
       const cliente = datos.cliente || {};
       const unidad = S.getSucursal(datos.sucursalId);
       const zona = unidad && cliente.zona ? (unidad.zonas || []).find((z) => z.nombre === cliente.zona) : null;
+
+      /* Venta de mostrador cobrada en partes (migración 56): un solo viaje
+         que crea la venta y la cobra; si las partes no cuadran, no queda. */
+      if (datos.tipo === 'mostrador' && Array.isArray(datos.pagos) && datos.pagos.length) {
+        const v = ponerPedido(aPedido(rpc('vender_con_pago_dividido', {
+          p_unidad_id: Number(datos.sucursalId),
+          p_items: (datos.items || []).map(aLineaBase),
+          p_partes: datos.pagos.map((x) => ({ metodo: x.metodo, base: Number(x.base) || 0 })),
+          p_clave: datos.clave || null,
+        })));
+        seguidos[v.codigo] = true;
+        refrescarCatalogo();
+        return v;
+      }
+
       const r = rpc('crear_pedido', {
         p_unidad_id: Number(datos.sucursalId),
         p_tipo: datos.tipo,
@@ -1067,6 +1086,16 @@ NASCAR.Remoto = (function () {
       const args = { p_pedido_id: idBase(pedidoId), p_referencia: referencia || null };
       if (metodo && (!actual || actual.metodoPago !== metodo)) args.p_metodo = metodo;
       return ponerPedido(aPedido(rpc('confirmar_pago', args)));
+    },
+
+    /* Cobrar en partes (migración 56). `partes`: [{ metodo, base }]. El
+       recargo de cada parte lo calcula la base. */
+    confirmarPagoDividido: function (pedidoId, partes, referencia) {
+      return ponerPedido(aPedido(rpc('confirmar_pago_dividido', {
+        p_pedido_id: idBase(pedidoId),
+        p_partes: (partes || []).map((x) => ({ metodo: x.metodo, base: Number(x.base) || 0 })),
+        p_referencia: referencia || null,
+      })));
     },
 
     /* Varios cobros en UN viaje. Lo caro no es el trabajo -la base

@@ -136,6 +136,9 @@ PARTES = [
     ('54_cajon_monedero.sql',                 'Cajón monedero: comprobante al cobrar en efectivo, por sede'),
     # Redefine rest.despieces (de la 50), rest.cierres y rest.registrar_cierre (de la 13).
     ('55_cierre_por_despiece.sql',            'Cierre de inventario contando pollos enteros y presas sueltas'),
+    # Redefine api.sp_crear_pedido (de la 45), core.fn_pedido_json (de la 51)
+    # y rest.informe_caja (de la 14), y parchea api.fn_chequeo_integridad (17).
+    ('56_pago_dividido.sql',                  'Pago dividido: una parte en efectivo y otra por transferencia'),
 ]
 
 CABECERA = '''/* ============================================================================

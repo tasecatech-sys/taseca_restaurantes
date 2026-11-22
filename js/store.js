@@ -1157,6 +1157,8 @@ NASCAR.Store = (function () {
      al menos dice algo. Antes cada pantalla lo resolvía a su manera y la
      ficha de caja acababa enseñando «nequi» en minúscula. */
   function nombreDeMetodo(metodoId, empresaId) {
+    // «mixto» no es un método de la empresa: lo pone el pago dividido
+    if (metodoId === 'mixto') return 'Pago dividido';
     const m = (getConfig(empresaId).metodosPago || []).find((x) => x.id === metodoId);
     return (m && m.nombre) || metodoId || '';
   }
@@ -1173,6 +1175,70 @@ NASCAR.Store = (function () {
       : valor;
 
     return Math.max(0, Math.round(monto));
+  }
+
+  /* ===============================================================
+     PAGO DIVIDIDO (migración 56)
+
+     El cliente paga una parte en efectivo y otra por transferencia.
+     Cada parte es un pedazo de la CUENTA (subtotal + domicilio) y lleva
+     el recargo de su método calculado sólo sobre ese pedazo.
+
+     calcularPagoDividido NO lanza: devuelve `error` para que la pantalla
+     pueda mostrarlo mientras se escribe. Las mismas reglas que
+     api.sp_pago_dividido: al menos dos partes, sin repetir método, cada
+     una mayor que cero, y que sumen la cuenta exacta.
+     =============================================================== */
+  function calcularPagoDividido(partes, cuenta, empresaId) {
+    const metodos = getConfig(empresaId).metodosPago || [];
+    const lista = (partes || []).map(function (x) {
+      const base = Math.round(Number(x && x.base) || 0);
+      const recargo = base > 0 ? recargoDeMetodo(x.metodo, base, empresaId) : 0;
+      return { metodo: x && x.metodo, base: base, recargo: recargo, valor: base + recargo };
+    });
+    const suma = lista.reduce((s, x) => s + x.base, 0);
+    const recargo = lista.reduce((s, x) => s + x.recargo, 0);
+    const r = { partes: lista, suma: suma, recargo: recargo, total: Number(cuenta) + recargo, error: '' };
+
+    const vistos = {};
+    if (lista.length < 2) r.error = 'Para dividir el pago hacen falta al menos dos métodos.';
+    lista.some(function (x) {
+      const m = metodos.find((y) => y.id === x.metodo);
+      if (!x.metodo || x.metodo === 'mixto') r.error = 'Elige el método de cada parte del pago.';
+      else if (!m || !m.activo) r.error = 'El método de pago "' + x.metodo + '" no está disponible.';
+      else if (vistos[x.metodo]) r.error = 'El método ' + m.nombre + ' está dos veces: junta esas partes en una sola.';
+      else if (x.base <= 0) r.error = 'Escribe cuánto se paga con ' + m.nombre + ': cada parte tiene que ser mayor que cero.';
+      vistos[x.metodo] = true;
+      return !!r.error;
+    });
+    if (!r.error && suma !== Number(cuenta))
+      r.error = 'Las partes suman ' + pesos(suma) + ' y la cuenta es ' + pesos(cuenta) + ': tienen que dar lo mismo.';
+    return r;
+  }
+
+  // '$30.500', sin depender de ui.js (el store también corre sin pantalla)
+  function pesos(n) {
+    return '$' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  /* Con qué se pagó un pedido, parte por parte: las del pago dividido, o
+     el pedido entero con su método. Es lo que suman caja y ventas. */
+  function partesDePago(p) {
+    if (p && Array.isArray(p.pagos) && p.pagos.length)
+      return p.pagos.map((x) => ({
+        metodo: x.metodo, base: Number(x.base) || 0, recargo: Number(x.recargo) || 0,
+        valor: Number(x.valor) || (Number(x.base) || 0) + (Number(x.recargo) || 0),
+      }));
+    const total = Number(p && p.total) || 0;
+    const recargo = Number(p && p.recargo) || 0;
+    return [{ metodo: (p && p.metodoPago) || 'efectivo', base: total - recargo, recargo: recargo, valor: total }];
+  }
+
+  // «Efectivo $20.000 + Nequi $30.500»
+  function textoPartes(partes, empresaId) {
+    return (partes || [])
+      .map((x) => nombreDeMetodo(x.metodo, empresaId) + ' ' + pesos(x.valor))
+      .join(' + ');
   }
 
   function guardarConfig(cambios, empresaId) {
@@ -3878,11 +3944,29 @@ NASCAR.Store = (function () {
         pedido.historial.push({ ts: ahora, texto: 'Entregado en el mostrador' });
       }
       pedido.estadoPago = 'confirmado';
-      pedido.historial.push({
-        ts: ahora,
-        texto: 'Pago confirmado en caja (' + pedido.metodoPago + ')' +
-               (datos.usuarioNombre ? ' por ' + datos.usuarioNombre : ''),
-      });
+
+      /* Pago dividido (migración 56): las partes mandan sobre el método
+         y el recargo. Se valida ANTES de guardar: si no cuadran, la venta
+         no queda. */
+      if (Array.isArray(datos.pagos) && datos.pagos.length) {
+        const r = calcularPagoDividido(datos.pagos, subtotal + domicilio, eid);
+        if (r.error) throw new Error(r.error);
+        pedido.metodoPago = 'mixto';
+        pedido.pagos = r.partes;
+        pedido.recargo = r.recargo;
+        pedido.total = subtotal + domicilio + r.recargo;
+        pedido.historial.push({
+          ts: ahora,
+          texto: 'Pago dividido: ' + textoPartes(r.partes, eid) +
+                 (datos.usuarioNombre ? ' · por ' + datos.usuarioNombre : ''),
+        });
+      } else {
+        pedido.historial.push({
+          ts: ahora,
+          texto: 'Pago confirmado en caja (' + pedido.metodoPago + ')' +
+                 (datos.usuarioNombre ? ' por ' + datos.usuarioNombre : ''),
+        });
+      }
     }
 
     /* ---- COMANDA IMPRESA (migración 52) ---------------------------
@@ -4365,6 +4449,39 @@ NASCAR.Store = (function () {
     });
   }
 
+  /* Cobrar un pedido en varias partes. Espejo de api.sp_pago_dividido
+     (migración 56): el pedido queda con el método «mixto», sus partes y
+     el recargo de cada parte sumado al total. */
+  function confirmarPagoDividido(pedidoId, partes, referencia, quien) {
+    const nombre = quien && quien.usuarioNombre ? quien.usuarioNombre : null;
+    const actual = getPedido(pedidoId);
+    exigirPagoPorRegistrar(actual);
+    const cuenta = (Number(actual.subtotal) || 0) + (Number(actual.domicilio) || 0);
+    const r = calcularPagoDividido(partes, cuenta, actual.empresaId);
+    if (r.error) throw new Error(r.error);
+
+    return _mutar(pedidoId, function (p) {
+      const ahora = new Date().toISOString();
+      p.historial.push({ ts: ahora, texto: 'Método de pago: ' + p.metodoPago + ' → mixto' });
+      p.metodoPago = 'mixto';
+      p.pagos = r.partes;
+      p.recargo = r.recargo;
+      p.total = cuenta + r.recargo;
+      p.estadoPago = 'confirmado';
+      p.referenciaPago = referencia || '';
+      p.confirmadoEn = ahora;
+      p.confirmadoPorId = quien ? quien.usuarioId : null;
+      p.confirmadoPor = nombre;
+      p.historial.push({
+        ts: ahora,
+        texto:
+          'Pago dividido: ' + textoPartes(r.partes, p.empresaId) +
+          (referencia ? ' · ref. ' + referencia : '') +
+          (nombre ? ' · por ' + nombre : ''),
+      });
+    });
+  }
+
   function rechazarPago(pedidoId, motivo, quien) {
     const nombre = quien && quien.usuarioNombre ? quien.usuarioNombre : null;
     exigirPagoPorRegistrar(getPedido(pedidoId));
@@ -4452,11 +4569,16 @@ NASCAR.Store = (function () {
 
       /* Por método sólo cuenta lo que caja ya cobró: mientras no se confirme,
          el método no se conoce de verdad (una mesa se toma sin saberlo). */
-      const clavePago = p.estadoPago === 'confirmado' ? p.metodoPago : 'por_cobrar';
-      r.porPago[clavePago] = r.porPago[clavePago] || { n: 0, total: 0, recargo: 0 };
-      r.porPago[clavePago].n += 1;
-      r.porPago[clavePago].total += p.total;
-      r.porPago[clavePago].recargo += Number(p.recargo) || 0;
+      /* Un pago dividido suma cada parte a SU método (migración 56). */
+      const partesPago = p.estadoPago === 'confirmado'
+        ? partesDePago(p)
+        : [{ metodo: 'por_cobrar', valor: p.total, recargo: Number(p.recargo) || 0 }];
+      partesPago.forEach(function (x) {
+        r.porPago[x.metodo] = r.porPago[x.metodo] || { n: 0, total: 0, recargo: 0 };
+        r.porPago[x.metodo].n += 1;
+        r.porPago[x.metodo].total += x.valor;
+        r.porPago[x.metodo].recargo += x.recargo;
+      });
       if (p.estadoPago === 'confirmado') r.recargo += Number(p.recargo) || 0;
       else r.recargoPorCobrar += Number(p.recargo) || 0;
 
@@ -4684,31 +4806,39 @@ NASCAR.Store = (function () {
          ni a lo cobrado, y por tanto no mueve el efectivo esperado ni el
          RC. Se cuenta aparte para poder mostrarla — sigue en el
          historial, sólo que ya no cuadra caja. */
+      /* Un pago dividido (migración 56) suma cada parte en la columna de
+         SU método: lo pagado en billete al cajón, lo de Nequi aparte. */
+      const partes = partesDePago(p);
+
       if (p.estado === 'anulado') {
         nAnuladas += 1;
-        sumarABolsa(anuladas, p.metodoPago || 'efectivo', p.total);
+        partes.forEach((x) => sumarABolsa(anuladas, x.metodo, x.valor));
         return;
       }
 
       nPedidos += 1;
-      const m = p.metodoPago || 'efectivo';
-      porMetodo[m] = porMetodo[m] || { n: 0, vendido: 0, cobrado: 0, pendiente: 0 };
-      porMetodo[m].n += 1;
-      porMetodo[m].vendido += p.total;
-
-      sumarABolsa(vendido, m, p.total);
-
-      if (p.estadoPago === 'confirmado') {
-        sumarABolsa(cobrado, m, p.total);
-        porMetodo[m].cobrado += p.total;
-      } else if (p.estadoPago === 'rechazado') {
+      if (p.estadoPago === 'rechazado') {
         // Pago rechazado: ni entró ni se espera que entre
         rechazado += p.total;
-      } else {
-        sumarABolsa(porCobrar, m, p.total);
-        porMetodo[m].pendiente += p.total;
+      } else if (p.estadoPago !== 'confirmado') {
         nPorCobrar += 1;
       }
+
+      partes.forEach(function (x) {
+        const m = x.metodo;
+        porMetodo[m] = porMetodo[m] || { n: 0, vendido: 0, cobrado: 0, pendiente: 0 };
+        porMetodo[m].n += 1;
+        porMetodo[m].vendido += x.valor;
+        sumarABolsa(vendido, m, x.valor);
+
+        if (p.estadoPago === 'confirmado') {
+          sumarABolsa(cobrado, m, x.valor);
+          porMetodo[m].cobrado += x.valor;
+        } else if (p.estadoPago !== 'rechazado') {
+          sumarABolsa(porCobrar, m, x.valor);
+          porMetodo[m].pendiente += x.valor;
+        }
+      });
     });
 
     /* ---- GASTOS ------------------------------------------------------
@@ -6270,6 +6400,9 @@ NASCAR.Store = (function () {
     grupoDeMetodo: grupoDeMetodo,
     recargoDeMetodo: recargoDeMetodo,
     nombreDeMetodo: nombreDeMetodo,
+    calcularPagoDividido: calcularPagoDividido,
+    partesDePago: partesDePago,
+    textoPartes: textoPartes,
     PLATAFORMA: PLATAFORMA,
     SCOPE_PLATAFORMA: SCOPE_PLATAFORMA,
     SCOPE_EMPRESA: SCOPE_EMPRESA,
@@ -6387,6 +6520,7 @@ NASCAR.Store = (function () {
     estadoDeExistencia: estadoDeExistencia,
     existenciasDeSucursal: existenciasDeSucursal,
     confirmarPago: confirmarPago,
+    confirmarPagoDividido: confirmarPagoDividido,
     confirmarPagos: confirmarPagos,
     rechazarPago: rechazarPago,
     reportarPago: reportarPago,

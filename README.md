@@ -1988,6 +1988,31 @@ En mesa el pedido se toma sin método: caja lo registra al cobrar. En Ventas,
 «por método de pago» sólo cuenta lo cobrado; lo demás sale como **Por cobrar en
 caja**. Los pedidos **cancelados no cuentan** en las ventas.
 
+### Pago dividido
+
+El cliente puede pagar una parte en efectivo y otra por transferencia (o
+cualquier combinación de métodos activos). Se ofrece en los dos sitios donde
+cobra la caja: **Confirmar pago** («➗ Pagó con dos métodos») y la **venta de
+mostrador** («➗ Pagar con dos métodos»).
+
+- La cajera escribe cuánto se paga con cada método; **la última fila se llena
+  sola** con lo que falta de la cuenta. «+ Otro método» agrega una tercera.
+- **El recargo va sobre la parte**: si Nequi cobra $500 o el datáfono un 5 %,
+  se aplica sólo a lo que se paga con ese método, y el total sube eso.
+- El cambio se calcula contra **lo que se paga en efectivo**, no contra el
+  total, y el cajón monedero abre si hay una parte en efectivo.
+- El pedido queda con el método **«Pago dividido»** (`mixto`) y sus partes en
+  `core.pedido_pagos`. «mixto» no es un método de la empresa: no se configura
+  ni se elige, sólo lo pone el cobro dividido.
+- **El cruce de caja suma cada parte en su columna**: los $20.000 en billete al
+  cajón, los $30.500 de Nequi a transferencias. Igual en «Ventas por método».
+- Como todo pago confirmado, las partes no se editan: si hubo un error, se
+  anula la factura.
+
+Base de datos: `database/56_pago_dividido.sql` (pruebas en
+`56_pruebas_pago_dividido.sql`); en el navegador, el bloque «Pago dividido» de
+`pruebas/operacion.html`.
+
 ---
 
 ## Una pantalla por local: la unidad va en la dirección

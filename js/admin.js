@@ -799,7 +799,7 @@
   }
 
   function insigniaPago(p) {
-    const m = { efectivo: 'Efectivo', transferencia: 'Transf.', datafono: 'Datáfono' }[p.metodoPago] || p.metodoPago;
+    const m = { efectivo: 'Efectivo', transferencia: 'Transf.', datafono: 'Datáfono', mixto: 'Dividido' }[p.metodoPago] || p.metodoPago;
     const e = {
       confirmado: '<span class="badge badge--verde">Pagado</span>',
       reportado: '<span class="badge badge--ambar">Reportado</span>',
@@ -999,9 +999,11 @@
 
     const suc = U.sucursal(p.sucursalId);
     const productos = S.consumoDePedido(p);
-    const metodo =
-      { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[p.metodoPago] ||
-      p.metodoPago;
+    // Un pago dividido (56) se nombra con sus partes: «Efectivo $20.000 + Nequi $30.500»
+    const metodo = p.pagos && p.pagos.length
+      ? S.textoPartes(p.pagos, p.empresaId)
+      : { efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[p.metodoPago] ||
+        p.metodoPago;
 
     const m = U.modal({
       titulo: 'Anular factura ' + p.codigo,
@@ -1163,7 +1165,12 @@
       (p.recargo ? '<div class="f"><span>Recargo del pago</span><span>' + U.money(p.recargo) + '</span></div>' : '') +
       '<div class="f tot"><span>TOTAL</span><span>' + U.money(p.total) + '</span></div>' +
       '<hr>' +
-      '<div>Pago: ' + e(String(p.metodoPago || '').toUpperCase()) + ' (' + e(p.estadoPago || '') + ')</div>' +
+      (p.pagos && p.pagos.length
+        // Pago dividido (56): cada parte en su línea
+        ? '<div>Pago dividido (' + e(p.estadoPago || '') + '):</div>' +
+          p.pagos.map((x) => '<div class="f"><span>&nbsp; ' + e(S.nombreDeMetodo(x.metodo, p.empresaId)) + '</span><span>' +
+            U.money(x.valor) + '</span></div>').join('')
+        : '<div>Pago: ' + e(String(p.metodoPago || '').toUpperCase()) + ' (' + e(p.estadoPago || '') + ')</div>') +
       (cli.notas ? '<div><b>OBS:</b> ' + e(cli.notas) + '</div>' : '') +
       '<hr><div class="c">Gracias por preferirnos</div>' +
       '</body></html>';
@@ -1309,6 +1316,10 @@
     if (!metodos.some((x) => x.id === p.metodoPago)) metodos.unshift({ id: p.metodoPago, nombre: p.metodoPago });
     const nombreCorto = (x) =>
       ({ efectivo: 'Efectivo', transferencia: 'Transferencia', datafono: 'Datáfono' }[x.id] || x.nombre || x.id);
+    // Para dividir sólo valen los activos (la base rechaza los demás)
+    const metodosDivididos = (S.getConfig().metodosPago || [])
+      .filter((x) => x.activo)
+      .map((x) => ({ id: x.id, nombre: nombreCorto(x) }));
 
     const m = U.modal({
       titulo: 'Confirmar pago · ' + p.codigo,
@@ -1338,13 +1349,22 @@
             '<p class="mini tenue" style="margin:0">Comprobante adjuntado por el cliente</p></div>'
           : '') +
 
-        '<label class="campo"><span>¿Con qué pagó el cliente? *</span>' +
+        '<label class="campo" id="cpMetodoCampo"><span>¿Con qué pagó el cliente? *</span>' +
         '<select class="select" id="cpMetodo">' +
         metodos
           .map((x) => '<option value="' + U.esc(x.id) + '"' + (x.id === p.metodoPago ? ' selected' : '') + '>' +
             U.esc(nombreCorto(x)) + '</option>')
           .join('') +
         '</select></label>' +
+
+        /* Pago dividido (migración 56): una parte en efectivo y otra por
+           transferencia, por ejemplo. Sólo se ofrece si hay dos métodos
+           activos con que repartir. */
+        (metodosDivididos.length >= 2
+          ? '<p class="pago-dividido__alternar"><button type="button" class="btn btn--fantasma btn--xs" id="cpDividir">' +
+            '➗ Pagó con dos métodos</button></p>' +
+            '<div id="cpDivMarco" class="oculto"></div>'
+          : '') +
 
         /* Sólo el efectivo deja cambio. Va dentro de un marco propio
            porque al cambiar de método cambia el TOTAL, y el bloque tiene
@@ -1417,8 +1437,84 @@
     selMetodo.addEventListener('change', pintarMetodo);
     pintarMetodo();
 
+    /* ------------------------------------------------------------------
+       PAGO DIVIDIDO
+
+       Al encenderlo se esconden el método único y su cambio, y aparecen
+       las filas «método + cuánto». El total de arriba sigue a las partes:
+       con recargo en una de ellas, sube sólo lo de esa parte.
+       ------------------------------------------------------------------ */
+    let leerDividido = null;
+    const botonDividir = U.$('#cpDividir', m.raiz);
+    if (botonDividir)
+      botonDividir.onclick = function () {
+        const marcoDiv = U.$('#cpDivMarco', m.raiz);
+        const encender = !leerDividido;
+        marcoDiv.classList.toggle('oculto', !encender);
+        U.$('#cpMetodoCampo', m.raiz).classList.toggle('oculto', encender);
+        marcoCambio.classList.toggle('oculto', encender);
+        avisoRecargo.classList.toggle('oculto', encender);
+        botonDividir.textContent = encender ? '↩ Pagó con un solo método' : '➗ Pagó con dos métodos';
+
+        if (!encender) {
+          leerDividido = null;
+          marcoDiv.innerHTML = '';
+          pintarMetodo();
+          return;
+        }
+        marcoDiv.innerHTML = U.bloquePagoDividido('cpd');
+        /* Arranca con el método del pedido y otro: lo más común es que
+           el cliente traiga parte en billete y complete por transferencia. */
+        const otro = selMetodo.value === 'efectivo'
+          ? (metodosDivididos.find((x) => x.id !== 'efectivo') || {}).id
+          : 'efectivo';
+        leerDividido = U.montarPagoDividido(marcoDiv, {
+          pre: 'cpd',
+          cuenta: BASE,
+          metodos: metodosDivididos,
+          empresaId: p.empresaId,
+          inicial: [selMetodo.value, otro],
+          alCambiar: function (r) {
+            U.$('#cpTotal', m.raiz).textContent = U.money(r.error ? BASE : r.total);
+          },
+        });
+      };
+
     U.unaVez(U.$('#cpSi', m.raiz), '⏳ Confirmando…', function () {
       if (!A.exigir('pagos')) return false;
+
+      if (leerDividido) {
+        const r = leerDividido();
+        if (r.error) {
+          U.toast(r.error, 'error');
+          return false;
+        }
+        if (r.efectivo > 0 && r.cambio.falta > 0) {
+          U.toast('No alcanza el efectivo: faltan ' + U.money(r.cambio.falta) + '.', 'error');
+          return false;
+        }
+        try {
+          S.confirmarPagoDividido(pedidoId, r.partes.map((x) => ({ metodo: x.metodo, base: x.base })),
+            U.$('#cpRef', m.raiz).value.trim(), A.firma());
+        } catch (err) {
+          U.toast(err.message, 'error');
+          return false;
+        }
+        m.cerrar();
+        if (r.efectivo > 0 && NASCAR.Caja && NASCAR.Caja.tieneCajon && NASCAR.Caja.tieneCajon(p.sucursalId)) {
+          NASCAR.Caja.imprimirRecibo([S.getPedido(pedidoId) || p], {
+            metodo: 'efectivo', recibido: r.cambio.recibido,
+          });
+        }
+        U.toast(
+          'Pago de ' + p.codigo + ' confirmado · ' + S.textoPartes(r.partes, p.empresaId) +
+          (r.cambio.cambio > 0 ? ' · devuelve ' + U.money(r.cambio.cambio) : '') + '.'
+        );
+        if (alTerminar) alTerminar();
+        refrescarTodo();
+        return;
+      }
+
       const metodo = U.$('#cpMetodo', m.raiz).value;
 
       /* Confirmar es irreversible desde esta pantalla. Si lo que hay en
@@ -2492,7 +2588,8 @@
       p.subtotal,
       p.domicilio,
       p.total,
-      p.metodoPago,
+      // Pago dividido (56): «efectivo 20000 + nequi 30500»
+      p.pagos && p.pagos.length ? p.pagos.map((x) => x.metodo + ' ' + x.valor).join(' + ') : p.metodoPago,
       p.estadoPago,
       p.estado,
       p.domiciliario || '',
