@@ -37,6 +37,13 @@ NASCAR.Gestion = (function () {
     return Number(ctx.sucursalGlobal()) || S.unidadActivaId();
   }
 
+  // '2026-11-21' -> '21/11/2026'
+  function fechaDdMm(iso) {
+    if (!iso) return '—';
+    const p = String(iso).slice(0, 10).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
   /* Ejecuta una escritura y, si falla (por ejemplo, la base de datos la
      rechaza), muestra el motivo. Devuelve si se pudo. */
   function intentar(fn) {
@@ -947,6 +954,13 @@ NASCAR.Gestion = (function () {
       : { codigo: '', nombre: '', categoria: '', area: 'comidas', unidad: 'unidad',
           activo: true, stockActual: 0, stockMinimo: 0, ventaRefIds: [], sucursales: [unidadCtx()] };
 
+    /* Si esta sede ya lo contó en un cierre, el día arranca de ese conteo
+       y el «stock actual» del producto no se usa para nada: el campo se
+       muestra bloqueado con el último conteo, para que no parezca que
+       cambiarlo mueve algo. Ver store.existenciasDeSucursal(). */
+    const conteo = codigo && uStock ? S.existenciasDeSucursal(uStock) : null;
+    const contado = !!(conteo && Object.prototype.hasOwnProperty.call(conteo.saldos, codigo));
+
     /* Inventario y carta son cosas distintas: el producto de stock
        (lo que se cuenta) sólo se enlaza con un producto de la carta de
        SU unidad (lo que se vende). */
@@ -975,7 +989,15 @@ NASCAR.Gestion = (function () {
         '<label class="campo"><span>Stock actual' +
         ((p.sucursales || []).length > 1 ? ' en ' + U.esc((U.sucursal(uStock) || {}).nombre || 'esta sede') : '') +
         '</span>' +
-        '<input class="input" type="number" min="0" step="1" id="sActual" value="' + Number(p.stockActual) + '"></label>' +
+        (contado
+          ? '<input class="input" type="number" id="sActual" value="' + Number(conteo.saldos[codigo]) +
+            '" disabled title="Ya se contó en un cierre: se cambia corrigiendo el cierre">' +
+            '<span class="mini tenue">▣ Último conteo: <b>' + Number(conteo.saldos[codigo]) + '</b>, del ' +
+            fechaDdMm(conteo.fuente[codigo]) + '. El día arranca de este número; ' +
+            'para cambiarlo se corrige ese cierre.</span>'
+          : '<input class="input" type="number" min="0" step="1" id="sActual" value="' + Number(p.stockActual) + '">' +
+            '<span class="mini tenue">Punto de partida mientras esta sede no lo cuente en un cierre.</span>') +
+        '</label>' +
         '<label class="campo"><span>Stock mínimo</span>' +
         '<input class="input" type="number" min="0" step="1" id="sMinimo" value="' + Number(p.stockMinimo) + '"></label>' +
         '</div>' +
@@ -1083,22 +1105,22 @@ NASCAR.Gestion = (function () {
     U.$('#sNo', m.raiz).onclick = m.cerrar;
     U.$('#sSi', m.raiz).onclick = function () {
       try {
-        S.guardarProductoStock(
-          {
-            codigo: U.$('#sCodigo', m.raiz).value.trim(),
-            nombre: U.$('#sNombre', m.raiz).value.trim(),
-            categoria: U.$('#sCategoria', m.raiz).value.trim() || 'General',
-            area: U.$('#sArea', m.raiz).value,
-            unidad: U.$('#sUnidad', m.raiz).value.trim() || 'unidad',
-            stockActual: U.$('#sActual', m.raiz).value,
-            stockMinimo: U.$('#sMinimo', m.raiz).value,
-            ventaRefIds: marcados(),
-            activo: U.$('#sActivo', m.raiz).checked,
-            sucursales: p.sucursales,
-            unidadStock: uStock,
-          },
-          codigo
-        );
+        const datos = {
+          codigo: U.$('#sCodigo', m.raiz).value.trim(),
+          nombre: U.$('#sNombre', m.raiz).value.trim(),
+          categoria: U.$('#sCategoria', m.raiz).value.trim() || 'General',
+          area: U.$('#sArea', m.raiz).value,
+          unidad: U.$('#sUnidad', m.raiz).value.trim() || 'unidad',
+          stockActual: U.$('#sActual', m.raiz).value,
+          stockMinimo: U.$('#sMinimo', m.raiz).value,
+          ventaRefIds: marcados(),
+          activo: U.$('#sActivo', m.raiz).checked,
+          sucursales: p.sucursales,
+          unidadStock: uStock,
+        };
+        // Ya contado: el stock no se manda, así que no cambia
+        if (contado) delete datos.stockActual;
+        S.guardarProductoStock(datos, codigo);
       } catch (err) {
         return U.toast(err.message, 'error');
       }
