@@ -1302,7 +1302,8 @@
     if (!A.exigir('pagos')) return;
     const p = S.getPedido(pedidoId);
     if (!p) return;
-    const comp = S.getComprobante(pedidoId);
+    // Sólo se descarga la imagen si el pedido dice que la tiene
+    const comp = p.tieneComprobante ? S.getComprobante(pedidoId) : null;
 
     /* Lo que el cliente anunció en el checkout («pago con 50.000»). Viaja
        desde index.html hasta core.pedidos.paga_con y vuelve en el pedido;

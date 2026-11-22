@@ -53,6 +53,13 @@ NASCAR.Caja = (function () {
      DOM porque la lista se repinta sola cada pocos segundos y la marca
      tiene que sobrevivir a eso. */
   const marcados = new Set();
+
+  /* Cuántas tarjetas de «Por cobrar» se pintan. Con «Todos» o un rango
+     largo son cientos de pedidos, y pintarlos todos de una vez congelaba
+     la pantalla. Se pintan de a TANDA_PAGOS y «Mostrar más» trae otra
+     tanda; al cambiar un filtro se vuelve a la primera. */
+  const TANDA_PAGOS = 50;
+  let limitePagos = TANDA_PAGOS;
   let categoria = 'todas';
   let busqueda = '';
   let metodo = '';
@@ -131,10 +138,18 @@ NASCAR.Caja = (function () {
        el contador de la pestaña, que cuenta lo pendiente de verdad. */
     ['#fTipoPago', '#fEstadoPago', '#fPagoDesde', '#fPagoHasta'].forEach(function (sel) {
       const campo = $(sel);
-      if (campo) campo.addEventListener('change', pintarPorCobrar);
+      if (campo) campo.addEventListener('change', function () {
+        limitePagos = TANDA_PAGOS;
+        pintarPorCobrar();
+      });
     });
 
     $('#cajaPorCobrar').addEventListener('click', function (e) {
+      if (e.target.closest('[data-caja-mas]')) {
+        limitePagos += TANDA_PAGOS;
+        return pintarPorCobrar();
+      }
+
       const marca = e.target.closest('[data-caja-marcar]');
       if (marca) {
         const id = marca.dataset.cajaMarcar;
@@ -617,7 +632,11 @@ NASCAR.Caja = (function () {
   function tarjetaPago(p) {
     const cobrable = p.estadoPago !== 'confirmado';
     const enCola = p.estadoPago !== 'confirmado' && p.estadoPago !== 'rechazado';
-    const comp = S.getComprobante(p.id);
+    /* Sólo si TIENE comprobante, sin traerlo: con base de datos,
+       getComprobante descarga la imagen entera, y hacerlo por cada tarjeta
+       eran cientos de descargas seguidas con «Todos». La imagen se trae al
+       tocar «Ver comprobante». */
+    const comp = !!p.tieneComprobante;
     const ref = p.comprobante || p.referenciaPago || '';
 
     return (
@@ -817,8 +836,17 @@ NASCAR.Caja = (function () {
     const visibles = new Set(lista.map((p) => String(p.id)));
     Array.from(marcados).forEach((id) => { if (!visibles.has(id)) marcados.delete(id); });
 
+    const visiblesYa = lista.slice(0, limitePagos);
+    const quedan = lista.length - visiblesYa.length;
+
     $('#cajaPorCobrar').innerHTML = lista.length
-      ? barraLote(lista, modo) + lista.map(tarjetaPago).join('')
+      ? barraLote(lista, modo) + visiblesYa.map(tarjetaPago).join('') +
+        (quedan > 0
+          ? '<div class="pagos-mas"><p class="mini tenue">Se ven ' + visiblesYa.length + ' de ' + lista.length +
+            ' pedidos. Para ir directo a uno, acota las fechas o el tipo arriba.</p>' +
+            '<button class="btn btn--fantasma" data-caja-mas>Mostrar ' + Math.min(TANDA_PAGOS, quedan) +
+            ' más</button></div>'
+          : '')
       : '<div class="vacio"><div class="vacio__ico">' +
         (modo === 'por-confirmar' ? '✅' : '🔎') + '</div>' +
         '<h3>' + (modo === 'por-confirmar' ? 'Nada por cobrar' : 'Nada en este rango') + '</h3>' +

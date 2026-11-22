@@ -743,6 +743,21 @@ textarea {
    Se queda pegada arriba: con veinte pedidos en la lista, si la barra se
    fuera con el scroll habría que subir para cobrar lo que se acaba de
    marcar abajo. */
+/* «Mostrar más» al final de Por cobrar: ocupa toda la fila de la rejilla
+   de tarjetas, como la barra de cobro en lote. */
+.pagos-mas {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0 4px;
+  text-align: center;
+}
+.pagos-mas p {
+  margin: 0;
+}
+
 .lote-barra {
   /* La lista de pagos es una rejilla: sin esto la barra se mete como una
      tarjeta mas y queda del ancho de una columna. */
