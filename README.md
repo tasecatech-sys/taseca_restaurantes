@@ -2013,6 +2013,23 @@ Base de datos: `database/56_pago_dividido.sql` (pruebas en
 `56_pruebas_pago_dividido.sql`); en el navegador, el bloque «Pago dividido» de
 `pruebas/operacion.html`.
 
+### Pausar los domicilios de una sede
+
+En **Configuración → sedes**, cada sede tiene **«🛵 Pausar domicilios»** (y,
+pausada, «🛵 Recibir domicilios»). Sirve para cuando no hay quién reparta o la
+cocina no da abasto, sin desactivar la sede entera.
+
+- **La página de pedidos** deja de ofrecer «Domicilio» en esa sede: si la sede
+  tiene dirección, el pedido queda **para recoger**; si no la tiene, se avisa y
+  no deja continuar. La tarjeta de la sede dice «Domicilios pausados».
+- **Mesa, mostrador y los domicilios que toma el personal** (con sesión, por
+  teléfono) siguen funcionando. Los pedidos que ya entraron no se tocan.
+- La base también lo impide: un domicilio **sin sesión** a una sede pausada se
+  rechaza aunque venga de una página vieja.
+
+Base de datos: `database/57_domicilio_por_sede.sql` (pruebas en
+`57_pruebas_domicilio_por_sede.sql`).
+
 ---
 
 ## Una pantalla por local: la unidad va en la dirección

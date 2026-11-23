@@ -139,6 +139,8 @@ PARTES = [
     # Redefine api.sp_crear_pedido (de la 45), core.fn_pedido_json (de la 51)
     # y rest.informe_caja (de la 14), y parchea api.fn_chequeo_integridad (17).
     ('56_pago_dividido.sql',                  'Pago dividido: una parte en efectivo y otra por transferencia'),
+    # Redefine rest.unidades (de la 54): va después.
+    ('57_domicilio_por_sede.sql',             'Domicilios por sede: apagar y prender la recepción en línea'),
 ]
 
 CABECERA = '''/* ============================================================================

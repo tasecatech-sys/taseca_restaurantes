@@ -2148,6 +2148,28 @@ NASCAR.Store = (function () {
     return hecha;
   }
 
+  /* Domicilios por sede (migración 57): apagado, la página pública deja de
+     ofrecer «Domicilio» en esa sede. Mesa, mostrador y recoger siguen. */
+  function configurarDomicilio(sucursalId, activo) {
+    const eid = empresaActivaId();
+    const todas = leer(K.sucursales, null) || [];
+    let hecha = null;
+    escribir(K.sucursales, todas.map(function (s) {
+      if ((s.empresaId || EMPRESA_DEFECTO) !== eid || Number(s.id) !== Number(sucursalId)) return s;
+      hecha = Object.assign({}, s, { domicilioActivo: !!activo });
+      return hecha;
+    }));
+    hidratar();
+    if (!hecha) throw new Error('No se encontró la sede.');
+    return hecha;
+  }
+
+  /* ¿La sede recibe domicilios? Las que nunca lo configuraron, sí. */
+  function recibeDomicilios(sucursalOId) {
+    const s = sucursalOId && typeof sucursalOId === 'object' ? sucursalOId : getSucursal(sucursalOId);
+    return !!s && s.domicilioActivo !== false;
+  }
+
   function comandaLista(pedidoId) {
     const p = getPedido(pedidoId);
     if (!p) throw new Error('No se encontró el pedido.');
@@ -3826,6 +3848,11 @@ NASCAR.Store = (function () {
   function crearPedido(datos) {
     if (!datos.items || !datos.items.length)
       throw new Error('El pedido no tiene productos.');
+
+    /* Igual que la base (migración 57): un domicilio en línea -sin sesión
+       de empleado- a una sede que no los está recibiendo no entra. */
+    if (datos.tipo === 'domicilio' && !getSesion() && !recibeDomicilios(datos.sucursalId))
+      throw new Error('Esta sede no está recibiendo domicilios en este momento. Puedes pedir para recoger o elegir otra sede.');
 
     /* El mismo envío dos veces no es un pedido nuevo. En modo base de datos
        esto lo decide la base; aquí se hace lo mismo para que el modo local
@@ -6506,6 +6533,8 @@ NASCAR.Store = (function () {
     getDomiciliarios: getDomiciliarios,
     configurarComanda: configurarComanda,
     configurarCajon: configurarCajon,
+    configurarDomicilio: configurarDomicilio,
+    recibeDomicilios: recibeDomicilios,
     comandaLista: comandaLista,
     reimprimirComanda: reimprimirComanda,
     tomarComandas: tomarComandas,

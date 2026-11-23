@@ -216,6 +216,8 @@ NASCAR.Remoto = (function () {
       comandaImpresa: u.comanda_impresa === true,
       // Impresora con cajón monedero en la caja (migración 54)
       cajonMonedero: u.cajon_monedero === true,
+      // Recibe domicilios por la página pública (migración 57; sin la columna, sí)
+      domicilioActivo: u.domicilio_activo !== false,
       branding: {
         logo: (logos[u.unidad_id] && logos[u.unidad_id].imagen) || u.logo_url || '',
         color: u.color_marca || '',
@@ -1116,6 +1118,15 @@ NASCAR.Remoto = (function () {
 
     configurarCajon: function (sucursalId, activo) {
       const r = rpc('configurar_cajon', { p_unidad_id: Number(sucursalId), p_activo: !!activo });
+      S.cargarRemoto({
+        sucursales: S.leerRemoto('sucursales', []).map((s) => (Number(s.id) === Number(sucursalId) ? aUnidad(r) : s)),
+      });
+      return aUnidad(r);
+    },
+
+    /* ---- Domicilios por sede (migración 57) ---- */
+    configurarDomicilio: function (sucursalId, activo) {
+      const r = rpc('configurar_domicilio', { p_unidad_id: Number(sucursalId), p_activo: !!activo });
       S.cargarRemoto({
         sucursales: S.leerRemoto('sucursales', []).map((s) => (Number(s.id) === Number(sucursalId) ? aUnidad(r) : s)),
       });

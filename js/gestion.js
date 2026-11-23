@@ -1359,6 +1359,30 @@ NASCAR.Gestion = (function () {
         return avisarCambio();
       }
 
+      const dm = e.target.closest('[data-domicilio-suc]');
+      if (dm) {
+        if (!A.exigir('config_sucursales')) return;
+        const s = S.getSucursal(Number(dm.dataset.domicilioSuc));
+        const activar = !S.recibeDomicilios(s);
+        return U.confirmar(
+          activar
+            ? s.nombre + ' vuelve a recibir domicilios: la página de pedidos ofrece otra vez «Domicilio» en esta sede.'
+            : 'Pausar los domicilios de ' + s.nombre + ': la página de pedidos deja de ofrecer «Domicilio» en esta sede ' +
+              '(si la sede tiene dirección, el cliente puede pedir para recoger). Mesa, mostrador y los domicilios que ' +
+              'tome el personal por teléfono siguen funcionando. Los pedidos que ya entraron no se tocan.',
+          function () {
+            try {
+              S.configurarDomicilio(s.id, activar);
+            } catch (err) {
+              return U.toast(err.message, 'error');
+            }
+            U.toast(activar ? s.nombre + ' recibe domicilios otra vez.' : 'Domicilios pausados en ' + s.nombre + '.');
+            avisarCambio();
+          },
+          activar ? 'Sí, recibir domicilios' : 'Sí, pausar domicilios'
+        );
+      }
+
       const cj = e.target.closest('[data-cajon-suc]');
       if (cj) {
         if (!A.exigir('config_sucursales')) return;
@@ -1714,6 +1738,11 @@ NASCAR.Gestion = (function () {
           (s.cajonMonedero
             ? '<b class="verde">activo</b> <span class="mini tenue">(al cobrar en efectivo sale el comprobante y se abre el cajón)</span>'
             : '<span class="tenue">no tiene</span>') + '</span></div>' +
+          '<div class="dato"><span class="dato__ico">🛵</span><span>Domicilios en línea: ' +
+          (S.recibeDomicilios(s)
+            ? '<b class="verde">recibiendo</b>'
+            : '<b class="ambar">pausados</b> <span class="mini tenue">(la página sólo ofrece recoger; el personal sí puede tomar domicilios)</span>') +
+          '</span></div>' +
           '</div>' +
           '<div class="unidad__cifras">' +
           '<div class="unidad__cifra"><b>' + n.carta + '</b><span>en carta</span></div>' +
@@ -1729,7 +1758,11 @@ NASCAR.Gestion = (function () {
               '<button class="btn btn--fantasma btn--xs" data-comanda-suc="' + s.id + '">🖨 ' +
               (s.comandaImpresa ? 'Apagar comanda' : 'Activar comanda') + '</button>' +
               '<button class="btn btn--fantasma btn--xs" data-cajon-suc="' + s.id + '">💵 ' +
-              (s.cajonMonedero ? 'Quitar cajón' : 'Tiene cajón') + '</button>'
+              (s.cajonMonedero ? 'Quitar cajón' : 'Tiene cajón') + '</button>' +
+              (inactiva
+                ? ''
+                : '<button class="btn btn--fantasma btn--xs" data-domicilio-suc="' + s.id + '">🛵 ' +
+                  (S.recibeDomicilios(s) ? 'Pausar domicilios' : 'Recibir domicilios') + '</button>')
             : '') +
           (!inactiva && !esActual && !atado
             ? '<button class="btn btn--rojo btn--xs" data-usar-unidad="' + s.id + '">Trabajar aquí</button>'

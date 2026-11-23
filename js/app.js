@@ -284,8 +284,12 @@
         (s.horario ? '<div class="dato"><span class="dato__ico">🕐</span><span>' + U.esc(s.horario) + '</span></div>' : '') +
         (s.telefono ? '<div class="dato"><span class="dato__ico">📞</span><span>' + U.esc(s.telefono) + '</span></div>' : '') +
         (s.mesas ? '<div class="dato"><span class="dato__ico">🪑</span><span>' + s.mesas + ' mesas</span></div>' : '') +
+        (recibeDomicilios(s)
+          ? ''
+          : '<div class="dato"><span class="dato__ico">🛵</span><span class="ambar">Domicilios pausados por ahora' +
+            (puedeRecoger(s) ? ' · puedes pedir para recoger' : '') + '</span></div>') +
 
-        ((s.zonas || []).length
+        ((s.zonas || []).length && recibeDomicilios(s)
           ? '<div class="zonas"><h4>Zonas de domicilio</h4>' +
             s.zonas
               .map(
@@ -649,14 +653,17 @@
       .join('');
 
     const sub = carrito.subtotal();
+    const sucPie = U.sucursal(sucursalObligatoria() || unidadPortal);
     pie.innerHTML =
+      (sucPie ? avisoSinDomicilio(sucPie) : '') +
       '<div class="totales">' +
       '<div><span>Subtotal (' + carrito.cantidad() + ' items)</span><span class="num">' + U.money(sub) + '</span></div>' +
-      (hayZonas(U.sucursal(unidadPortal))
+      (hayZonas(sucPie) && recibeDomicilios(sucPie)
         ? '<div class="mini tenue"><span>El domicilio se calcula según tu zona</span></div>'
         : '') +
       '</div>' +
-      '<button class="btn btn--rojo btn--bloque" data-accion="ir-datos">Continuar →</button>' +
+      '<button class="btn btn--rojo btn--bloque" data-accion="ir-datos"' +
+      (sinEntrega(sucPie) ? ' disabled' : '') + '>Continuar →</button>' +
       '<button class="btn btn--fantasma btn--bloque mt-8" data-accion="vaciar">Vaciar pedido</button>';
   }
 
@@ -783,7 +790,36 @@
      Preguntando aquí, y no en cada sitio, no hay forma de que se escape
      un pedido «para recoger» en un local que no recoge. */
   function esRecoger() {
-    return borrador.entrega === 'recoger' && puedeRecoger(U.sucursal(borrador.sucursalId));
+    const suc = U.sucursal(borrador.sucursalId);
+    if (!puedeRecoger(suc)) return false;
+    // Con los domicilios pausados (migración 57) lo único que queda es recoger
+    return borrador.entrega === 'recoger' || !recibeDomicilios(suc);
+  }
+
+  /* ¿La sede está recibiendo domicilios? Se pausan desde el panel
+     (Configuración → sedes → 🛵) cuando no hay quién reparta. */
+  function recibeDomicilios(suc) {
+    return S.recibeDomicilios ? S.recibeDomicilios(suc) : true;
+  }
+
+  /* Ni domicilio ni recoger: la sede pausó los domicilios y no tiene
+     dirección a la que ir. No hay cómo entregar el pedido. */
+  function sinEntrega(suc) {
+    return !!suc && !recibeDomicilios(suc) && !puedeRecoger(suc);
+  }
+
+  function avisoSinDomicilio(suc) {
+    if (recibeDomicilios(suc)) return '';
+    return (
+      '<div class="caja-datos" style="border-color:var(--ambar)">' +
+      '<b class="ambar">🛵 ' + U.esc(suc.nombre) + ' no está recibiendo domicilios en este momento</b>' +
+      '<p class="mini tenue" style="margin:4px 0 0">' +
+      (puedeRecoger(suc)
+        ? 'Puedes hacer tu pedido y pasar a recogerlo al local.'
+        : 'Por ahora no podemos tomar tu pedido por aquí. Escríbenos o llámanos' +
+          (suc.whatsapp || suc.telefono ? ' al <b>' + U.esc(suc.whatsapp || suc.telefono) + '</b>' : '') + '.') +
+      '</p></div>'
+    );
   }
 
   function zonaActual() {
@@ -799,6 +835,8 @@
      Si el local no permite recoger no se pinta nada: un selector con una
      sola opción no es una elección, es ruido. */
   function selectorEntrega(suc) {
+    // Domicilios pausados: no hay nada que elegir, se explica por qué
+    if (!recibeDomicilios(suc)) return avisoSinDomicilio(suc);
     if (!puedeRecoger(suc)) return '';
     const op = function (id, ico, titulo, pie) {
       const activo = borrador.entrega === id;
@@ -1220,6 +1258,8 @@
   function validarDatos() {
     leerFormularioDatos();
     const errores = [];
+    if (sinEntrega(U.sucursal(borrador.sucursalId)))
+      errores.push(U.sucursal(borrador.sucursalId).nombre + ' no está recibiendo domicilios en este momento.');
     if (borrador.nombre.length < 3) errores.push('Escribe tu nombre completo.');
     if (!/^\d{7,10}$/.test(borrador.telefono.replace(/\D/g, '')))
       errores.push('El celular debe tener entre 7 y 10 dígitos.');
@@ -1610,6 +1650,8 @@
         }, 'Sí, vaciar'),
       'ir-datos': function () {
         if (!carrito.items().length) return U.toast('Agrega algo primero.', 'error');
+        const suc = U.sucursal(sucursalObligatoria() || unidadPortal);
+        if (sinEntrega(suc)) return U.toast(suc.nombre + ' no está recibiendo domicilios en este momento.', 'error');
         paso = 'datos';
         pintarCarrito();
       },
