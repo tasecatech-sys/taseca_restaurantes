@@ -276,6 +276,7 @@
           NASCAR.Inventario.iniciarPanel({
             raiz: $('[data-panel="inventario"]'),
             sucursalGlobal: () => sucursalGlobal,
+            irATab: irATab,
           }),
       },
       /* Pestaña 📦 Cierre: la pantalla de registro, la misma que usa

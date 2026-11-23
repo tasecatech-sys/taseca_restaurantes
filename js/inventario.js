@@ -219,6 +219,10 @@ NASCAR.Inventario = (function () {
     });
   }
 
+  /* Lo publica la pantalla de registro montada en el panel, para que la
+     lista de cierres de la administradora pueda mandar a corregir uno. */
+  let corregirDesdePanel = null;
+
   function iniciarRegistro(raiz) {
     if (!raiz) return;
 
@@ -345,8 +349,13 @@ NASCAR.Inventario = (function () {
               '<td>' + iconoArea(c.area) + ' ' + nombreArea(c.area) + '</td>' +
               '<td class="mini">' + U.esc(c.usuarioNombre) + '</td>' +
               '<td>' + badgeEstado(c.estado) + '</td>' +
-              '<td class="derecha"><button class="btn btn--fantasma btn--xs" ' +
-              'data-consultar="' + c.id + '">Ver</button></td></tr>'
+              '<td class="derecha nowrap"><button class="btn btn--fantasma btn--xs" ' +
+              'data-consultar="' + c.id + '">Ver</button>' +
+              (c.estado !== 'revisado'
+                ? ' <button class="btn btn--azul btn--xs" data-corregir="' + c.id + '">' +
+                  (c.estado === 'borrador' ? 'Continuar' : '✏ Corregir') + '</button>'
+                : '') +
+              '</td></tr>'
           )
           .join('') +
         '</tbody></table></div>';
@@ -961,8 +970,41 @@ NASCAR.Inventario = (function () {
 
     $('#misCierres').addEventListener('click', function (e) {
       const b = e.target.closest('[data-consultar]');
-      if (b) verCierre(b.dataset.consultar);
+      if (b) return verCierre(b.dataset.consultar);
+      const corr = e.target.closest('[data-corregir]');
+      if (corr) corregirExistente(corr.dataset.corregir);
     });
+
+    /* Corregir un cierre ya guardado, venga de «Mis cierres» o de la lista
+       del panel de la administradora: se dejan puestos su sede, su fecha y
+       su área, y se entra al conteo con lo que tenía. Un cierre revisado
+       no se corrige (la base tampoco lo deja). */
+    function corregirExistente(id) {
+      const c = S.getCierre(id);
+      if (!c) return U.toast('No se encontró el cierre.', 'error');
+      if (c.estado === 'revisado')
+        return U.toast('Ese cierre ya fue revisado por administración: no se puede corregir.', 'error');
+      if (!$('#paso1') || $('#paso1').classList.contains('oculto'))
+        return U.toast('Tienes un conteo abierto: guárdalo o vuelve atrás antes de corregir otro cierre.', 'error');
+      if (String(c.sucursalId) !== String(st.sucursalId)) {
+        if ($('#cSucursal').disabled)
+          return U.toast('Ese cierre es de ' + U.sucursal(c.sucursalId).nombre +
+            '. Cambia arriba a esa sede para corregirlo.', 'error');
+        st.sucursalId = Number(c.sucursalId);
+      }
+      st.fechaCierre = c.fechaCierre;
+      st.areas = [c.area];
+      st.edicion = {};
+      st.edicion[c.area] = c.id;
+      pintarPaso1();
+      U.toast('Vas a corregir el cierre de ' + nombreArea(c.area) + ' del ' + fechaCorta(c.fechaCierre) + '.', 'info');
+      irAPaso2();
+    }
+    if (enPanel) {
+      corregirDesdePanel = corregirExistente;
+      // La lista del panel pudo pintarse antes: así ya sale con el botón
+      if (panel) pintarCierres();
+    }
 
     $('#cFecha').addEventListener('change', function () {
       st.fechaCierre = this.value;
@@ -1185,6 +1227,7 @@ NASCAR.Inventario = (function () {
     panel = {
       raiz: opciones.raiz,
       sucursalGlobal: opciones.sucursalGlobal || (() => ''),
+      irATab: opciones.irATab || null,
     };
     const $ = (s) => panel.raiz.querySelector(s);
 
@@ -1213,6 +1256,14 @@ NASCAR.Inventario = (function () {
         irASubTab('cruce');
         pintarCruce();
         return;
+      }
+
+      // Corregir: se abre la pestaña 📝 Registrar cierre con ese cierre cargado
+      const corr = e.target.closest('[data-corregir-cierre]');
+      if (corr) {
+        if (!puedeCorregirDesdePanel()) return;
+        panel.irATab('cierre');
+        return corregirDesdePanel(corr.dataset.corregirCierre);
       }
 
       const rev = e.target.closest('[data-revisar]');
@@ -1254,6 +1305,14 @@ NASCAR.Inventario = (function () {
 
     llenarSelectoresFijos();
     refrescarPanel();
+  }
+
+  /* La corrección se hace en la pantalla de registro (la misma de la
+     mesera): sólo se ofrece si esa pestaña está montada en el panel, es
+     decir, si el perfil registra cierres. */
+  function puedeCorregirDesdePanel() {
+    return !!(panel && panel.irATab && corregirDesdePanel &&
+      (!NASCAR.Auth || NASCAR.Auth.puede('cierres_registrar')));
   }
 
   function irASubTab(id) {
@@ -1342,6 +1401,10 @@ NASCAR.Inventario = (function () {
           '<td class="nowrap">' +
           '<button class="btn btn--fantasma btn--xs" data-ver-cierre="' + c.id + '">Ver</button> ' +
           '<button class="btn btn--azul btn--xs" data-cruce="' + c.id + '">Cruce</button>' +
+          (c.estado !== 'revisado' && puedeCorregirDesdePanel()
+            ? ' <button class="btn btn--fantasma btn--xs" data-corregir-cierre="' + c.id + '">' +
+              (c.estado === 'borrador' ? 'Continuar' : '✏ Corregir') + '</button>'
+            : '') +
           (c.estado !== 'revisado' && (!NASCAR.Auth || NASCAR.Auth.puede('cierres_revisar'))
             ? ' <button class="btn btn--fantasma btn--xs" data-revisar="' + c.id + '">✓ Revisar</button>'
             : '') +
