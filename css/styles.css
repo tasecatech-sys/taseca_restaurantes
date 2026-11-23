@@ -3942,6 +3942,65 @@ body.admin {
 .barra-herramientas .campo {
   margin-bottom: 0;
 }
+/* El botón «⚙ Filtros» (js/sidebar.js) sólo existe en celular */
+.barra-herramientas__plegar {
+  display: none;
+}
+.barra-herramientas__cuenta {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  background: var(--azul);
+  color: #fff;
+}
+@media (max-width: 900px) {
+  .app-main .barra-herramientas[data-filtros-listos] {
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+  }
+  .app-main .barra-herramientas[data-filtros-listos] > .barra-herramientas__plegar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* Plegada: sólo el botón de filtros y las acciones, en una línea */
+  .app-main .barra-herramientas[data-filtros-listos]:not(.is-abierta) > .campo,
+  .app-main .barra-herramientas[data-filtros-listos]:not(.is-abierta) > .crece {
+    display: none;
+  }
+  .app-main .barra-herramientas[data-filtros-listos]:not(.is-abierta) > .barra-herramientas__plegar {
+    margin-right: auto;
+  }
+  .app-main .barra-herramientas[data-filtros-listos] > .btn {
+    padding-inline: 10px;
+    white-space: nowrap;
+  }
+  /* Abierta: los campos en dos columnas y la barra deja de ir pegada
+     arriba, para que al bajar no tape la lista */
+  .app-main .barra-herramientas.is-abierta {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+  }
+  .app-main .barra-herramientas.is-abierta > .barra-herramientas__plegar {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .app-main .barra-herramientas.is-abierta > .crece {
+    display: none;
+  }
+  .app-main .barra-herramientas[data-filtros-listos] .input,
+  .app-main .barra-herramientas[data-filtros-listos] .select {
+    min-width: 0;
+    width: 100%;
+  }
+}
 .barra-herramientas .input,
 .barra-herramientas .select {
   min-width: 150px;

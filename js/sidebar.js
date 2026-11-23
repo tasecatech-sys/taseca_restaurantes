@@ -77,6 +77,53 @@ NASCAR.Sidebar = (function () {
     return window.matchMedia('(max-width: 900px)').matches;
   }
 
+  /* ---- Filtros plegables en celular ----
+     En una pantalla de celular la barra de filtros (fechas, selectores,
+     buscador) pegada arriba se comía media pantalla y no dejaba ver la
+     lista. A cada barra con campos se le antepone un botón «⚙ Filtros»;
+     en celular los campos quedan plegados detrás de él y los botones de
+     acción (Nuevo, CSV…) siguen a la vista. En escritorio el botón no se
+     ve y todo sigue igual. Sólo es presentación: no toca ningún filtro. */
+  function filtrosActivos(barra) {
+    let n = 0;
+    barra.querySelectorAll('.campo select, .campo input').forEach(function (c) {
+      if (c.type === 'date' || c.type === 'checkbox' || c.type === 'radio') return;
+      if (c.tagName === 'SELECT') {
+        if (c.selectedIndex > 0) n++;
+      } else if (String(c.value || '').trim()) n++;
+    });
+    return n;
+  }
+
+  function prepararFiltros(raiz) {
+    raiz.querySelectorAll('.barra-herramientas').forEach(function (barra) {
+      if (barra.dataset.filtrosListos === '1') return;
+      if (!barra.closest('.app-main') || !barra.querySelector(':scope > .campo')) return;
+      barra.dataset.filtrosListos = '1';
+
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'btn btn--fantasma btn--sm barra-herramientas__plegar';
+      boton.setAttribute('aria-expanded', 'false');
+      barra.insertBefore(boton, barra.firstChild);
+
+      const pintar = function () {
+        const n = filtrosActivos(barra);
+        const abierta = barra.classList.contains('is-abierta');
+        boton.innerHTML = '⚙ Filtros' + (n ? ' <b class="barra-herramientas__cuenta">' + n + '</b>' : '') +
+          ' <i aria-hidden="true">' + (abierta ? '▴' : '▾') + '</i>';
+        boton.setAttribute('aria-expanded', abierta ? 'true' : 'false');
+      };
+      boton.addEventListener('click', function () {
+        barra.classList.toggle('is-abierta');
+        pintar();
+      });
+      barra.addEventListener('change', pintar);
+      barra.addEventListener('input', pintar);
+      pintar();
+    });
+  }
+
   /**
    * iniciar({ shell, clave })
    *
@@ -110,6 +157,22 @@ NASCAR.Sidebar = (function () {
       medir();
       if (window.ResizeObserver) new ResizeObserver(medir).observe(cabecera);
       else window.addEventListener('resize', medir);
+    }
+
+    /* Los filtros, plegables en celular (el CSS decide cuándo se ve el
+       botón). Algunas barras se pintan después (inventario), así que se
+       vigila lo que se agrega al panel. */
+    prepararFiltros(shell);
+    if (window.MutationObserver) {
+      let pendiente = false;
+      new MutationObserver(function () {
+        if (pendiente) return;
+        pendiente = true;
+        window.requestAnimationFrame(function () {
+          pendiente = false;
+          prepararFiltros(shell);
+        });
+      }).observe(shell, { childList: true, subtree: true });
     }
 
     // Los grupos arrancan como el usuario los dejó (abiertos si nunca los tocó)
