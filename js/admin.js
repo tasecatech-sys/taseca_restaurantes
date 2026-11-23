@@ -156,10 +156,13 @@
 
     // Fechas por defecto
     const hoy = S.hoy();
-    $('#fFechaPedido').value = hoy;
+    /* Pedidos y ventas van por JORNADA: a la 1 a. m. todavía se está en
+       la del día anterior (hora de corte de la empresa). */
+    const jornadaHoy = S.hoyOperativo();
+    $('#fFechaPedido').value = jornadaHoy;
     $('#fFechaDia').value = hoy;
-    $('#vDesde').value = hoy;
-    $('#vHasta').value = hoy;
+    $('#vDesde').value = jornadaHoy;
+    $('#vHasta').value = jornadaHoy;
     $('#fPagoDesde').value = restarDias(hoy, 7);
     $('#fPagoHasta').value = hoy;
 
@@ -702,7 +705,7 @@
   }
 
   function pintarPedidos() {
-    const filtro = { fecha: $('#fFechaPedido').value || S.hoy() };
+    const filtro = { fecha: $('#fFechaPedido').value || S.hoyOperativo(), porJornada: true };
     if (sucursalGlobal) filtro.sucursalId = sucursalGlobal;
     if ($('#fTipoPedido').value) filtro.tipo = $('#fTipoPedido').value;
 
@@ -2388,7 +2391,7 @@
     $$('[data-rango]').forEach((b) =>
       b.addEventListener('click', function () {
         const r = this.dataset.rango;
-        const hoy = S.hoy();
+        const hoy = S.hoyOperativo();
         if (r === 'hoy') {
           $('#vDesde').value = hoy;
           $('#vHasta').value = hoy;
@@ -2412,7 +2415,7 @@
   }
 
   function pintarVentas() {
-    const desde = $('#vDesde').value || S.hoy();
+    const desde = $('#vDesde').value || S.hoyOperativo();
     const hasta = $('#vHasta').value || desde;
     const v = S.ventas(desde, hasta, sucursalGlobal || null);
 
@@ -2522,7 +2525,7 @@
       '</div>';
 
     // Detalle
-    const filtro = { desde: desde, hasta: hasta };
+    const filtro = { desde: desde, hasta: hasta, porJornada: true };
     if (sucursalGlobal) filtro.sucursalId = sucursalGlobal;
     const pedidos = S.getPedidos(filtro);
 
@@ -2532,7 +2535,7 @@
             (p) =>
               '<tr data-ver="' + p.id + '" style="cursor:pointer">' +
               '<td><b class="mono">' + U.esc(p.codigo) + '</b></td>' +
-              '<td class="mini tenue">' + p.fecha + '<br>' + U.hora(p.creado) + '</td>' +
+              '<td class="mini tenue">' + S.fechaOperativaPedido(p) + '<br>' + U.hora(p.creado) + '</td>' +
               '<td>' + U.etiquetaTipo(p) + '</td>' +
               '<td class="mini">' + U.esc(U.sucursal(p.sucursalId).corto) + '</td>' +
               '<td class="mini">' + U.esc(p.cliente.nombre || '—') + '</td>' +
@@ -2563,22 +2566,22 @@
   }
 
   function descargarCSV() {
-    const desde = $('#vDesde').value || S.hoy();
+    const desde = $('#vDesde').value || S.hoyOperativo();
     const hasta = $('#vHasta').value || desde;
-    const filtro = { desde: desde, hasta: hasta };
+    const filtro = { desde: desde, hasta: hasta, porJornada: true };
     if (sucursalGlobal) filtro.sucursalId = sucursalGlobal;
 
     const pedidos = S.getPedidos(filtro);
     if (!pedidos.length) return U.toast('No hay pedidos para exportar.', 'error');
 
     const cab = [
-      'Codigo', 'Fecha', 'Hora', 'Tipo', 'Mesa', 'Sucursal', 'Cliente', 'Telefono',
+      'Codigo', 'Jornada', 'Hora', 'Tipo', 'Mesa', 'Sucursal', 'Cliente', 'Telefono',
       'Zona', 'Items', 'Subtotal', 'Domicilio', 'Total', 'MetodoPago', 'EstadoPago', 'Estado', 'Domiciliario',
     ];
 
     const filas = pedidos.map((p) => [
       p.codigo,
-      p.fecha,
+      S.fechaOperativaPedido(p), // la jornada, no el día de calendario
       U.hora(p.creado),
       p.tipo,
       p.mesa || '',

@@ -717,7 +717,7 @@
     );
 
     /* --- El desglose del dinero ------------------------------------ */
-    const v = S.ventas(S.hoy(), S.hoy());
+    const v = S.ventas(S.hoyOperativo(), S.hoyOperativo());
     probar(
       'El informe desglosa el recargo por medio de pago',
       v.porPago.nequi && v.porPago.nequi.recargo > 0,
@@ -754,6 +754,47 @@
      Una parte en efectivo y otra por Nequi: cada parte va a su columna
      del cruce, y el recargo de Nequi sólo sobre lo que se paga con Nequi.
      ================================================================ */
+  /* ================================================================
+     LA JORNADA: lo vendido de madrugada es del día anterior
+     ================================================================ */
+  function pruebasJornada() {
+    grupo('Ventas por jornada');
+
+    // Una venta de las 2 a. m. del 11: calendario 11, jornada 10
+    const v = S.crearPedido(unPedido({ clave: 'jor-' + Date.now(), tipo: 'mostrador', cliente: {} }));
+    const lista = JSON.parse(localStorage.getItem('nascar.pedidos.v1') || '[]');
+    lista.forEach(function (p) {
+      if (p.id !== v.id) return;
+      p.fecha = '2030-01-11';
+      p.creado = '2030-01-11T07:00:00.000Z'; // 2 a. m. en Colombia
+      p.fechaOperativa = '2030-01-10';
+    });
+    localStorage.setItem('nascar.pedidos.v1', JSON.stringify(lista));
+
+    const del10 = S.ventas('2030-01-10', '2030-01-10');
+    const del11 = S.ventas('2030-01-11', '2030-01-11');
+    probar(
+      'La venta de madrugada suma a la jornada anterior',
+      del10.pedidos === 1 && del10.total === v.total,
+      'jornada 10: ' + del10.pedidos + ' pedido(s), $' + del10.total
+    );
+    probar(
+      'Y no al día de calendario',
+      del11.pedidos === 0,
+      'día 11: ' + del11.pedidos + ' pedido(s)'
+    );
+    probar(
+      'El resumen por día la pone en el 10',
+      !!del10.porDia['2030-01-10'] && !del10.porDia['2030-01-11'],
+      JSON.stringify(Object.keys(del10.porDia))
+    );
+    probar(
+      'La lista de ventas por jornada la trae',
+      S.getPedidos({ desde: '2030-01-10', hasta: '2030-01-10', porJornada: true }).some((p) => p.id === v.id),
+      'filtro porJornada'
+    );
+  }
+
   function pruebasPagoDividido() {
     grupo('Pago dividido');
 
@@ -804,7 +845,7 @@
       'transferencia +' + dTr + ' (esperado ' + (cuenta - ef + 500) + ')');
     probar('«mixto» no aparece como método en el cruce', !despues.ventas.porMetodo.mixto);
 
-    const v = S.ventas(S.hoy(), S.hoy());
+    const v = S.ventas(S.hoyOperativo(), S.hoyOperativo());
     probar('Ventas por método tampoco lo muestra como «mixto»', !v.porPago.mixto,
       Object.keys(v.porPago).join(', '));
 
@@ -851,7 +892,7 @@
 
     const bloques = [pruebasDobleEnvio, pruebasDatos, pruebasEstados, pruebasVariosClientes,
                      pruebasDinero, pruebasCambio, pruebasRecargoSigueAlMetodo, pruebasPagaCon,
-                     pruebasRecargoVisible, pruebasPagoDividido];
+                     pruebasRecargoVisible, pruebasPagoDividido, pruebasJornada];
     bloques.forEach(function (fn) {
       try {
         fn();

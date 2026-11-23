@@ -3736,9 +3736,13 @@ NASCAR.Store = (function () {
       lista = lista.filter((p) => Number(p.sucursalId) === Number(filtro.sucursalId));
     if (filtro.tipo) lista = lista.filter((p) => p.tipo === filtro.tipo);
     if (filtro.estado) lista = lista.filter((p) => p.estado === filtro.estado);
-    if (filtro.fecha) lista = lista.filter((p) => p.fecha === filtro.fecha);
-    if (filtro.desde) lista = lista.filter((p) => p.fecha >= filtro.desde);
-    if (filtro.hasta) lista = lista.filter((p) => p.fecha <= filtro.hasta);
+    /* `porJornada`: las fechas son de JORNADA, no de calendario. Lo que se
+       vende a la 1 a. m. -antes de la hora de corte- es de la jornada del
+       día anterior, y ahí tiene que contar en las ventas y en el resumen. */
+    const dia = filtro.porJornada ? fechaOperativaPedido : (p) => p.fecha;
+    if (filtro.fecha) lista = lista.filter((p) => dia(p) === filtro.fecha);
+    if (filtro.desde) lista = lista.filter((p) => dia(p) >= filtro.desde);
+    if (filtro.hasta) lista = lista.filter((p) => dia(p) <= filtro.hasta);
     if (filtro.activos)
       lista = lista.filter(
         (p) => p.estado !== 'entregado' && p.estado !== 'cancelado' && p.estado !== 'anulado'
@@ -4541,12 +4545,14 @@ NASCAR.Store = (function () {
      VENTAS  (agregados para el panel de control)
      =============================================================== */
   function ventas(desde, hasta, sucursalId) {
-    desde = desde || hoy();
+    desde = desde || hoyOperativo();
     hasta = hasta || desde;
 
     /* Ni los cancelados ni los ANULADOS son venta efectiva. La factura
-       anulada sigue guardada y se puede consultar, pero no suma. */
-    const pedidos = getPedidos({ desde: desde, hasta: hasta, sucursalId: sucursalId }).filter(
+       anulada sigue guardada y se puede consultar, pero no suma.
+       Por JORNADA: lo vendido de madrugada, antes de la hora de corte,
+       suma al día anterior (igual que el cruce de caja). */
+    const pedidos = getPedidos({ desde: desde, hasta: hasta, sucursalId: sucursalId, porJornada: true }).filter(
       (p) => p.estado !== 'cancelado' && p.estado !== 'anulado'
     );
 
@@ -4613,9 +4619,10 @@ NASCAR.Store = (function () {
       r.porSucursal[p.sucursalId].n += 1;
       r.porSucursal[p.sucursalId].total += p.total;
 
-      r.porDia[p.fecha] = r.porDia[p.fecha] || { n: 0, total: 0 };
-      r.porDia[p.fecha].n += 1;
-      r.porDia[p.fecha].total += p.total;
+      const jornada = fechaOperativaPedido(p);
+      r.porDia[jornada] = r.porDia[jornada] || { n: 0, total: 0 };
+      r.porDia[jornada].n += 1;
+      r.porDia[jornada].total += p.total;
 
       if (p.estadoPago !== 'confirmado') {
         r.pendientesCobro += 1;
@@ -5889,8 +5896,15 @@ NASCAR.Store = (function () {
       );
     }
 
-    // Más recientes primero; a igual fecha, por hora
+    /* El último que se registró, arriba: es el que se acaba de escribir y
+       el que se quiere revisar. Se ordena por el instante del registro, no
+       por la fecha/hora que se le puso al gasto (un gasto de ayer anotado
+       hoy también va arriba). Sin ese instante, por fecha y hora. */
     return lista.sort(function (a, b) {
+      // Date.parse: la base manda el instante con zona y fracciones variables
+      const ta = Date.parse(a.creado || '');
+      const tb = Date.parse(b.creado || '');
+      if (!isNaN(ta) && !isNaN(tb) && ta !== tb) return tb - ta;
       if (a.fecha !== b.fecha) return a.fecha < b.fecha ? 1 : -1;
       return (a.hora || '') < (b.hora || '') ? 1 : -1;
     });
