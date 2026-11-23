@@ -120,6 +120,20 @@ NASCAR.Caja = (function () {
       if (b) agregar(b.dataset.cajaAdd);
     });
 
+    /* El alto del ticket sigue a la pantalla: al bajar, al girar la
+       tableta o al cambiar el tamaño de la ventana. */
+    let pendienteAlto = false;
+    const alMover = function () {
+      if (pendienteAlto) return;
+      pendienteAlto = true;
+      window.requestAnimationFrame(function () {
+        pendienteAlto = false;
+        ajustarAltoTicket();
+      });
+    };
+    window.addEventListener('scroll', alMover, { passive: true, capture: true });
+    window.addEventListener('resize', alMover);
+
     $('#cajaTicket').addEventListener('click', function (e) {
       const mas = e.target.closest('[data-caja-mas]');
       if (mas) return cambiar(Number(mas.dataset.cajaMas), 1);
@@ -280,6 +294,7 @@ NASCAR.Caja = (function () {
         origen: 'carta',
         requierePreparacion: p.requierePreparacion !== false,
       });
+    lineaAVer = i >= 0 ? i : ticket.length - 1;
     pintarTicket();
   }
 
@@ -325,8 +340,32 @@ NASCAR.Caja = (function () {
         || m.nombre || m.id;
   }
 
+  /* La línea que se acaba de tocar desde la carta: tras repintar se deja a
+     la vista dentro de la lista, aunque esté abajo. */
+  let lineaAVer = null;
+
+  /* El ticket nunca más alto que lo que queda de pantalla debajo de él.
+     Antes de bajar arranca más abajo (encabezado y pestañas encima) y al
+     bajar se pega bajo la cabecera: en los dos casos el botón Cobrar tiene
+     que quedar dentro de la pantalla. En celular va abajo y no se toca. */
+  function ajustarAltoTicket() {
+    const caja = $('#cajaTicket');
+    if (!caja) return;
+    if (window.innerWidth <= 900 || !caja.offsetParent) {
+      caja.style.maxHeight = '';
+      return;
+    }
+    const arriba = Math.max(caja.getBoundingClientRect().top, 0);
+    caja.style.maxHeight = Math.max(320, window.innerHeight - arriba - 12) + 'px';
+  }
+
   function pintarTicket() {
     const caja = $('#cajaTicket');
+    // Repintar no puede devolver la lista arriba del todo cada vez que se toca + o −
+    const listaAntes = caja.querySelector('.caja-ticket__lista');
+    const pieAntes = caja.querySelector('.caja-ticket__pie');
+    const scrollLista = listaAntes ? listaAntes.scrollTop : 0;
+    const scrollPie = pieAntes ? pieAntes.scrollTop : 0;
     const metodos = metodosActivos();
     if (!metodo || !metodos.some((m) => m.id === metodo)) metodo = (metodos[0] || {}).id || 'efectivo';
 
@@ -340,14 +379,15 @@ NASCAR.Caja = (function () {
             .map(
               (x, i) =>
                 '<div class="caja-ticket__linea">' +
-                '<span class="caja-ticket__nombre">' + U.esc(x.nombre) +
-                (x.requierePreparacion ? ' <i class="mini tenue">· cocina</i>' : '') + '</span>' +
-                '<span class="fila" style="gap:6px">' +
-                '<button class="btn btn--fantasma btn--xs" data-caja-menos="' + i + '">−</button>' +
-                '<b style="min-width:24px;text-align:center">' + x.cantidad + '</b>' +
-                '<button class="btn btn--fantasma btn--xs" data-caja-mas="' + i + '">+</button>' +
-                '<b style="min-width:80px;text-align:right">' + U.money(x.precio * x.cantidad) + '</b>' +
-                '</span></div>'
+                '<span class="caja-ticket__nombre" title="' + U.esc(x.nombre) + '">' + U.esc(x.nombre) +
+                (x.requierePreparacion ? '<i class="caja-ticket__marca">cocina</i>' : '') + '</span>' +
+                '<span class="caja-ticket__cant">' +
+                '<button class="btn btn--fantasma btn--xs" data-caja-menos="' + i + '" aria-label="Uno menos">−</button>' +
+                '<b>' + x.cantidad + '</b>' +
+                '<button class="btn btn--fantasma btn--xs" data-caja-mas="' + i + '" aria-label="Uno más">+</button>' +
+                '</span>' +
+                '<b class="caja-ticket__importe">' + U.money(x.precio * x.cantidad) + '</b>' +
+                '</div>'
             )
             .join('')
         : '<div class="caja-ticket__vacio">Toca un producto para empezar la venta.</div>') +
@@ -362,9 +402,7 @@ NASCAR.Caja = (function () {
       (dividido && ticket.length
         /* Pago dividido (migración 56): las filas «método + cuánto»
            reemplazan al método único, su recargo y su cambio. */
-        ? '<div class="caja-ticket__total"><span>Total</span><b id="cajaTotalDiv">' +
-          U.money(subtotalTicket()) + '</b></div>' +
-          U.bloquePagoDividido('cmd')
+        ? U.bloquePagoDividido('cmd')
         : '<label class="campo"><span>¿Con qué paga?</span><select class="select" id="cajaMetodo">' +
           metodos
             .map((m) => '<option value="' + U.esc(m.id) + '"' + (m.id === metodo ? ' selected' : '') + '>' +
@@ -376,14 +414,6 @@ NASCAR.Caja = (function () {
              y hace dudar de si se está cobrando algo de más. Pero si lo hay,
              tiene que verse, porque es lo que la caja le va a decir al
              cliente que pague. */
-          (recargoTicket() > 0
-            ? '<div class="caja-ticket__recargo"><span>Recargo · ' +
-              U.esc(nombreCorto(metodosActivos().find((m) => m.id === metodo) || { id: metodo })) +
-              '</span><b>' + U.money(recargoTicket()) + '</b></div>'
-            : '') +
-
-          '<div class="caja-ticket__total"><span>Total</span><b>' + U.money(total()) + '</b></div>' +
-
           /* En el mostrador el cliente paga de frente y casi siempre con un
              billete. Sin ticket no hay nada que cobrar, así que tampoco hay
              cambio que calcular. */
@@ -393,14 +423,46 @@ NASCAR.Caja = (function () {
         ? '<p class="pago-dividido__alternar mt-8"><button type="button" class="btn btn--fantasma btn--xs" id="cajaDividir">' +
           (dividido ? '↩ Un solo método' : '➗ Pagar con dos métodos') + '</button></p>'
         : '') +
+      '</div>' +
 
-      '<button class="btn btn--bloque caja-ticket__cobrar" id="cajaCobrar"' +
-      (ticket.length ? '' : ' disabled') + '>' +
-      '💵 Cobrar' + (n ? ' · ' + n + (n === 1 ? ' producto' : ' productos') : '') + '</button>' +
-      (ticket.length
-        ? '<button class="btn btn--fantasma btn--bloque mt-8" id="cajaVaciar">Vaciar</button>'
+      /* Total y Cobrar van abajo y siempre a la vista, aunque la lista o el
+         detalle del pago tengan que desplazarse: en una pantalla de POS
+         pequeña es lo que no puede esconderse. */
+      '<div class="caja-ticket__accion">' +
+      (!dividido && recargoTicket() > 0
+        ? '<div class="caja-ticket__recargo"><span>Recargo · ' +
+          U.esc(nombreCorto(metodosActivos().find((m) => m.id === metodo) || { id: metodo })) +
+          '</span><b>' + U.money(recargoTicket()) + '</b></div>'
         : '') +
+      '<div class="caja-ticket__total"><span>Total' +
+      (n ? ' · ' + n + (n === 1 ? ' producto' : ' productos') : '') + '</span>' +
+      (dividido && ticket.length
+        ? '<b id="cajaTotalDiv">' + U.money(subtotalTicket()) + '</b>'
+        : '<b>' + U.money(total()) + '</b>') +
+      '</div>' +
+      '<div class="caja-ticket__botones">' +
+      (ticket.length
+        ? '<button class="btn btn--fantasma" id="cajaVaciar" title="Quitar todo del ticket">Vaciar</button>'
+        : '') +
+      '<button class="btn caja-ticket__cobrar" id="cajaCobrar"' +
+      (ticket.length ? '' : ' disabled') + '>💵 Cobrar</button>' +
+      '</div>' +
       '</div>';
+
+    ajustarAltoTicket();
+    const lista = caja.querySelector('.caja-ticket__lista');
+    const pie = caja.querySelector('.caja-ticket__pie');
+    if (lista) lista.scrollTop = scrollLista;
+    if (pie) pie.scrollTop = scrollPie;
+    if (lista && lineaAVer != null) {
+      const l = lista.querySelectorAll('.caja-ticket__linea')[lineaAVer];
+      if (l) {
+        if (l.offsetTop + l.offsetHeight > lista.scrollTop + lista.clientHeight)
+          lista.scrollTop = l.offsetTop + l.offsetHeight - lista.clientHeight;
+        else if (l.offsetTop < lista.scrollTop) lista.scrollTop = l.offsetTop;
+      }
+    }
+    lineaAVer = null;
 
     const sel = $('#cajaMetodo');
 
