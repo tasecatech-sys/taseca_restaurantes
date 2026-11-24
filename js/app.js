@@ -573,12 +573,15 @@
         'error'
       );
 
-    carrito.agregar(
-      { refId: p.id, nombre: p.nombre, precio: p.precio, origen: 'carta', sucursalId: Number(unidadPortal) },
-      1
-    );
-    borrador.sucursalId = Number(unidadPortal);
-    U.toast(p.nombre + ' agregado a tu pedido.');
+    // (58) Si deja elegir (la gaseosa del combo), el cliente elige primero
+    U.elegirCambios(p, function (r) {
+      carrito.agregar(
+        U.conCambios({ refId: p.id, nombre: p.nombre, precio: p.precio, origen: 'carta', sucursalId: Number(unidadPortal) }, r),
+        1
+      );
+      borrador.sucursalId = Number(unidadPortal);
+      U.toast(p.nombre + ' agregado a tu pedido.');
+    });
   }
 
   /* =================================================================

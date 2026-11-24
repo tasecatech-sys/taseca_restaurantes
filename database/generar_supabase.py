@@ -141,6 +141,7 @@ PARTES = [
     ('56_pago_dividido.sql',                  'Pago dividido: una parte en efectivo y otra por transferencia'),
     # Redefine rest.unidades (de la 54): va después.
     ('57_domicilio_por_sede.sql',             'Domicilios por sede: apagar y prender la recepción en línea'),
+    ('58_cambio_en_receta.sql',               'Cambio en la receta: elegir la gaseosa del combo al vender'),
 ]
 
 CABECERA = '''/* ============================================================================

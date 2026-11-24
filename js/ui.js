@@ -652,8 +652,10 @@ NASCAR.UI = (function () {
       agregar: function (producto, cantidad) {
         const items = leer();
         const n = Number(cantidad) || 1;
+        // Mismo producto con otra gaseosa elegida (58) es otra línea
         const i = items.findIndex(
-          (x) => x.refId === producto.refId && (x.notas || '') === (producto.notas || '')
+          (x) => x.refId === producto.refId && (x.notas || '') === (producto.notas || '') &&
+            (x.claveCambios || '') === (producto.claveCambios || '')
         );
         if (i >= 0) items[i].cantidad += n;
         else items.push(Object.assign({}, producto, { cantidad: n }));
@@ -687,6 +689,78 @@ NASCAR.UI = (function () {
         return leer().reduce((s, x) => s + x.precio * x.cantidad, 0);
       },
     };
+  }
+
+  /* ---------------------------------------------------------------
+     Elegir en la receta (migración 58): la gaseosa del combo.
+
+     producto.cambios = [{ de, grupo, opciones: [{ id, nombre }] }], con
+     la de la receta primero. Sin nada que elegir, alElegir(null) enseguida.
+     Con un solo grupo, tocar la opción ya agrega; con varios se marca uno
+     de cada grupo y se toca «Agregar». alElegir recibe:
+       { cambios: [{ de, a }], detalle: 'Gaseosa 1.5: Coca-Cola 1.5',
+         clave: '12>15' }   ← la clave separa líneas del carrito
+     --------------------------------------------------------------- */
+  function resultadoCambios(grupos, elegido) {
+    const cambios = grupos.map((g) => ({ de: Number(g.de), a: Number(elegido[g.de]) }));
+    return {
+      cambios: cambios,
+      detalle: grupos
+        .map((g) => g.grupo + ': ' +
+          ((g.opciones || []).find((o) => Number(o.id) === Number(elegido[g.de])) || {}).nombre)
+        .join(' · '),
+      clave: cambios.map((c) => c.de + '>' + c.a).join(','),
+    };
+  }
+
+  function elegirCambios(producto, alElegir) {
+    const grupos = ((producto && producto.cambios) || []).filter((g) => (g.opciones || []).length > 1);
+    if (!grupos.length) return alElegir(null);
+
+    const elegido = {};
+    grupos.forEach((g) => { elegido[g.de] = Number(g.opciones[0].id); });
+    const varios = grupos.length > 1;
+    const m = modal({
+      titulo: producto.nombre,
+      ancho: 420,
+      contenido:
+        grupos.map((g) =>
+          '<div class="campo"><span>¿Qué ' + esc(String(g.grupo).toLowerCase()) + '?</span>' +
+          '<div data-de="' + Number(g.de) + '" style="display:flex;flex-wrap:wrap;gap:8px">' +
+          g.opciones.map((o) =>
+            '<button type="button" class="btn ' + (varios && Number(o.id) === elegido[g.de] ? 'btn--rojo' : 'btn--fantasma') +
+            '" data-a="' + Number(o.id) + '">' + esc(o.nombre) + '</button>').join('') +
+          '</div></div>').join('') +
+        (varios ? '<div class="fila fila--fin"><button type="button" class="btn btn--rojo" data-listo>Agregar</button></div>' : ''),
+    });
+
+    let hecho = false; // un toque doble no agrega dos veces
+    function terminar() {
+      if (hecho) return;
+      hecho = true;
+      m.cerrar();
+      alElegir(resultadoCambios(grupos, elegido));
+    }
+    m.raiz.addEventListener('click', function (e) {
+      const b = e.target.closest('[data-a]');
+      if (b) {
+        const caja = b.closest('[data-de]');
+        elegido[caja.dataset.de] = Number(b.dataset.a);
+        $$('[data-a]', caja).forEach(function (x) {
+          x.classList.toggle('btn--rojo', x === b);
+          x.classList.toggle('btn--fantasma', x !== b);
+        });
+        if (!varios) terminar();
+        return;
+      }
+      if (e.target.closest('[data-listo]')) terminar();
+    });
+  }
+
+  /* Lo elegido, puesto en una línea del carrito (o nada si no hubo). */
+  function conCambios(linea, r) {
+    if (!r) return linea;
+    return Object.assign(linea, { cambios: r.cambios, detalle: r.detalle, claveCambios: r.clave });
   }
 
   /* ---------------------------------------------------------------
@@ -1047,6 +1121,8 @@ NASCAR.UI = (function () {
     modal: modal,
     confirmar: confirmar,
     Carrito: Carrito,
+    elegirCambios: elegirCambios,
+    conCambios: conCambios,
     descargarArchivo: descargarArchivo,
     filaCSV: filaCSV,
     sucursal: sucursal,

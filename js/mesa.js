@@ -417,8 +417,11 @@
       if (c) {
         const p = S.getCarta({ sucursalId: sucursalId }).find((x) => x.id === c.dataset.addCarta);
         if (!p || !p.disponible) return U.toast('Ese plato no está disponible.', 'error');
-        carrito.agregar({ refId: p.id, nombre: p.nombre, precio: p.precio, origen: 'carta' }, 1);
-        return U.toast(p.nombre + ' agregado.');
+        // (58) Si deja elegir (la gaseosa del combo), se elige primero
+        return U.elegirCambios(p, function (r) {
+          carrito.agregar(U.conCambios({ refId: p.id, nombre: p.nombre, precio: p.precio, origen: 'carta' }, r), 1);
+          U.toast(p.nombre + ' agregado.');
+        });
       }
     });
 

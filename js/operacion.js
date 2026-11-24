@@ -316,7 +316,9 @@ NASCAR.Operacion = (function () {
     }
 
     function agregar(producto) {
-      const i = carritoMesero.findIndex((x) => x.refId === producto.refId);
+      // Mismo producto con otra gaseosa elegida (58) es otra línea
+      const i = carritoMesero.findIndex((x) => x.refId === producto.refId &&
+        (x.claveCambios || '') === (producto.claveCambios || ''));
       if (i >= 0) carritoMesero[i].cantidad++;
       else carritoMesero.push(Object.assign({ cantidad: 1 }, producto));
       pintarResumen();
@@ -335,7 +337,10 @@ NASCAR.Operacion = (function () {
       const a = e.target.closest('[data-add]');
       if (a) {
         const p = S.getPlatoCarta(a.dataset.add);
-        return agregar({ refId: p.id, nombre: p.nombre, precio: p.precio, origen: 'carta' });
+        // (58) Si deja elegir (la gaseosa del combo), se pregunta primero
+        return U.elegirCambios(p, function (r) {
+          agregar(U.conCambios({ refId: p.id, nombre: p.nombre, precio: p.precio, origen: 'carta' }, r));
+        });
       }
 
       const d = e.target.closest('[data-add-dia]');

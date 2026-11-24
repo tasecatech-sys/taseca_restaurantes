@@ -1003,6 +1003,14 @@ NASCAR.Gestion = (function () {
         '</div>' +
 
         '<p class="mini tenue" style="margin:-4px 0 12px">Unidad: ' + (p.sucursales || []).map(badgeUnidad).join(' ') + '</p>' +
+        /* (58) Insumos con el mismo grupo se cambian uno por otro al vender
+           un plato marcado con ⇄: la gaseosa 1.5 del combo puede ser
+           Postobón, Coca-Cola o Ginger, y se descuenta la que se entregó. */
+        '<label class="campo"><span>Grupo de cambio (opcional)</span>' +
+        '<input class="input" id="sGrupo" maxlength="40" value="' + U.esc(p.grupoCambio || '') + '" placeholder="Ej. Gaseosa 1.5">' +
+        '<span class="mini tenue">Ponle el mismo grupo a los insumos que se pueden entregar uno por otro ' +
+        '(Postobón 1.5, Coca-Cola 1.5, Ginger 1.5). En los platos marcados con <b>⇄</b> se elige al vender ' +
+        'cuál va, y se descuenta ése.</span></label>' +
         /* Decía «¿qué productos descuentan este stock?», y no es lo que
            pasa: vender NO mueve el «stock actual», que es lo último que
            se contó. Lo que hace es sumar a la Z del cruce. La pregunta
@@ -1031,6 +1039,11 @@ NASCAR.Gestion = (function () {
                   'title="Cuánto gasta cada venta de este plato"' +
                   (p.ventaRefIds.indexOf(c.id) >= 0 ? '' : ' disabled') + '>' +
                   '<i>' + U.esc(p.unidad || 'unidad') + '</i></span>' +
+                  // (58) ⇄: al vender este plato se elige cuál del grupo va
+                  '<span class="mini nowrap" title="Al vender este plato se elige cuál del grupo de cambio va">' +
+                  '<input type="checkbox" data-camb="' + U.esc(c.id) + '"' +
+                  ((p.ventaCambiables || {})[c.id] ? ' checked' : '') +
+                  (p.ventaRefIds.indexOf(c.id) >= 0 ? '' : ' disabled') + '> ⇄ se elige</span>' +
                   '</label>'
               )
               .join('') +
@@ -1058,10 +1071,11 @@ NASCAR.Gestion = (function () {
     /* Qué platos van marcados y cuánto gasta cada uno. Se devuelven como
        pares, que es como los guarda el store (ver normalizarConsumo). */
     const marcados = () =>
-      U.$$('#sRefs input[type="checkbox"]:checked', m.raiz).map(function (i) {
+      U.$$('#sRefs input[type="checkbox"]:checked:not([data-camb])', m.raiz).map(function (i) {
         const campo = U.$('[data-cant="' + i.value + '"]', m.raiz);
         const n = campo ? Number(campo.value) : 1;
-        return { refId: i.value, cantidad: n > 0 ? n : 1 };
+        const camb = U.$('[data-camb="' + i.value + '"]', m.raiz);
+        return { refId: i.value, cantidad: n > 0 ? n : 1, cambiable: !!(camb && camb.checked) };
       });
 
     function contarRefs() {
@@ -1078,12 +1092,18 @@ NASCAR.Gestion = (function () {
       lista.addEventListener('change', function (e) {
         /* La cantidad sigue a la casilla: desmarcar la apaga, marcar la
            enciende. Así no queda un número editable que no se usa. */
-        const caja = e.target.closest('input[type="checkbox"]');
+        const caja = e.target.closest('input[type="checkbox"]:not([data-camb])');
         if (caja) {
           const campo = U.$('[data-cant="' + caja.value + '"]', m.raiz);
           if (campo) {
             campo.disabled = !caja.checked;
             if (caja.checked && !(Number(campo.value) > 0)) campo.value = 1;
+          }
+          // ⇄ sólo tiene sentido en un plato marcado
+          const camb = U.$('[data-camb="' + caja.value + '"]', m.raiz);
+          if (camb) {
+            camb.disabled = !caja.checked;
+            if (!caja.checked) camb.checked = false;
           }
         }
         contarRefs();
@@ -1114,6 +1134,7 @@ NASCAR.Gestion = (function () {
           stockActual: U.$('#sActual', m.raiz).value,
           stockMinimo: U.$('#sMinimo', m.raiz).value,
           ventaRefIds: marcados(),
+          grupoCambio: U.$('#sGrupo', m.raiz).value.trim(),
           activo: U.$('#sActivo', m.raiz).checked,
           sucursales: p.sucursales,
           unidadStock: uStock,

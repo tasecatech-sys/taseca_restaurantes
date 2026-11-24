@@ -283,19 +283,24 @@ NASCAR.Caja = (function () {
   function agregar(refId) {
     const p = carta().find((x) => x.id === refId);
     if (!p) return;
-    const i = ticket.findIndex((x) => x.refId === refId);
-    if (i >= 0) ticket[i].cantidad++;
-    else
-      ticket.push({
-        refId: p.id,
-        nombre: p.nombre,
-        precio: Number(p.precio),
-        cantidad: 1,
-        origen: 'carta',
-        requierePreparacion: p.requierePreparacion !== false,
-      });
-    lineaAVer = i >= 0 ? i : ticket.length - 1;
-    pintarTicket();
+    /* (58) Si el producto deja elegir (la gaseosa del combo), primero se
+       pregunta. El mismo combo con otra gaseosa es otra línea. */
+    U.elegirCambios(p, function (r) {
+      const clave = r ? r.clave : '';
+      const i = ticket.findIndex((x) => x.refId === refId && (x.claveCambios || '') === clave);
+      if (i >= 0) ticket[i].cantidad++;
+      else
+        ticket.push(U.conCambios({
+          refId: p.id,
+          nombre: p.nombre,
+          precio: Number(p.precio),
+          cantidad: 1,
+          origen: 'carta',
+          requierePreparacion: p.requierePreparacion !== false,
+        }, r));
+      lineaAVer = i >= 0 ? i : ticket.length - 1;
+      pintarTicket();
+    });
   }
 
   function cambiar(i, delta) {
@@ -380,7 +385,10 @@ NASCAR.Caja = (function () {
               (x, i) =>
                 '<div class="caja-ticket__linea">' +
                 '<span class="caja-ticket__nombre" title="' + U.esc(x.nombre) + '">' + U.esc(x.nombre) +
-                (x.requierePreparacion ? '<i class="caja-ticket__marca">cocina</i>' : '') + '</span>' +
+                (x.requierePreparacion ? '<i class="caja-ticket__marca">cocina</i>' : '') +
+                // (58) La gaseosa elegida del combo
+                (x.detalle ? '<small class="mini tenue" style="display:block;white-space:normal">' + U.esc(x.detalle) + '</small>' : '') +
+                '</span>' +
                 '<span class="caja-ticket__cant">' +
                 '<button class="btn btn--fantasma btn--xs" data-caja-menos="' + i + '" aria-label="Uno menos">−</button>' +
                 '<b>' + x.cantidad + '</b>' +
@@ -563,6 +571,7 @@ NASCAR.Caja = (function () {
         cliente: {},
         items: ticket.map((x) => ({
           refId: x.refId, nombre: x.nombre, precio: x.precio, cantidad: x.cantidad, origen: 'carta',
+          cambios: x.cambios, detalle: x.detalle,
         })),
         metodoPago: partes ? partes.partes[0].metodo : metodo,
         // Pago dividido (56): [{ metodo, base }]; sin esto, un solo método

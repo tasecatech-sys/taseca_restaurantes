@@ -275,6 +275,12 @@ NASCAR.Remoto = (function () {
       imagen: p.imagen_url || '',
       requierePreparacion: p.requiere_preparacion !== false,
       soloPersonal: p.solo_personal === true,
+      // (58) Lo que se elige al venderlo: la gaseosa del combo
+      cambios: (p.cambios || []).map((c) => ({
+        de: c.de,
+        grupo: c.grupo,
+        opciones: (c.opciones || []).map((o) => ({ id: o.id, nombre: o.nombre })),
+      })),
     };
   }
 
@@ -446,6 +452,10 @@ NASCAR.Remoto = (function () {
       }
     } else if (/^p\d+$/.test(ref)) {
       linea.producto_id = Number(ref.slice(1));
+      // (58) La gaseosa elegida del combo: [{ de, a }] con ids de insumo
+      if (Array.isArray(it.cambios) && it.cambios.length) {
+        linea.cambios = it.cambios.map((c) => ({ de: Number(c.de), a: Number(c.a) }));
+      }
     } else {
       throw new Error('"' + it.nombre + '" es de la carta local de este navegador y no existe en la base de datos. Vacía el pedido y vuelve a agregarlo.');
     }
@@ -1306,9 +1316,11 @@ NASCAR.Remoto = (function () {
          sólo ids, y con esos la cantidad es 1. */
       ventaRefIds: (s.productos || []).map(function (x) {
         if (x && typeof x === 'object')
-          return { refId: 'p' + x.producto_id, cantidad: Number(x.cantidad) || 1 };
+          return { refId: 'p' + x.producto_id, cantidad: Number(x.cantidad) || 1, cambiable: x.cambiable === true };
         return { refId: 'p' + x, cantidad: 1 };
       }),
+      // (58) Insumos con el mismo grupo se cambian uno por otro al vender
+      grupoCambio: s.grupo_cambio || '',
       /* El stock es de CADA unidad. `stockActual` y `stockMinimo` son los
          de la primera sólo como valor por defecto: quien mira una sede
          los toma de `porUnidad` (store.getStock con sucursalId). Antes se
@@ -1453,7 +1465,10 @@ NASCAR.Remoto = (function () {
         if (!/^p\d+$/.test(String(ref)))
           throw new Error('Ese producto de la carta es del modo local de este navegador. Elige uno de la lista.');
         const cant = x && typeof x === 'object' ? Number(x.cantidad) : NaN;
-        return { producto_id: Number(String(ref).slice(1)), cantidad: cant > 0 ? cant : 1 };
+        const fila = { producto_id: Number(String(ref).slice(1)), cantidad: cant > 0 ? cant : 1 };
+        // (58) Sólo si viene dicho: sin el dato, la base deja lo que había
+        if (x && typeof x === 'object' && typeof x.cambiable === 'boolean') fila.cambiable = x.cambiable;
+        return fila;
       })
       .filter(Boolean);
   }
@@ -1564,6 +1579,8 @@ NASCAR.Remoto = (function () {
         insumo.unidades = [destino];
       }
       if (cambios.ventaRefIds !== undefined) insumo.productos = productosDeCarta(cambios.ventaRefIds);
+      // (58) El grupo de cambio: vacío lo quita; sin el campo, no se toca
+      if (cambios.grupoCambio !== undefined) insumo.grupo_cambio = String(cambios.grupoCambio || '').trim();
 
       rpc('guardar_insumo', { p_insumo: insumo });
       despuesDeInventario();

@@ -1871,6 +1871,10 @@ NASCAR.Store = (function () {
     const ids = [];
     const cantidades = {};
     const propia = {}; // la cantidad vino en el propio par, no de rebote
+    /* (58) En qué platos se ELIGE este insumo al vender (la gaseosa del
+       combo). Igual que la cantidad: lo del par manda sobre el mapa suelto. */
+    const cambiables = {};
+    const cambioPropio = {};
 
     (Array.isArray(p.ventaRefIds) ? p.ventaRefIds : []).forEach(function (x) {
       const esPar = x && typeof x === 'object';
@@ -1883,7 +1887,16 @@ NASCAR.Store = (function () {
       const n = esPar ? Number(x.cantidad) : NaN;
       cantidades[clave] = n > 0 ? n : 1;
       if (n > 0) propia[clave] = true;
+      if (esPar && typeof x.cambiable === 'boolean') {
+        if (x.cambiable) cambiables[clave] = true;
+        cambioPropio[clave] = true;
+      }
     });
+    const sueltosCambio = p.ventaCambiables;
+    if (sueltosCambio && typeof sueltosCambio === 'object')
+      ids.forEach(function (ref) {
+        if (!cambioPropio[ref] && sueltosCambio[ref]) cambiables[ref] = true;
+      });
 
     /* El mapa suelto sólo RELLENA lo que no trajo cantidad propia.
 
@@ -1903,7 +1916,7 @@ NASCAR.Store = (function () {
         if (n > 0) cantidades[ref] = n;
       });
 
-    return { ventaRefIds: ids, ventaCantidades: cantidades };
+    return { ventaRefIds: ids, ventaCantidades: cantidades, ventaCambiables: cambiables };
   }
 
   function normalizarProductoStock(p) {
