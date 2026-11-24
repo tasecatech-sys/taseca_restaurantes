@@ -163,7 +163,11 @@ BEGIN
     PERFORM pg_temp.app(format($s$SELECT rest.registrar_entrada('{"unidad_id": %s, "codigo": "PRB-1", "cantidad": 24, "fecha": "%s"}')$s$,
         v_bar, v_hoy));
     SELECT (r ->> 'pedido_id')::BIGINT INTO v_ped
-      FROM rest.crear_pedido(v_bar, 'mesa', 'efectivo', format('[{"producto_id": %s, "cantidad": 3}]', p_cerveza)::JSONB, p_mesa => '2') r;
+      /* p_clave va a propósito: rest.crear_pedido tiene dos versiones (con y
+         sin clave) y sin ella PostgreSQL no sabe cuál llamar. La aplicación
+         siempre la manda. */
+      FROM rest.crear_pedido(v_bar, 'mesa', 'efectivo', format('[{"producto_id": %s, "cantidad": 3}]', p_cerveza)::JSONB,
+                             p_mesa => '2', p_clave => NULL) r;
 
     v_cruce := pg_temp.app(format($s$SELECT rest.cruce_inventario(%s, '%s', 'bar')$s$, v_bar, v_hoy));
     v_f := pg_temp.fila(v_cruce, 'PRB-1');

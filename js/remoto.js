@@ -279,7 +279,8 @@ NASCAR.Remoto = (function () {
       cambios: (p.cambios || []).map((c) => ({
         de: c.de,
         grupo: c.grupo,
-        opciones: (c.opciones || []).map((o) => ({ id: o.id, nombre: o.nombre })),
+        // (59) Lo que cuesta de más elegirla (la base cobra lo mismo)
+        opciones: (c.opciones || []).map((o) => ({ id: o.id, nombre: o.nombre, extra: n(o.extra) })),
       })),
     };
   }

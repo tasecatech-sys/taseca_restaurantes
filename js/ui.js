@@ -701,13 +701,18 @@ NASCAR.UI = (function () {
        { cambios: [{ de, a }], detalle: 'Gaseosa 1.5: Coca-Cola 1.5',
          clave: '12>15' }   ← la clave separa líneas del carrito
      --------------------------------------------------------------- */
+  function opcionElegida(g, elegido) {
+    return (g.opciones || []).find((o) => Number(o.id) === Number(elegido[g.de])) || {};
+  }
+
   function resultadoCambios(grupos, elegido) {
     const cambios = grupos.map((g) => ({ de: Number(g.de), a: Number(elegido[g.de]) }));
     return {
       cambios: cambios,
+      // (59) Lo que suma al precio: una gaseosa más cara cobra la diferencia
+      extra: grupos.reduce((s, g) => s + (Number(opcionElegida(g, elegido).extra) || 0), 0),
       detalle: grupos
-        .map((g) => g.grupo + ': ' +
-          ((g.opciones || []).find((o) => Number(o.id) === Number(elegido[g.de])) || {}).nombre)
+        .map((g) => g.grupo + ': ' + opcionElegida(g, elegido).nombre)
         .join(' · '),
       clave: cambios.map((c) => c.de + '>' + c.a).join(','),
     };
@@ -729,7 +734,8 @@ NASCAR.UI = (function () {
           '<div data-de="' + Number(g.de) + '" style="display:flex;flex-wrap:wrap;gap:8px">' +
           g.opciones.map((o) =>
             '<button type="button" class="btn ' + (varios && Number(o.id) === elegido[g.de] ? 'btn--rojo' : 'btn--fantasma') +
-            '" data-a="' + Number(o.id) + '">' + esc(o.nombre) + '</button>').join('') +
+            '" data-a="' + Number(o.id) + '">' + esc(o.nombre) +
+            (Number(o.extra) > 0 ? ' <small>+' + money(o.extra) + '</small>' : '') + '</button>').join('') +
           '</div></div>').join('') +
         (varios ? '<div class="fila fila--fin"><button type="button" class="btn btn--rojo" data-listo>Agregar</button></div>' : ''),
     });
@@ -760,7 +766,13 @@ NASCAR.UI = (function () {
   /* Lo elegido, puesto en una línea del carrito (o nada si no hubo). */
   function conCambios(linea, r) {
     if (!r) return linea;
-    return Object.assign(linea, { cambios: r.cambios, detalle: r.detalle, claveCambios: r.clave });
+    return Object.assign(linea, {
+      cambios: r.cambios,
+      detalle: r.detalle,
+      claveCambios: r.clave,
+      // (59) El precio de la línea con la diferencia: el mismo que cobra la base
+      precio: (Number(linea.precio) || 0) + (Number(r.extra) || 0),
+    });
   }
 
   /* ---------------------------------------------------------------
