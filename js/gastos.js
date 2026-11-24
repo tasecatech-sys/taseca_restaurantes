@@ -389,7 +389,15 @@ NASCAR.Gastos = (function () {
     });
 
     U.$('#gNo', m.raiz).onclick = m.cerrar;
-    U.$('#gSi', m.raiz).onclick = function () {
+    /* Un solo envío por formulario. En la nube el guardado congela la
+       pantalla ~1 s; los toques que caen en ese lapso se ejecutaban
+       después, cada uno como un gasto nuevo (Gusti, 22/11: «Tomas» ×4). */
+    let enviando = false;
+    const btnGuardar = U.$('#gSi', m.raiz);
+    btnGuardar.onclick = function () {
+      if (enviando) return;
+      enviando = true;
+      btnGuardar.disabled = true;
       const datos = {
         fecha: U.$('#gFecha', m.raiz).value,
         hora: U.$('#gHora', m.raiz).value,
@@ -416,6 +424,8 @@ NASCAR.Gastos = (function () {
           );
         }
       } catch (err) {
+        enviando = false;
+        btnGuardar.disabled = false;
         return U.toast(err.message, 'error');
       }
 
