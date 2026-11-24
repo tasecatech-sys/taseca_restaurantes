@@ -2044,6 +2044,62 @@ NASCAR.Store = (function () {
     return getStock({ todos: true, empresaId: eid });
   }
 
+  /* =============================================================
+     ⇄ GRUPOS DE CAMBIO (migraciones 58–60)
+     Un grupo es el nombre que comparten sus productos de stock
+     («Gaseosa 1.5»: Postobón, Coca-Cola, Ginger). Se arma del propio
+     stock, así que sirve igual en local y en la nube. `combos` son los
+     platos de la carta que tienen ⇄ en alguno de sus integrantes.
+     ============================================================= */
+  function nombreGrupo(n) {
+    return String(n || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function gruposCambio(empresaId) {
+    const mapa = {};
+    getStock({ todos: true, empresaId: empresaId }).forEach(function (ins) {
+      const nombre = nombreGrupo(ins.grupoCambio);
+      if (!nombre) return;
+      const k = nombre.toLowerCase();
+      const g = (mapa[k] = mapa[k] || { nombre: nombre, insumos: [], combos: [] });
+      g.insumos.push({ codigo: ins.codigo, nombre: ins.nombre, activo: ins.activo !== false });
+      Object.keys(ins.ventaCambiables || {}).forEach(function (ref) {
+        if (!ins.ventaCambiables[ref]) return;
+        const plato = getPlatoCarta(ref, empresaId);
+        const nom = plato ? plato.nombre : ref;
+        if (g.combos.indexOf(nom) < 0) g.combos.push(nom);
+      });
+    });
+    return Object.keys(mapa)
+      .map((k) => mapa[k])
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
+  /* Crear, renombrar o cambiar los integrantes de un grupo de un golpe
+     (modo local; en la nube lo reemplaza remoto.js). Sin integrantes, el
+     grupo desaparece. datos = { nombre, anterior, codigos: [...] } */
+  function guardarGrupoCambio(datos, empresaId) {
+    const nombre = nombreGrupo(datos.nombre);
+    if (nombre.length < 2 || nombre.length > 40)
+      throw new Error('El grupo necesita un nombre de 2 a 40 letras (por ejemplo «Gaseosa 1.5»).');
+    const anterior = nombreGrupo(datos.anterior).toLowerCase();
+    const choque = gruposCambio(empresaId).find(
+      (g) => g.nombre.toLowerCase() === nombre.toLowerCase() && g.nombre.toLowerCase() !== anterior
+    );
+    if (choque) throw new Error('Ya hay un grupo «' + choque.nombre + '». Edítalo en vez de crear otro.');
+
+    const codigos = (datos.codigos || []).map((c) => String(c).trim().toUpperCase());
+    const viejo = anterior || nombre.toLowerCase();
+    getStock({ todos: true, empresaId: empresaId }).forEach(function (ins) {
+      const dentro = codigos.indexOf(ins.codigo) >= 0;
+      if (dentro && nombreGrupo(ins.grupoCambio) !== nombre)
+        guardarProductoStock({ grupoCambio: nombre }, ins.codigo, empresaId);
+      else if (!dentro && nombreGrupo(ins.grupoCambio).toLowerCase() === viejo)
+        guardarProductoStock({ grupoCambio: '' }, ins.codigo, empresaId);
+    });
+    return gruposCambio(empresaId);
+  }
+
   /* Los productos de stock NO se borran: se desactivan. Los cierres
      históricos guardan su propia copia del producto, así que no se ven
      afectados, pero el cruce debe poder seguir resolviendo el código. */
@@ -6505,6 +6561,8 @@ NASCAR.Store = (function () {
     // stock (catálogo de inventario)
     getStock: getStock,
     guardarProductoStock: guardarProductoStock,
+    gruposCambio: gruposCambio,
+    guardarGrupoCambio: guardarGrupoCambio,
     activarProductoStock: activarProductoStock,
     ajustarStockActual: ajustarStockActual,
     aplicarCierreAStock: aplicarCierreAStock,

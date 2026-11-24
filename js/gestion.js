@@ -658,6 +658,8 @@ NASCAR.Gestion = (function () {
 
   function conectarStock() {
     $('#btnNuevoStock').addEventListener('click', () => editarProductoStock(null));
+    const btnGrupos = $('#btnGruposCambio');
+    if (btnGrupos) btnGrupos.addEventListener('click', abrirGruposCambio);
     ['#fBuscarStock', '#fAreaStock'].forEach(function (s) {
       const el = $(s);
       el.addEventListener('input', pintarStock);
@@ -943,6 +945,124 @@ NASCAR.Gestion = (function () {
       '</tbody></table></div></div>';
   }
 
+  /* =================================================================
+     ⇄ GRUPOS DE CAMBIO (migración 60)
+     Productos de stock que se entregan uno por otro: la gaseosa 1.5 del
+     combo puede ser Postobón, Coca-Cola o Ginger. Aquí se ven todos los
+     grupos, con sus integrantes y los platos que preguntan al vender.
+     ================================================================= */
+  function abrirGruposCambio() {
+    if (!A.exigir('stock')) return;
+    const m = U.modal({ titulo: '⇄ Grupos de cambio', ancho: 620, contenido: '<div id="gcCuerpo"></div>' });
+    let grupos = [];
+
+    function pintar() {
+      grupos = S.gruposCambio();
+      U.$('#gcCuerpo', m.raiz).innerHTML =
+        '<p class="mini tenue" style="margin-top:0">Los productos de un mismo grupo se pueden entregar uno por otro. ' +
+        'En los platos marcados con <b>⇄ se elige</b> (en el producto de stock de su receta) la caja pregunta cuál va ' +
+        'y se descuenta ése. Si el elegido cuesta más suelto en la carta, el plato cobra la diferencia.</p>' +
+        (grupos.length
+          ? grupos.map((g, i) =>
+              '<div class="caja-datos" style="margin-bottom:10px">' +
+              '<div class="fila" style="justify-content:space-between;gap:8px;align-items:center">' +
+              '<b>⇄ ' + U.esc(g.nombre) + '</b>' +
+              '<button class="btn btn--fantasma btn--xs" data-gc-editar="' + i + '">Editar</button></div>' +
+              '<div class="mini" style="margin-top:4px">' +
+              g.insumos.map((x) => U.esc(x.nombre) + (x.activo ? '' : ' <i class="tenue">(inactivo)</i>')).join(' · ') + '</div>' +
+              '<div class="mini tenue" style="margin-top:4px">' +
+              (g.combos.length
+                ? 'Se elige al vender: ' + g.combos.map(U.esc).join(', ')
+                : 'Ningún plato lo pregunta todavía: márcalo con ⇄ en el producto de stock de su receta.') +
+              (g.insumos.length < 2 ? ' <b class="ambar">Con un solo producto no hay entre qué elegir.</b>' : '') +
+              '</div></div>').join('')
+          : '<div class="vacio"><p class="mini">Todavía no hay grupos de cambio.</p></div>') +
+        '<div class="fila fila--fin"><button class="btn btn--rojo" id="gcNuevo">+ Nuevo grupo</button></div>';
+    }
+
+    m.raiz.addEventListener('click', function (e) {
+      const ed = e.target.closest('[data-gc-editar]');
+      if (ed) return editarGrupoCambio(grupos[Number(ed.dataset.gcEditar)], pintar);
+      if (e.target.closest('#gcNuevo')) return editarGrupoCambio(null, pintar);
+    });
+    pintar();
+  }
+
+  function editarGrupoCambio(g, alGuardar) {
+    const dentro = g ? g.insumos.map((x) => x.codigo) : [];
+    // Los del bar primero: ahí suelen estar los que se cambian (gaseosas)
+    const stock = S.getStock({ todos: true }).slice().sort(function (a, b) {
+      if (a.area !== b.area) return a.area === 'bar' ? -1 : 1;
+      return a.nombre.localeCompare(b.nombre, 'es');
+    });
+
+    const m = U.modal({
+      titulo: g ? 'Editar «' + g.nombre + '»' : 'Nuevo grupo de cambio',
+      ancho: 520,
+      contenido:
+        '<label class="campo"><span>Nombre del grupo <i class="req">*</i></span>' +
+        '<input class="input" id="geNombre" maxlength="40" value="' + U.esc(g ? g.nombre : '') + '" placeholder="Ej. Gaseosa 1.5"></label>' +
+        '<div class="campo"><span>¿Qué productos de stock se entregan uno por otro?</span>' +
+        '<input class="input" id="geBusca" placeholder="Buscar…" autocomplete="off">' +
+        '<div class="lista-check" id="geLista">' +
+        stock.map((x) => {
+          const otro = String(x.grupoCambio || '').trim();
+          return '<label class="lista-check__fila" data-busca="' + U.esc((x.nombre + ' ' + x.codigo).toLowerCase()) + '">' +
+            '<input type="checkbox" value="' + U.esc(x.codigo) + '"' + (dentro.indexOf(x.codigo) >= 0 ? ' checked' : '') + '>' +
+            '<b>' + U.esc(x.nombre) + '</b>' +
+            '<i>' + U.esc(x.codigo) + (otro && dentro.indexOf(x.codigo) < 0 ? ' · hoy en «' + U.esc(otro) + '»' : '') +
+            (x.activo === false ? ' · inactivo' : '') + '</i></label>';
+        }).join('') +
+        '</div><span class="mini tenue">Un producto está en un solo grupo: si lo marcas aquí, sale del que tenga.</span></div>' +
+        '<div class="fila" style="justify-content:space-between;gap:8px">' +
+        (g ? '<button class="btn btn--fantasma" id="geQuitar">Quitar grupo</button>' : '<span></span>') +
+        '<span><button class="btn btn--fantasma" id="geNo">Cancelar</button> ' +
+        '<button class="btn btn--rojo" id="geSi">Guardar</button></span></div>',
+    });
+
+    U.$('#geBusca', m.raiz).addEventListener('input', function () {
+      const q = this.value.trim().toLowerCase();
+      U.$$('#geLista .lista-check__fila', m.raiz).forEach(function (f) {
+        const visible = !q || f.dataset.busca.indexOf(q) >= 0 || f.querySelector('input').checked;
+        f.classList.toggle('oculto', !visible);
+      });
+    });
+
+    let enviando = false;
+    function guardar(codigos, mensaje) {
+      if (enviando) return;
+      enviando = true;
+      try {
+        S.guardarGrupoCambio({ nombre: U.$('#geNombre', m.raiz).value, anterior: g ? g.nombre : '', codigos: codigos });
+      } catch (err) {
+        enviando = false;
+        return U.toast(err.message, 'error');
+      }
+      m.cerrar();
+      U.toast(mensaje);
+      if (alGuardar) alGuardar();
+      avisarCambio();
+    }
+
+    U.$('#geNo', m.raiz).onclick = m.cerrar;
+    U.$('#geSi', m.raiz).onclick = function () {
+      const codigos = U.$$('#geLista input:checked', m.raiz).map((i) => i.value);
+      if (codigos.length < 2)
+        return U.toast('Marca al menos dos productos: con uno solo no hay entre qué elegir.', 'error');
+      guardar(codigos, g ? 'Grupo actualizado.' : 'Grupo creado.');
+    };
+    const quitar = U.$('#geQuitar', m.raiz);
+    if (quitar)
+      quitar.onclick = function () {
+        U.confirmar(
+          'Los productos de «' + g.nombre + '» dejan de ser intercambiables y los platos ya no preguntan cuál va. ' +
+            'Las ventas ya hechas no cambian.',
+          () => guardar([], 'Grupo quitado.'),
+          'Quitar grupo'
+        );
+      };
+  }
+
   function editarProductoStock(codigo) {
     if (!A.exigir('stock')) return;
     /* El stock que se ve y se edita es el de la sede elegida en el panel.
@@ -967,6 +1087,10 @@ NASCAR.Gestion = (function () {
     const carta = S.getCarta({ todas: true }).filter((c) =>
       (c.sucursales || []).some((x) => (p.sucursales || []).map(Number).indexOf(Number(x)) >= 0)
     );
+
+    // (60) Los grupos de cambio que ya existen, para elegir de la lista
+    const grupos = S.gruposCambio ? S.gruposCambio() : [];
+    const grupoActual = String(p.grupoCambio || '').trim().replace(/\s+/g, ' ');
 
     const m = U.modal({
       titulo: codigo ? 'Editar producto de stock' : 'Nuevo producto de stock',
@@ -1006,11 +1130,19 @@ NASCAR.Gestion = (function () {
         /* (58) Insumos con el mismo grupo se cambian uno por otro al vender
            un plato marcado con ⇄: la gaseosa 1.5 del combo puede ser
            Postobón, Coca-Cola o Ginger, y se descuenta la que se entregó. */
+        /* (60) De una lista, no escrito: «Gaseosa 1.5» y «Gaseosa 1,5»
+           serían dos grupos distintos sin que nadie lo note. */
         '<label class="campo"><span>Grupo de cambio (opcional)</span>' +
-        '<input class="input" id="sGrupo" maxlength="40" value="' + U.esc(p.grupoCambio || '') + '" placeholder="Ej. Gaseosa 1.5">' +
-        '<span class="mini tenue">Ponle el mismo grupo a los insumos que se pueden entregar uno por otro ' +
+        '<select class="select" id="sGrupo"><option value="">— Ninguno —</option>' +
+        grupos.map((g) =>
+          '<option value="' + U.esc(g.nombre) + '"' +
+          (g.nombre.toLowerCase() === grupoActual.toLowerCase() ? ' selected' : '') + '>' +
+          U.esc(g.nombre) + ' (' + g.insumos.length + ')</option>').join('') +
+        '<option value="__nuevo">➕ Crear grupo nuevo…</option></select>' +
+        '<input class="input oculto" id="sGrupoNuevo" maxlength="40" placeholder="Nombre del grupo nuevo, ej. Gaseosa 1.5" style="margin-top:6px">' +
+        '<span class="mini tenue">Los productos del mismo grupo se pueden entregar uno por otro ' +
         '(Postobón 1.5, Coca-Cola 1.5, Ginger 1.5). En los platos marcados con <b>⇄</b> se elige al vender ' +
-        'cuál va, y se descuenta ése.</span></label>' +
+        'cuál va, y se descuenta ése. Los grupos se ven todos en Stock → ⇄ Grupos de cambio.</span></label>' +
         /* Decía «¿qué productos descuentan este stock?», y no es lo que
            pasa: vender NO mueve el «stock actual», que es lo último que
            se contó. Lo que hace es sumar a la Z del cruce. La pregunta
@@ -1122,6 +1254,22 @@ NASCAR.Gestion = (function () {
         });
       });
 
+    // «Crear grupo nuevo…» abre el campo para escribir su nombre (una sola vez)
+    const selGrupo = U.$('#sGrupo', m.raiz);
+    const nuevoGrupo = U.$('#sGrupoNuevo', m.raiz);
+    selGrupo.addEventListener('change', function () {
+      nuevoGrupo.classList.toggle('oculto', selGrupo.value !== '__nuevo');
+      if (selGrupo.value === '__nuevo') nuevoGrupo.focus();
+    });
+    function grupoElegido() {
+      if (selGrupo.value !== '__nuevo') return selGrupo.value;
+      const escrito = nuevoGrupo.value.trim().replace(/\s+/g, ' ');
+      if (escrito.length < 2) throw new Error('Escribe el nombre del grupo nuevo (por ejemplo «Gaseosa 1.5»).');
+      // Si ya existe (con otras mayúsculas), es ése: no nace uno repetido
+      const ya = grupos.find((g) => g.nombre.toLowerCase() === escrito.toLowerCase());
+      return ya ? ya.nombre : escrito;
+    }
+
     U.$('#sNo', m.raiz).onclick = m.cerrar;
     U.$('#sSi', m.raiz).onclick = function () {
       try {
@@ -1134,7 +1282,7 @@ NASCAR.Gestion = (function () {
           stockActual: U.$('#sActual', m.raiz).value,
           stockMinimo: U.$('#sMinimo', m.raiz).value,
           ventaRefIds: marcados(),
-          grupoCambio: U.$('#sGrupo', m.raiz).value.trim(),
+          grupoCambio: grupoElegido(),
           activo: U.$('#sActivo', m.raiz).checked,
           sucursales: p.sucursales,
           unidadStock: uStock,

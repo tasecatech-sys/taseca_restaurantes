@@ -1588,6 +1588,20 @@ NASCAR.Remoto = (function () {
       return S.getStock({ todos: true });
     },
 
+    /* (60) Un grupo de cambio de un golpe: nombre, nombre anterior (si se
+       renombra) y sus integrantes. La base revisa que no haya otro igual. */
+    guardarGrupoCambio: function (datos) {
+      const stock = S.leerRemoto('stock', []);
+      const ids = (datos.codigos || [])
+        .map((c) => (stock.find((p) => p.codigo === String(c).trim().toUpperCase()) || {}).idBase)
+        .filter(Boolean);
+      rpc('guardar_grupo_cambio', {
+        p_grupo: { nombre: datos.nombre, anterior: datos.anterior || null, insumos: ids },
+      });
+      despuesDeInventario();
+      return S.gruposCambio();
+    },
+
     activarProductoStock: function (codigo, activo) {
       return S.guardarProductoStock({ codigo: codigo, activo: !!activo }, codigo);
     },
