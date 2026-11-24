@@ -99,6 +99,7 @@ NASCAR.Caja = (function () {
       const b = e.target.closest('[data-caja-vista]');
       if (!b) return;
       vista = b.dataset.cajaVista;
+      if (vista === 'cuentas') cuentasCache = null; // al entrar, lo último
       refrescar();
     });
 
@@ -1449,6 +1450,330 @@ NASCAR.Caja = (function () {
   }
 
   /* =================================================================
+     🏦 CUENTAS SEMANALES (migración 61)
+
+     Nequi, Daviplata, Bre-B… son de la EMPRESA (suman todas las sedes).
+     El negocio escoge el día en que las desocupa: ese día arranca la
+     semana y se anota la base. Debería haber = base + cobrado − gastos
+     pagados desde la cuenta − retiros. Al cerrar se escribe lo que dice
+     cada app y queda la diferencia. Todas las cuentas las hace la base.
+     ================================================================= */
+  const DIAS_SEMANA = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  let semanaCuentas = null; // null = la semana en curso
+  let cuentasCache = null; // { semana, datos, ts }
+  let cuentasConectado = false;
+
+  function fechaCorta(iso) {
+    const d = new Date(String(iso) + 'T12:00:00');
+    return d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  function sumarDias(iso, n) {
+    const d = new Date(String(iso) + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function datosCuentas(forzar) {
+    const vigente = cuentasCache && cuentasCache.semana === semanaCuentas && Date.now() - cuentasCache.ts < 60000;
+    if (!forzar && vigente) return cuentasCache.datos;
+    const datos = S.getCuentasSemana(semanaCuentas);
+    cuentasCache = { semana: semanaCuentas, datos: datos, ts: Date.now() };
+    return datos;
+  }
+
+  function pintarCuentas(forzar) {
+    const caja = $('#cajaCuentas');
+    if (!caja) return;
+    conectarCuentas();
+    let d;
+    try {
+      d = datosCuentas(forzar);
+    } catch (err) {
+      caja.innerHTML = '<div class="vacio"><p class="mini rojo">' + U.esc(err.message) + '</p></div>';
+      return;
+    }
+
+    if (d.soloNube) {
+      caja.innerHTML = '<div class="vacio"><h3>🏦 Cuentas semanales</h3>' +
+        '<p class="mini">Funcionan con la base de datos: en este modo local no hay ventas de todas las sedes que sumar.</p></div>';
+      return;
+    }
+
+    if (!d.configurado) {
+      caja.innerHTML =
+        '<div class="caja-datos" style="max-width:520px;margin:16px auto">' +
+        '<h3 style="margin-top:0">🏦 ¿Qué día empieza su semana de cuentas?</h3>' +
+        '<p class="mini tenue">Es el día en que desocupan Nequi, Daviplata y las demás cuentas. Ese día se anota con ' +
+        'cuánto quedó cada una (la base), y al final de la semana el sistema dice cuánto debería haber.</p>' +
+        '<label class="campo"><span>Día</span><select class="select" id="cuDia">' +
+        DIAS_SEMANA.slice(1).map((n, i) => '<option value="' + (i + 1) + '">' + n + '</option>').join('') +
+        '</select></label>' +
+        '<div class="fila fila--fin"><button class="btn btn--rojo" data-cu-dia-guardar>Guardar</button></div></div>';
+      return;
+    }
+
+    const cerrada = !!d.cerrada;
+    const puedeCerrar = !cerrada && d.semana_inicio <= d.hoy;
+    const fila = (txt, valor, cls) =>
+      '<div class="f' + (cls ? ' ' + cls : '') + '" style="display:flex;justify-content:space-between;gap:8px;margin:4px 0">' +
+      '<span>' + txt + '</span><b>' + valor + '</b></div>';
+
+    const tarjetas = (d.cuentas || []).map(function (c) {
+      const retiros = (c.retiros_lista || []).map((r) =>
+        '<div class="mini" style="display:flex;justify-content:space-between;gap:6px;' + (r.anulado ? 'opacity:.55;text-decoration:line-through' : '') + '">' +
+        '<span>' + fechaCorta(r.fecha) + ' · ' + U.esc(r.motivo) + (r.por ? ' <i class="tenue">(' + U.esc(r.por) + ')</i>' : '') + '</span>' +
+        '<span>' + U.money(r.monto) +
+        (!r.anulado && !cerrada ? ' <button class="btn btn--fantasma btn--xs" data-cu-anular="' + r.id + '" title="Anular este retiro">✕</button>' : '') +
+        '</span></div>').join('');
+      const dif = Number(c.diferencia);
+      return '<div class="caja-datos" style="margin-bottom:12px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+        '<h3 style="margin:0">' + U.esc(c.nombre) + '</h3>' +
+        (cerrada ? '' :
+          '<span><button class="btn btn--fantasma btn--xs" data-cu-base="' + U.esc(c.metodo) + '">' +
+          (c.base_registrada ? 'Corregir base' : 'Registrar base') + '</button> ' +
+          '<button class="btn btn--fantasma btn--xs" data-cu-retiro="' + U.esc(c.metodo) + '">+ Retiro</button></span>') +
+        '</div>' +
+        fila('Base de la semana' + (c.base_registrada ? '' : ' <i class="ambar">(sin registrar)</i>'), U.money(c.base)) +
+        fila('+ Cobrado (todas las sedes)', U.money(c.cobrado)) +
+        fila('− Gastos pagados desde la cuenta', U.money(c.gastos)) +
+        fila('− Retiros', U.money(c.retiros)) +
+        retiros +
+        '<hr style="border:0;border-top:1px dashed var(--borde,#444);margin:8px 0">' +
+        fila('= Debería haber', U.money(c.esperado), 'tot') +
+        (cerrada
+          ? fila('Saldo real (lo que decía la app)', U.money(c.saldo_real)) +
+            fila('Diferencia', (dif > 0 ? '+' : '') + U.money(dif), dif === 0 ? 'verde' : dif < 0 ? 'rojo' : 'ambar')
+          : '') +
+        (c.base_motivo ? '<p class="mini tenue" style="margin:4px 0 0">Base corregida: ' + U.esc(c.base_motivo) + '</p>' : '') +
+        '</div>';
+    }).join('');
+
+    const historial = (d.semanas || []).map((s) =>
+      '<button class="btn btn--fantasma btn--xs" data-cu-ir="' + s.semana_inicio + '" style="margin:0 6px 6px 0">' +
+      fechaCorta(s.semana_inicio) + ' – ' + fechaCorta(s.semana_fin) +
+      (s.cerrada ? ' · ' + (Number(s.diferencia) === 0 ? '✅ cuadró' : 'dif. ' + U.money(s.diferencia)) : ' · abierta') +
+      '</button>').join('');
+
+    caja.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0">' +
+      '<div><h3 style="margin:0">🏦 Semana del ' + fechaCorta(d.semana_inicio) + ' al ' + fechaCorta(d.semana_fin) + '</h3>' +
+      '<span class="mini tenue">Empieza los ' + DIAS_SEMANA[d.dia].toLowerCase() + ' · suma todas las sedes · ' +
+      (cerrada ? '<b class="verde">✅ cerrada</b>' : d.es_actual ? 'en curso' : 'abierta') +
+      ' · <a href="#" data-cu-cambiar-dia>cambiar el día</a></span></div>' +
+      '<div><button class="btn btn--fantasma btn--xs" data-cu-ir="' + sumarDias(d.semana_inicio, -7) + '">◀ Anterior</button> ' +
+      (d.es_actual ? '' : '<button class="btn btn--fantasma btn--xs" data-cu-ir="">Semana actual</button> ') +
+      '<button class="btn btn--fantasma btn--xs" data-cu-recargar title="Volver a calcular">↻</button></div></div>' +
+      (tarjetas || '<div class="vacio"><p class="mini">No hay cuentas digitales activas (Nequi, Daviplata…).</p></div>') +
+      (puedeCerrar
+        ? '<div class="fila fila--fin"><button class="btn btn--rojo" data-cu-cerrar>Cerrar la semana</button></div>'
+        : '') +
+      (historial ? '<h4 style="margin:18px 0 8px">Semanas anteriores</h4><div>' + historial + '</div>' : '');
+  }
+
+  function conectarCuentas() {
+    if (cuentasConectado || !$('#cajaCuentas')) return;
+    cuentasConectado = true;
+    $('#cajaCuentas').addEventListener('click', function (e) {
+      if (e.target.closest('[data-cu-dia-guardar]')) return guardarDiaCuentas(U.$('#cuDia').value);
+      const ir = e.target.closest('[data-cu-ir]');
+      if (ir) {
+        semanaCuentas = ir.dataset.cuIr || null;
+        return pintarCuentas(true);
+      }
+      if (e.target.closest('[data-cu-recargar]')) return pintarCuentas(true);
+      if (e.target.closest('[data-cu-cambiar-dia]')) {
+        e.preventDefault();
+        return cambiarDiaCuentas();
+      }
+      const base = e.target.closest('[data-cu-base]');
+      if (base) return registrarBaseCuenta(base.dataset.cuBase);
+      const ret = e.target.closest('[data-cu-retiro]');
+      if (ret) return registrarRetiroCuenta(ret.dataset.cuRetiro);
+      const an = e.target.closest('[data-cu-anular]');
+      if (an) return anularRetiroCuenta(an.dataset.cuAnular);
+      if (e.target.closest('[data-cu-cerrar]')) return cerrarSemanaCuentas();
+    });
+  }
+
+  function cuentaDe(metodo) {
+    return ((cuentasCache && cuentasCache.datos && cuentasCache.datos.cuentas) || []).find((c) => c.metodo === metodo) || {};
+  }
+
+  function guardarDiaCuentas(dia) {
+    try {
+      S.configurarSemanaCuentas(Number(dia));
+    } catch (err) {
+      return U.toast(err.message, 'error');
+    }
+    U.toast('Listo: la semana de cuentas empieza los ' + DIAS_SEMANA[Number(dia)].toLowerCase() + '.');
+    semanaCuentas = null;
+    pintarCuentas(true);
+  }
+
+  function cambiarDiaCuentas() {
+    const actual = cuentasCache && cuentasCache.datos ? cuentasCache.datos.dia : 1;
+    const m = U.modal({
+      titulo: 'Día en que empieza la semana',
+      ancho: 420,
+      contenido:
+        '<p class="mini tenue" style="margin-top:0">Las semanas ya cerradas no cambian; desde ahora cada semana empieza el día que escojas.</p>' +
+        '<label class="campo"><span>Día</span><select class="select" id="cuDiaNuevo">' +
+        DIAS_SEMANA.slice(1).map((n, i) => '<option value="' + (i + 1) + '"' + (i + 1 === actual ? ' selected' : '') + '>' + n + '</option>').join('') +
+        '</select></label>' +
+        '<div class="fila fila--fin"><button class="btn btn--fantasma" data-no>Cancelar</button> <button class="btn btn--rojo" data-si>Guardar</button></div>',
+    });
+    U.$('[data-no]', m.raiz).onclick = m.cerrar;
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Guardando…', function () {
+      const dia = U.$('#cuDiaNuevo', m.raiz).value;
+      m.cerrar();
+      guardarDiaCuentas(dia);
+    });
+  }
+
+  function registrarBaseCuenta(metodo) {
+    const c = cuentaDe(metodo);
+    const m = U.modal({
+      titulo: 'Base de ' + (c.nombre || metodo),
+      ancho: 420,
+      contenido:
+        '<p class="mini tenue" style="margin-top:0">Con cuánto quedó la cuenta al desocuparla, el día que empezó la semana. Si quedó vacía, 0.</p>' +
+        '<label class="campo"><span>Base</span><input class="input" type="number" min="0" step="1" id="cuBase" value="' +
+        (c.base_registrada ? Number(c.base) : '') + '" placeholder="0"></label>' +
+        (c.base_registrada
+          ? '<label class="campo"><span>Motivo de la corrección <i class="req">*</i></span><input class="input" id="cuMotivo" maxlength="200"></label>'
+          : '') +
+        '<div class="fila fila--fin"><button class="btn btn--fantasma" data-no>Cancelar</button> <button class="btn btn--rojo" data-si>Guardar</button></div>',
+    });
+    U.$('[data-no]', m.raiz).onclick = m.cerrar;
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Guardando…', function () {
+      try {
+        S.registrarBaseCuenta({
+          metodo: metodo,
+          monto: Number(U.$('#cuBase', m.raiz).value || 0),
+          motivo: U.$('#cuMotivo', m.raiz) ? U.$('#cuMotivo', m.raiz).value : null,
+          semana: cuentasCache && cuentasCache.datos ? cuentasCache.datos.semana_inicio : null,
+        });
+      } catch (err) {
+        U.toast(err.message, 'error');
+        return false;
+      }
+      m.cerrar();
+      U.toast('Base registrada.');
+      pintarCuentas(true);
+    });
+  }
+
+  function registrarRetiroCuenta(metodo) {
+    const c = cuentaDe(metodo);
+    const d = (cuentasCache && cuentasCache.datos) || {};
+    const max = d.hoy < d.semana_fin ? d.hoy : d.semana_fin;
+    const m = U.modal({
+      titulo: 'Retiro de ' + (c.nombre || metodo),
+      ancho: 420,
+      contenido:
+        '<p class="mini tenue" style="margin-top:0">Plata que se sacó de la cuenta a mitad de semana. Se resta de lo que debería haber.</p>' +
+        '<label class="campo"><span>Valor <i class="req">*</i></span><input class="input" type="number" min="1" step="1" id="cuMonto"></label>' +
+        '<label class="campo"><span>¿Para qué? <i class="req">*</i></span><input class="input" id="cuMotivoR" maxlength="200" placeholder="Ej. Pago al proveedor de pollo"></label>' +
+        '<label class="campo"><span>Fecha</span><input class="input" type="date" id="cuFecha" value="' + max + '" min="' + d.semana_inicio + '" max="' + max + '"></label>' +
+        '<div class="fila fila--fin"><button class="btn btn--fantasma" data-no>Cancelar</button> <button class="btn btn--rojo" data-si>Registrar retiro</button></div>',
+    });
+    U.$('[data-no]', m.raiz).onclick = m.cerrar;
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Guardando…', function () {
+      try {
+        S.registrarRetiroCuenta({
+          metodo: metodo,
+          monto: Number(U.$('#cuMonto', m.raiz).value || 0),
+          motivo: U.$('#cuMotivoR', m.raiz).value,
+          fecha: U.$('#cuFecha', m.raiz).value,
+        });
+      } catch (err) {
+        U.toast(err.message, 'error');
+        return false;
+      }
+      m.cerrar();
+      U.toast('Retiro registrado.');
+      pintarCuentas(true);
+    });
+  }
+
+  function anularRetiroCuenta(id) {
+    const m = U.modal({
+      titulo: 'Anular retiro',
+      ancho: 420,
+      contenido:
+        '<label class="campo"><span>Motivo <i class="req">*</i></span><input class="input" id="cuMotivoA" maxlength="200" placeholder="Ej. Se registró dos veces"></label>' +
+        '<div class="fila fila--fin"><button class="btn btn--fantasma" data-no>Cancelar</button> <button class="btn btn--rojo" data-si>Anular</button></div>',
+    });
+    U.$('[data-no]', m.raiz).onclick = m.cerrar;
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Anulando…', function () {
+      try {
+        S.anularRetiroCuenta(id, U.$('#cuMotivoA', m.raiz).value);
+      } catch (err) {
+        U.toast(err.message, 'error');
+        return false;
+      }
+      m.cerrar();
+      U.toast('Retiro anulado.');
+      pintarCuentas(true);
+    });
+  }
+
+  function cerrarSemanaCuentas() {
+    let d;
+    try {
+      d = datosCuentas(true); // con lo último antes de cerrar
+    } catch (err) {
+      return U.toast(err.message, 'error');
+    }
+    const cuentas = d.cuentas || [];
+    const m = U.modal({
+      titulo: 'Cerrar la semana del ' + fechaCorta(d.semana_inicio) + ' al ' + fechaCorta(d.semana_fin),
+      ancho: 520,
+      contenido:
+        '<p class="mini tenue" style="margin-top:0">Escribe lo que dice cada app ahora (0 si está vacía). ' +
+        'Al cerrar queda la foto de la semana y ya no se mueve.</p>' +
+        cuentas.map((c) =>
+          '<div class="caja-datos" style="margin-bottom:8px">' +
+          '<div style="display:flex;justify-content:space-between;gap:8px"><b>' + U.esc(c.nombre) + '</b>' +
+          '<span class="mini">Debería haber <b>' + U.money(c.esperado) + '</b></span></div>' +
+          '<label class="campo" style="margin:6px 0 0"><span>Saldo real</span>' +
+          '<input class="input" type="number" min="0" step="1" data-cu-saldo="' + U.esc(c.metodo) + '" data-esperado="' + Number(c.esperado) + '"></label>' +
+          '<span class="mini" data-cu-dif="' + U.esc(c.metodo) + '"></span></div>').join('') +
+        '<label class="campo"><span>Observación (opcional)</span><input class="input" id="cuObs" maxlength="300"></label>' +
+        '<div class="fila fila--fin"><button class="btn btn--fantasma" data-no>Cancelar</button> <button class="btn btn--rojo" data-si>Cerrar la semana</button></div>',
+    });
+    // La diferencia se ve mientras se escribe
+    m.raiz.addEventListener('input', function (e) {
+      const inp = e.target.closest('[data-cu-saldo]');
+      if (!inp) return;
+      const out = U.$('[data-cu-dif="' + inp.dataset.cuSaldo + '"]', m.raiz);
+      if (inp.value === '') return (out.textContent = '');
+      const dif = Number(inp.value) - Number(inp.dataset.esperado);
+      out.textContent = dif === 0 ? '✅ Cuadra' : (dif < 0 ? 'Faltan ' : 'Sobran ') + U.money(Math.abs(dif));
+      out.className = 'mini ' + (dif === 0 ? 'verde' : dif < 0 ? 'rojo' : 'ambar');
+    });
+    U.$('[data-no]', m.raiz).onclick = m.cerrar;
+    U.unaVez(U.$('[data-si]', m.raiz), '⏳ Cerrando…', function () {
+      const saldos = U.$$('[data-cu-saldo]', m.raiz).map((i) => ({ metodo: i.dataset.cuSaldo, saldo_real: i.value === '' ? null : Number(i.value) }));
+      if (saldos.some((s) => s.saldo_real === null)) {
+        U.toast('Escribe el saldo real de cada cuenta (0 si está vacía).', 'error');
+        return false;
+      }
+      try {
+        S.cerrarSemanaCuentas({ semana: d.semana_inicio, saldos: saldos, observacion: U.$('#cuObs', m.raiz).value });
+      } catch (err) {
+        U.toast(err.message, 'error');
+        return false;
+      }
+      m.cerrar();
+      U.toast('Semana cerrada.');
+      pintarCuentas(true);
+    });
+  }
+
+  /* =================================================================
      REPINTADO
      ================================================================= */
   function refrescar() {
@@ -1465,6 +1790,13 @@ NASCAR.Caja = (function () {
           '🛵 Domiciliarios' + (deudaDomiciliarios() ? ' <b>' + U.money(deudaDomiciliarios()) + '</b>' : '') + '</button>'
         : '');
 
+    // (61) Cuentas semanales: quien ve la caja (informe) o registra su base
+    const conCuentas = !!$('#cajaCuentasVista') && (A.puede('informe') || A.puede('base_caja'));
+    if (!conCuentas && vista === 'cuentas') vista = 'cobrar';
+    if (conCuentas)
+      $('#cajaSub').innerHTML +=
+        '<button class="sub-tab' + (vista === 'cuentas' ? ' is-activo' : '') + '" data-caja-vista="cuentas">🏦 Cuentas</button>';
+
     const conComanda = !!(U.sucursal(sucursal()) || {}).comandaImpresa && !!$('#cajaCocinaVista');
     if (!conComanda && vista === 'cocina') vista = 'cobrar';
     if (conComanda) {
@@ -1479,8 +1811,11 @@ NASCAR.Caja = (function () {
     $('#cajaCobrarVista').classList.toggle('oculto', vista !== 'cobrar');
     if ($('#cajaDomiciliariosVista')) $('#cajaDomiciliariosVista').classList.toggle('oculto', vista !== 'domiciliarios');
     if ($('#cajaCocinaVista')) $('#cajaCocinaVista').classList.toggle('oculto', vista !== 'cocina');
+    if ($('#cajaCuentasVista')) $('#cajaCuentasVista').classList.toggle('oculto', vista !== 'cuentas');
 
-    if (vista === 'cocina') {
+    if (vista === 'cuentas') {
+      pintarCuentas(false);
+    } else if (vista === 'cocina') {
       pintarCocina();
     } else if (vista === 'vender') {
       pintarCategorias();

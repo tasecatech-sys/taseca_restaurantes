@@ -2100,6 +2100,16 @@ NASCAR.Store = (function () {
     return gruposCambio(empresaId);
   }
 
+  /* (61) Las cuentas semanales se calculan en la base de datos (ventas de
+     todas las sedes, gastos y retiros); en modo local no hay de dónde.
+     remoto.js reemplaza estas funciones. */
+  function sinCuentasLocal() {
+    throw new Error('Las cuentas semanales funcionan con la base de datos (en línea).');
+  }
+  function getCuentasSemana() {
+    return { soloNube: true };
+  }
+
   /* Los productos de stock NO se borran: se desactivan. Los cierres
      históricos guardan su propia copia del producto, así que no se ven
      afectados, pero el cruce debe poder seguir resolviendo el código. */
@@ -6563,6 +6573,12 @@ NASCAR.Store = (function () {
     guardarProductoStock: guardarProductoStock,
     gruposCambio: gruposCambio,
     guardarGrupoCambio: guardarGrupoCambio,
+    getCuentasSemana: getCuentasSemana,
+    configurarSemanaCuentas: sinCuentasLocal,
+    registrarBaseCuenta: sinCuentasLocal,
+    registrarRetiroCuenta: sinCuentasLocal,
+    anularRetiroCuenta: sinCuentasLocal,
+    cerrarSemanaCuentas: sinCuentasLocal,
     activarProductoStock: activarProductoStock,
     ajustarStockActual: ajustarStockActual,
     aplicarCierreAStock: aplicarCierreAStock,

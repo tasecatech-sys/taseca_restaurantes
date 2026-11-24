@@ -1167,6 +1167,27 @@ NASCAR.Remoto = (function () {
       return rpcAsync('estado_comandas', { p_unidad_id: Number(sucursalId) });
     },
 
+    /* (61) CUENTAS SEMANALES: Nequi, Daviplata… de la empresa (todas las
+       sedes). La base hace todas las cuentas; aquí sólo se pide y se manda. */
+    getCuentasSemana: function (semana) {
+      return rpc('cuentas_semana', { p_semana: semana || null });
+    },
+    configurarSemanaCuentas: function (dia) {
+      return rpc('configurar_semana_cuentas', { p_dia: Number(dia) });
+    },
+    registrarBaseCuenta: function (datos) {
+      return rpc('registrar_base_cuenta', { p_base: datos });
+    },
+    registrarRetiroCuenta: function (datos) {
+      return rpc('registrar_retiro_cuenta', { p_retiro: datos });
+    },
+    anularRetiroCuenta: function (id, motivo) {
+      return rpc('anular_retiro_cuenta', { p_id: Number(id), p_motivo: motivo });
+    },
+    cerrarSemanaCuentas: function (datos) {
+      return rpc('cerrar_semana_cuentas', { p_cierre: datos });
+    },
+
     getDomiciliarios: function (sucursalId) {
       return domiciliarios
         .filter((d) => !sucursalId || !d.unidades.length || d.unidades.indexOf(Number(sucursalId)) >= 0)

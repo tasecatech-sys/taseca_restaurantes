@@ -144,6 +144,7 @@ PARTES = [
     ('58_cambio_en_receta.sql',               'Cambio en la receta: elegir la gaseosa del combo al vender'),
     ('59_diferencia_en_cambio.sql',           'Al elegir una más cara, el combo cobra la diferencia'),
     ('60_grupos_de_cambio.sql',               'Grupos de cambio administrables desde Stock'),
+    ('61_cuentas_semanales.sql',              'Cuentas semanales: base, retiros y cuadre de Nequi y demás'),
 ]
 
 CABECERA = '''/* ============================================================================
