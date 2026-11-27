@@ -64,6 +64,48 @@
     return S.getSucursales().some((s) => Number(s.id) === id) ? id : null;
   }
 
+  /* EL ENLACE GENERAL NO TOMA PEDIDOS si la empresa tiene más de una sede:
+     sólo pregunta desde cuál y lleva a su enlace. Así todos los pedidos
+     entran por el enlace de UNA sede y ninguno le llega a la que no es.
+     Con una sola sede el enlace general sigue como siempre. */
+  function enlaceDeSede(id) {
+    if (NASCAR.Backend && NASCAR.Backend.esDeEsteEquipo((location.hostname || '').toLowerCase())) {
+      // En el equipo (sin el servidor de rutas) va como ?sede=
+      const url = new URL(location.href);
+      url.searchParams.delete('unidad');
+      url.searchParams.set('sede', String(id));
+      return url.pathname + url.search;
+    }
+    const base = (NASCAR.rutaDe ? NASCAR.rutaDe('publico') : '/').replace(/\/+$/, '');
+    return base + '/sede/' + id;
+  }
+
+  function pedirEleccionDeSede() {
+    const sedes = S.getSucursales();
+    if (sedeFija || sedes.length < 2) return false;
+    const fondo = document.createElement('div');
+    fondo.className = 'modal-fondo is-in';
+    fondo.setAttribute('role', 'dialog');
+    fondo.setAttribute('aria-modal', 'true');
+    fondo.innerHTML =
+      '<div class="modal" style="max-width:560px">' +
+      '<header class="modal__head"><h3>¿Desde qué sede quieres pedir?</h3></header>' +
+      '<div class="modal__body">' +
+      '<p class="mini tenue" style="margin-top:0">Cada sede tiene su propio enlace, su carta y sus zonas de domicilio. ' +
+      'Escoge la que te queda más cerca.</p>' +
+      sedes.map((s) =>
+        '<a class="caja-datos" href="' + U.esc(enlaceDeSede(s.id)) + '" ' +
+        'style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;text-decoration:none;color:inherit">' +
+        '<span><b>' + U.esc(s.nombre) + '</b>' +
+        (s.direccion ? '<br><span class="mini tenue">📍 ' + U.esc(s.direccion) + (s.ciudad ? ' · ' + U.esc(s.ciudad) : '') + '</span>' : '') +
+        (s.telefono ? '<br><span class="mini tenue">📞 ' + U.esc(s.telefono) + '</span>' : '') +
+        '</span><span class="btn btn--rojo btn--sm">Pedir aquí</span></a>').join('') +
+      '</div></div>';
+    document.body.appendChild(fondo);
+    document.body.style.overflow = 'hidden';
+    return true;
+  }
+
   let unidadPortal = unidadInicial();
 
   function unidadInicial() {
@@ -1807,6 +1849,7 @@
     conectarEventos();
     pintarCarrito();
     U.iniciarComunes();
+    pedirEleccionDeSede(); // varias sedes y sin enlace de sede: que escoja una
 
     /* Si el panel cambia algo —carta, precios, sucursales, datos del
        restaurante— la página pública se actualiza sola. */

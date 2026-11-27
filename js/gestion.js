@@ -1958,6 +1958,7 @@ NASCAR.Gestion = (function () {
   /* El enlace del portal de UNA sede: /taseca/<empresa>/sede/<id> (o
      <subdominio>/sede/<id>). Con él el cliente sólo puede pedirle a ella. */
   function enlaceSede(idU) {
+    // (Con varias sedes, el enlace general sólo pregunta la sede y lleva aquí)
     const base = (NASCAR.rutaDe ? NASCAR.rutaDe('publico') : '/').replace(/\/+$/, '');
     return location.origin + base + '/sede/' + idU;
   }
