@@ -5997,3 +5997,168 @@ tr.fila--sin td {
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   PANEL EN CELULAR
+   Después de arreglar Caja (la carta ocupaba una fila) se revisó el resto
+   del panel a 375 px. Lo que se encontró, y lo que hace cada bloque:
+     · Una tarjeta dentro de una grilla crecía hasta lo que midiera su texto
+       más largo (min-width: auto de las grillas): un pedido con una nota
+       sin espacios dejaba Cocina de 2.000 px y se veía cortada y ampliada.
+     · Los indicadores iban de a uno por fila y muy altos: sólo ellos
+       llenaban la primera pantalla.
+     · El título de cada sección traía etiqueta, título enorme y un párrafo.
+     · Las tablas son anchas: se desplazan de lado, pero se perdía de qué
+       fila era cada número.
+   ========================================================================== */
+
+/* Nada empuja la pantalla hacia el lado (en cualquier tamaño) */
+.app-main :is(.rejilla-cajas, .rejilla-2, .kpis, .op-lista, .unidades, .caja-grid,
+              .sucursales, .prod-lista, .inv-areas, .md-platos, .unidad__datos,
+              .op-datos, .mesa-grid, .tablero) > * {
+  min-width: 0;
+}
+.app-main :is(.op-card, .columna, .kpi, .caja-datos, .caja, .unidad),
+.modal__body {
+  overflow-wrap: anywhere;
+}
+.app-main .tabla,
+.modal__body .tabla {
+  overflow-wrap: normal; /* en las tablas manda el desplazamiento de lado */
+}
+
+@media (max-width: 900px) {
+  /* Títulos de sección: una línea de título y la explicación en dos
+     renglones (tocándola se lee completa: js/sidebar.js). */
+  .app-main .titulo-seccion {
+    margin-bottom: 14px !important;
+  }
+  .app-main .titulo-seccion .titulo-seccion__kicker {
+    display: none;
+  }
+  .app-main .titulo-seccion h2 {
+    font-size: 24px !important;
+    margin: 0;
+  }
+  .app-main .titulo-seccion > p {
+    font-size: 13px;
+    margin-top: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .app-main .titulo-seccion > p.is-completo {
+    display: block;
+    overflow: visible;
+  }
+
+  /* Indicadores: de a dos y bajitos */
+  .app-main .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .app-main .kpi {
+    padding: 10px 12px;
+  }
+  .app-main .kpi__label {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .app-main .kpi__valor {
+    font-size: 20px;
+  }
+  .app-main .kpi__extra {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  /* Tablas: más apretadas, y la primera columna (código, fecha, nombre)
+     se queda quieta al desplazar de lado, para saber de qué fila es cada dato */
+  .tabla {
+    font-size: 13px;
+  }
+  .tabla th,
+  .tabla td {
+    padding: 8px 10px;
+  }
+  .tabla-wrap {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .tabla-wrap .tabla th:first-child,
+  .tabla-wrap .tabla td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    box-shadow: 1px 0 0 var(--borde);
+  }
+  .tabla-wrap .tabla th:first-child {
+    background: var(--negro-600);
+  }
+  .tabla-wrap .tabla td:first-child {
+    background: var(--negro-700);
+  }
+
+  /* Menos aire arriba: eran ~50 px vacíos entre la cabecera y el título */
+  .app-main > main.contenedor {
+    padding-top: 10px;
+  }
+  .app-main .panel {
+    padding-top: 8px;
+  }
+
+  /* Botones de las barras (Hoy, Ayer, Últimos 7 días, CSV, Nuevo…):
+     más chicos, para que quepan en uno o dos renglones */
+  .app-main .barra-herramientas .btn {
+    padding: 8px 11px;
+    font-size: 12.5px;
+  }
+
+  /* Los filtros rápidos de Stock, en una sola fila que se desliza */
+  #chipsStock {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-top: 0 !important;
+    margin-bottom: 10px !important;
+    scrollbar-width: none;
+  }
+  #chipsStock > * {
+    flex: 0 0 auto;
+    padding: 7px 11px;
+    font-size: 12.5px;
+  }
+
+  /* Tarjetas de cocina, entregas y listos: una por fila, a todo el ancho */
+  .app-main .op-lista {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .app-main .op-card {
+    padding: 12px;
+  }
+}
+
+/* Ventanas emergentes en el celular: más espacio útil */
+@media (max-width: 560px) {
+  .modal-fondo {
+    padding: 8px;
+  }
+  .modal {
+    max-height: 94vh;
+  }
+  .modal__head {
+    padding: 12px 14px;
+  }
+  .modal__head h3 {
+    font-size: 16px;
+  }
+  .modal__body {
+    padding: 14px;
+  }
+}

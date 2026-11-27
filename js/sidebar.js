@@ -232,6 +232,13 @@ NASCAR.Sidebar = (function () {
     if (abrir) abrir.addEventListener('click', abrirCajon);
     if (fondo) fondo.addEventListener('click', cerrarCajon);
 
+    /* En el celular la explicación de cada sección va recortada a dos
+       renglones (css/styles.css, «PANEL EN CELULAR»): tocarla la abre. */
+    shell.addEventListener('click', function (e) {
+      const p = e.target.closest('.app-main .titulo-seccion > p');
+      if (p && !e.target.closest('a, button')) p.classList.toggle('is-completo');
+    });
+
     /* Abrir / cerrar un grupo. Sólo pliega: no navega, no cierra el cajón
        en móvil y no mira permisos. */
     shell.addEventListener('click', function (e) {
