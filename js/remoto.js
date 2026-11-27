@@ -2516,6 +2516,9 @@ NASCAR.Remoto = (function () {
 
     Object.keys(configuracion).forEach((k) => (S[k] = configuracion[k]));
 
+    // En la base cada entrada sube el stock sola (core.tg_entradas_stock)
+    if (S.fijarEntradasSubenStock) S.fijarEntradasSubenStock(true);
+
     try {
       /* El panel de Taseca no es de ninguna empresa: entra sin catálogo y
          carga la lista de empresas cuando el SuperAdmin inicia sesión. */

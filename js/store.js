@@ -5723,6 +5723,15 @@ NASCAR.Store = (function () {
    * Los productos DESACTIVADOS quedan fuera: no se piden. Siguen en el
    * catálogo y en los cierres históricos, que no se tocan.
    */
+  /* ¿Las entradas ya subieron el «stock actual»? En la nube SÍ: la base lo
+     hace sola al registrar cada entrada (core.tg_entradas_stock). En modo
+     local NO: el stock guardado es sólo lo último que se contó. remoto.js
+     lo enciende al conectarse. */
+  let entradasSubenStock = false;
+  function fijarEntradasSubenStock(v) {
+    entradasSubenStock = !!v;
+  }
+
   function estadoAbastecimiento(opciones) {
     opciones = opciones || {};
     const eid = opciones.empresaId || empresaActivaId();
@@ -5768,9 +5777,16 @@ NASCAR.Store = (function () {
       const vendido = yaContadoHoy ? 0 : vendidoHoy[p.codigo] || 0;
       const entraron = yaContadoHoy ? 0 : entradasHoy[p.codigo] || 0;
 
+      /* Sin cierre, el punto de partida es el stock actual. En la nube ese
+         número YA trae las entradas (la base lo sube con cada una), así que
+         sumarlas otra vez las contaba dos veces: 5 de arranque + 20 + 60
+         dejaban el stock en 85, y salía «quedan 163» en vez de 83 (Gusti,
+         sede 2, 27/11). El cruce de la base ya lo hacía bien. */
+      const yaIncluidas = !contado && entradasSubenStock;
+
       /* El semáforo mira lo que QUEDA, no lo que se contó ayer: avisar de
          stock bajo sobre un número viejo es avisar tarde. */
-      const quedan = Math.max(0, existencia + entraron - vendido);
+      const quedan = Math.max(0, existencia + (yaIncluidas ? 0 : entraron) - vendido);
       const estado = estadoDeExistencia(quedan, p.stockMinimo);
 
       /* Cantidad SUGERIDA, sólo como referencia: lo que falta para
@@ -5785,6 +5801,7 @@ NASCAR.Store = (function () {
         // De la jornada abierta, para la pantalla de Stock
         vendidoHoy: vendido,
         entradasHoy: entraron,
+        entradasIncluidas: yaIncluidas && entraron > 0, // ya están dentro de la existencia
         quedan: quedan,
         estado: estado,
         sugerido: p.stockMinimo > 0 ? faltante : 0,
@@ -6647,6 +6664,7 @@ NASCAR.Store = (function () {
     getAnulaciones: getAnulaciones,
     consumoDePedido: consumoDePedido,
     estadoAbastecimiento: estadoAbastecimiento,
+    fijarEntradasSubenStock: fijarEntradasSubenStock,
     estadoDeExistencia: estadoDeExistencia,
     existenciasDeSucursal: existenciasDeSucursal,
     confirmarPago: confirmarPago,

@@ -847,7 +847,11 @@ NASCAR.Gestion = (function () {
         const celdaQuedan = !movido
           ? ''
           : '<div class="mini tenue nowrap" style="margin-top:3px">' +
-            (p.entradasHoy ? '<span class="verde">+' + p.entradasHoy + '</span> ' : '') +
+            (p.entradasHoy
+              ? p.entradasIncluidas
+                ? '<span class="verde" title="Las entradas de hoy ya están sumadas en el stock de arriba">incluye +' + p.entradasHoy + ' de hoy</span> '
+                : '<span class="verde">+' + p.entradasHoy + '</span> '
+              : '') +
             (p.vendidoHoy ? '−' + p.vendidoHoy + ' vendido ' : '') +
             '· quedan <b class="num">' + p.quedan + '</b></div>';
 
