@@ -69,7 +69,19 @@
       "destination": "/cierre.html"
     },
     {
+      "source": "/taseca/:empresa/sede/:unidad",
+      "destination": "/index.html"
+    },
+    {
       "source": "/taseca/:empresa",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sede/:unidad",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:empresa/sede/:unidad",
       "destination": "/index.html"
     },
     {

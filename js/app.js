@@ -49,9 +49,25 @@
      su menú del día: el portal muestra UNA a la vez, nunca mezcladas. Se
      llega a ella con ?unidad=ID (un enlace por local) o eligiéndola aquí,
      y se recuerda en la dirección de la página. */
+  /* EL ENLACE DE UNA SEDE (domicilios por sede):
+       /taseca/<empresa>/sede/<id>   ·   <subdominio>/sede/<id>   ·   ?sede=<id>
+     Con él, el portal es SÓLO de esa sede: no se ofrece elegir ni cambiarse
+     a otra, y la lista de locales muestra sólo ésta. Así el cliente no se
+     confunde y el domicilio no le llega a la sede que no es. Sin él, el
+     portal sigue como siempre (se escoge el local). El panel no cambia. */
+  const sedeFija = sedeFijaDeURL();
+
+  function sedeFijaDeURL() {
+    const m = /\/sede\/(\d+)\/?$/.exec(location.pathname || '');
+    const id = Number(m ? m[1] : U.paramURL('sede', null));
+    if (!id) return null;
+    return S.getSucursales().some((s) => Number(s.id) === id) ? id : null;
+  }
+
   let unidadPortal = unidadInicial();
 
   function unidadInicial() {
+    if (sedeFija) return sedeFija;
     const activas = S.getSucursales();
     const pedida = Number(U.paramURL('unidad', null));
     if (pedida && activas.some((s) => Number(s.id) === pedida)) return pedida;
@@ -59,6 +75,7 @@
   }
 
   function recordarUnidadEnURL() {
+    if (sedeFija) return; // el enlace de la sede ya lo dice
     try {
       const url = new URL(location.href);
       url.searchParams.set('unidad', String(unidadPortal));
@@ -72,6 +89,7 @@
      cada pedido sale de UNA sola unidad. */
   function cambiarUnidadPortal(nuevaId, despues) {
     nuevaId = Number(nuevaId);
+    if (sedeFija && nuevaId !== sedeFija) return; // el enlace es de una sola sede
     if (!nuevaId || nuevaId === Number(unidadPortal)) {
       if (despues) despues();
       return;
@@ -116,6 +134,9 @@
      ================================================================= */
   function pintarSelectorSucursalDia() {
     const sel = $('#filtroSucursalDia');
+    // En el enlace de una sede no se escoge local: queda la fecha y ya
+    const campo = sel.closest('.campo');
+    if (campo) campo.hidden = !!sedeFija;
     const activas = S.getSucursales();
     if (!activas.some((s) => Number(s.id) === Number(unidadPortal)))
       unidadPortal = activas.length ? Number(activas[0].id) : null;
@@ -265,8 +286,20 @@
   /* =================================================================
      SUCURSALES
      ================================================================= */
+  /* Los locales que se muestran: en el enlace de una sede, sólo ésa. */
+  function sucursalesVisibles() {
+    return sedeFija ? NASCAR.SUCURSALES.filter((s) => Number(s.id) === sedeFija) : NASCAR.SUCURSALES;
+  }
+
   function pintarSucursales() {
-    $('#listaSucursales').innerHTML = NASCAR.SUCURSALES.map(function (s, i) {
+    if (sedeFija) {
+      const seccion = $('#sucursales');
+      const h2 = seccion && seccion.querySelector('h2');
+      const p = seccion && seccion.querySelector('.titulo-seccion p');
+      if (h2) h2.textContent = 'Nuestro local';
+      if (p) p.textContent = 'Tu pedido sale de este local.';
+    }
+    $('#listaSucursales').innerHTML = sucursalesVisibles().map(function (s, i) {
       const tipo = S.getTipoNegocio(s.tipoNegocio);
       const elegida = Number(s.id) === Number(unidadPortal);
       return (
@@ -303,7 +336,9 @@
           : '') +
 
         '<div class="fila mt-16">' +
-        (elegida
+        (sedeFija
+          ? ''
+          : elegida
           ? '<span class="badge badge--verde">✓ Estás pidiendo aquí</span>'
           : '<button class="btn btn--rojo btn--sm" data-pedir-suc="' + s.id + '">Pedir aquí</button>') +
         (s.mapa ? '<a class="btn btn--fantasma btn--sm" href="' + s.mapa + '" target="_blank" rel="noopener">Cómo llegar</a>' : '') +
@@ -315,7 +350,7 @@
   }
 
   function pintarPie() {
-    $('#pieSucursales').innerHTML = NASCAR.SUCURSALES.map(
+    $('#pieSucursales').innerHTML = sucursalesVisibles().map(
       (s) =>
         '<li><b>' + U.esc(s.corto) + '</b><br><span class="mini">' + U.esc(s.direccion) + '<br>' + U.esc(s.telefono) + '</span></li>'
     ).join('');
@@ -323,7 +358,7 @@
     $('#pieNit').textContent = 'NIT ' + cfg.pago.nit;
     $('#statPlatos').textContent = (unidadPortal ? S.getCartaDisponible(unidadPortal).length : 0) + '+';
     // Cuántos locales hay abiertos: sale de las unidades activas, no del HTML
-    if ($('#statLocales')) $('#statLocales').textContent = S.getSucursales().length;
+    if ($('#statLocales')) $('#statLocales').textContent = sedeFija ? 1 : S.getSucursales().length;
     const nombreUnidad = $('#unidadPortalNombre');
     if (nombreUnidad) nombreUnidad.textContent = unidadPortal ? U.sucursal(unidadPortal).nombre : '—';
 
@@ -1749,6 +1784,15 @@
     S.sembrar();
 
     $('#fechaHoy').textContent = U.fechaLarga(S.hoy());
+
+    /* En el enlace de una sede, un carrito que traiga productos de otra
+       (de una visita anterior) se vacía: este pedido sólo sale de aquí. */
+    if (sedeFija) {
+      const de = sucursalObligatoria();
+      if (de && de !== sedeFija) carrito.vaciar();
+      const logo = document.querySelector('a.logo');
+      if (logo) logo.setAttribute('href', location.pathname + location.search);
+    }
 
     borrador.sucursalId = unidadPortal || borrador.sucursalId;
     pintarSelectorSucursalDia();

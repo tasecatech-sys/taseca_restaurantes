@@ -92,7 +92,10 @@ window.NASCAR = window.NASCAR || {};
   /* Tramos de ruta que son de la PLATAFORMA. Sin esto, /restaurantes se
      leería como «la empresa restaurantes» y la portada arrancaría creyendo
      ser un negocio que no existe. */
-  const RUTAS_PLATAFORMA = ['taseca', 'restaurantes'];
+  const RUTAS_PLATAFORMA = ['taseca', 'restaurantes',
+    /* /sede/<id> con subdominio propio (pizzeria.taseca.tech/sede/22): el
+       enlace de domicilios de UNA sede, no una empresa llamada «sede». */
+    'sede'];
 
   /* empresa_pizzeria_del_parque  ⇄  pizzeria-del-parque */
   function aRanura(codigo) {

@@ -1516,6 +1516,10 @@ NASCAR.Gestion = (function () {
       const ver = e.target.closest('[data-ver-unidad]');
       if (ver) return verUnidad(Number(ver.dataset.verUnidad));
 
+      // El enlace de domicilios de la sede, al portapapeles
+      const enl = e.target.closest('[data-enlace-suc]');
+      if (enl) return copiarEnlaceSede(Number(enl.dataset.enlaceSuc));
+
       // Cambiar la unidad en la que se trabaja (no requiere permisos de edición)
       const usar = e.target.closest('[data-usar-unidad]');
       if (usar) {
@@ -1912,6 +1916,14 @@ NASCAR.Gestion = (function () {
             ? '<b class="verde">recibiendo</b>'
             : '<b class="ambar">pausados</b> <span class="mini tenue">(la página sólo ofrece recoger; el personal sí puede tomar domicilios)</span>') +
           '</span></div>' +
+          /* El enlace de domicilios de ESTA sede: el portal abre sólo con
+             ella y no deja cambiarse a otra. Es el que se le da al cliente. */
+          (inactiva
+            ? ''
+            : '<div class="dato"><span class="dato__ico">🔗</span><span>Enlace de domicilios: ' +
+              '<a href="' + U.esc(enlaceSede(s.id)) + '" target="_blank" rel="noopener" class="mini">' +
+              U.esc(enlaceSede(s.id).replace(/^https?:\/\//, '')) + '</a> ' +
+              '<button class="btn btn--fantasma btn--xs" data-enlace-suc="' + s.id + '">Copiar</button></span></div>') +
           '</div>' +
           '<div class="unidad__cifras">' +
           '<div class="unidad__cifra"><b>' + n.carta + '</b><span>en carta</span></div>' +
@@ -1941,6 +1953,40 @@ NASCAR.Gestion = (function () {
         );
       })
       .join('');
+  }
+
+  /* El enlace del portal de UNA sede: /taseca/<empresa>/sede/<id> (o
+     <subdominio>/sede/<id>). Con él el cliente sólo puede pedirle a ella. */
+  function enlaceSede(idU) {
+    const base = (NASCAR.rutaDe ? NASCAR.rutaDe('publico') : '/').replace(/\/+$/, '');
+    return location.origin + base + '/sede/' + idU;
+  }
+
+  function copiarEnlaceSede(idU) {
+    const url = enlaceSede(idU);
+    const listo = () => U.toast('Enlace copiado. Compártelo con los clientes de esa sede.');
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(url).then(listo, () => mostrarEnlace(url));
+      }
+    } catch (e) {
+      /* sin portapapeles: se muestra para copiarlo a mano */
+    }
+    mostrarEnlace(url);
+  }
+
+  function mostrarEnlace(url) {
+    const m = U.modal({
+      titulo: 'Enlace de domicilios',
+      ancho: 480,
+      contenido: '<input class="input" readonly value="' + U.esc(url) + '" id="enlaceSedeTxt">' +
+        '<p class="mini tenue">Cópialo y compártelo con los clientes de esa sede.</p>' +
+        '<div class="fila fila--fin"><button class="btn btn--fantasma" data-cerrar>Cerrar</button></div>',
+    });
+    const inp = U.$('#enlaceSedeTxt', m.raiz);
+    inp.focus();
+    inp.select();
+    U.$('[data-cerrar]', m.raiz).onclick = m.cerrar;
   }
 
   /* Ficha de consulta: todo lo de la unidad en un vistazo. No edita. */
