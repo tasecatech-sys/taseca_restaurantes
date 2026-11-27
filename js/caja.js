@@ -1157,8 +1157,15 @@ NASCAR.Caja = (function () {
   }
 
   function estacionCaida() {
-    return !!(estadoEstacion && estadoEstacion.activa &&
+    return !!(estadoEstacion && estadoEstacion.activa && !sinImpresora() &&
       (estadoEstacion.segundos_sin_estacion == null || estadoEstacion.segundos_sin_estacion > 90));
+  }
+
+  /* La sede usa comanda pero NUNCA ha conectado una impresora: trabaja sin
+     papel (la caja marca «Listo» cuando la cocina avisa). No es una falla,
+     así que no se pinta como alarma. */
+  function sinImpresora() {
+    return !!(estadoEstacion && estadoEstacion.activa && !estadoEstacion.estacion_visto_en);
   }
 
   /* Cada 20 s, si la sede usa comanda: ¿la estación está viva? */
@@ -1391,6 +1398,11 @@ NASCAR.Caja = (function () {
         'de imprimir, abre Chrome con <code>--kiosk-printing</code> y la impresora térmica como predeterminada.</span>' +
         '<div class="mt-8"><button class="btn btn--fantasma btn--xs" data-estacion="no">Dejar de imprimir en este equipo</button> ' +
         '<button class="btn btn--fantasma btn--xs" data-estacion="prueba">🖨 Imprimir una prueba</button></div></div>';
+    } else if (sinImpresora()) {
+      aviso = '<div class="caja-datos">🍳 <b>' + U.esc(sede.nombre || 'Esta sede') + ' trabaja sin impresora de comandas.</b><br>' +
+        '<span class="mini tenue">Los pedidos entran ya recibidos (el cliente ve «en preparación»). Cuando la cocina avise ' +
+        'que uno está listo, tócalo abajo. Si algún día conectan una impresora en este equipo:</span>' +
+        '<div class="mt-8"><button class="btn btn--fantasma btn--xs" data-estacion="si">🖨 Este equipo imprime las comandas</button></div></div>';
     } else if (st && st.activa && !estacionCaida()) {
       aviso = '<div class="caja-datos" style="border-left:4px solid var(--verde)">🟢 <b>Estación de comandas conectada.</b> ' +
         '<span class="mini tenue">Los pedidos nuevos salen por la impresora de cocina.</span>' +
@@ -1420,7 +1432,9 @@ NASCAR.Caja = (function () {
               (it.notas ? '<br><span class="mini tenue">* ' + U.esc(it.notas) + '</span>' : '') + '</div>').join('') + '</div>' +
             '<div class="fila mt-8" style="gap:8px">' +
             '<button class="btn btn--bloque crece caja-ticket__cobrar" data-comanda-lista="' + U.esc(p.id) + '">✓ Listo</button>' +
-            (llevaComanda(p)
+            (sinImpresora()
+              ? '' // sin impresora no hay qué reimprimir: sólo «Listo»
+              : llevaComanda(p)
               ? '<button class="btn btn--fantasma btn--sm" data-comanda-reimp="' + U.esc(p.id) + '">🖨 Reimprimir</button>'
               : '<span class="mini tenue" title="Todo sale de vitrina o se entrega en el acto">Sale de vitrina: no lleva comanda</span>') +
             '</div></div>';
