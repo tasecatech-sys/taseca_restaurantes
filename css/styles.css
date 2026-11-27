@@ -2873,21 +2873,127 @@ textarea {
   cursor: not-allowed;
 }
 
-/* En celular el ticket va debajo y se queda pegado abajo: es donde llega
-   el pulgar de quien está cobrando con una mano. */
+/* Los controles de la hoja del ticket sólo existen en celular */
+.caja-ticket__abrir,
+.caja-ticket__cerrar,
+.caja-hoja-fondo {
+  display: none;
+}
+
+/* CELULAR: la carta se lleva la pantalla. Antes el ticket iba pegado abajo
+   con hasta el 75 % del alto, aun vacío, y la carta quedaba en una sola
+   fila. Ahora el ticket es una BARRA delgada (total + «Ver pedido y
+   cobrar») que, al tocarla, sube como hoja con la lista y el pago. Queda
+   donde llega el pulgar de quien cobra con una mano. */
 @media (max-width: 900px) {
+  /* El encabezado de Caja, en una línea: la explicación sobra en el celular */
+  [data-panel='caja'] > .titulo-seccion {
+    margin-bottom: 8px !important;
+  }
+  [data-panel='caja'] > .titulo-seccion > p,
+  [data-panel='caja'] > .titulo-seccion > .titulo-seccion__kicker {
+    display: none;
+  }
+  [data-panel='caja'] > .titulo-seccion h2 {
+    font-size: 24px !important;
+    margin: 0;
+  }
+
   .caja-pos {
     grid-template-columns: 1fr;
   }
+  .caja-pos__carta {
+    padding-bottom: 96px; /* que la barra no tape la última fila */
+  }
+  .caja-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .caja-prod {
+    min-height: 74px;
+    padding: 10px;
+  }
+
   .caja-pos__ticket {
-    position: sticky;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
     top: auto;
-    max-height: 75vh;
+    z-index: 60;
+    max-height: 88vh;
+    border-radius: 16px 16px 0 0;
+    border-bottom: 0;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Cerrada: sólo la barra (total y el botón para abrir) */
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__lista,
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__pie,
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__recargo,
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__botones {
+    display: none;
+  }
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__accion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__total {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__total span {
+    font-size: 11px;
+  }
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__total b {
+    font-size: 26px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__abrir {
+    display: block;
+    flex: 0 0 auto;
+    background: var(--verde);
+    border-color: var(--verde);
+    color: #04220f;
+    font-size: 15px;
+    padding: 12px 14px;
+  }
+  .caja-pos__ticket:not(.is-abierto) .caja-ticket__abrir:disabled {
+    background: transparent;
+    border-color: var(--borde-fuerte);
+    color: var(--gris-osc);
+  }
+
+  /* Abierta: la hoja con todo, y arriba el botón para volver a la carta */
+  .caja-pos__ticket.is-abierto .caja-ticket__cerrar {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--borde-fuerte);
+    background: var(--negro-700);
+    color: var(--humo);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
   }
   .caja-ticket__lista {
     min-height: 0;
-    max-height: 30vh;
+    max-height: 34vh;
+  }
+  .caja-pos.hoja-abierta .caja-hoja-fondo {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: rgba(0, 0, 0, 0.55);
   }
 }
 

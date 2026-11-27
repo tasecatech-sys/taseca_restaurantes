@@ -135,7 +135,14 @@ NASCAR.Caja = (function () {
     window.addEventListener('scroll', alMover, { passive: true, capture: true });
     window.addEventListener('resize', alMover);
 
+    // En celular, tocar fuera de la hoja del ticket la baja
+    const fondoHoja = $('#cajaHojaFondo');
+    if (fondoHoja) fondoHoja.addEventListener('click', () => abrirHoja(false));
+
     $('#cajaTicket').addEventListener('click', function (e) {
+      const hoja = e.target.closest('[data-caja-hoja]');
+      if (hoja) return abrirHoja(hoja.dataset.cajaHoja === 'abrir');
+
       const mas = e.target.closest('[data-caja-mas]');
       if (mas) return cambiar(Number(mas.dataset.cajaMas), 1);
 
@@ -145,6 +152,7 @@ NASCAR.Caja = (function () {
       if (e.target.closest('#cajaVaciar')) {
         ticket = [];
         claveVenta = '';
+        hojaAbierta = false;
         return pintarTicket();
       }
     });
@@ -365,6 +373,20 @@ NASCAR.Caja = (function () {
     caja.style.maxHeight = Math.max(320, window.innerHeight - arriba - 12) + 'px';
   }
 
+  /* CELULAR (≤900 px): la carta ocupa la pantalla y el ticket es una barra
+     abajo (total + «Ver pedido y cobrar»). Al tocarla sube como hoja con la
+     lista, el pago y Cobrar; «Seguir agregando» o tocar fuera la baja. En
+     pantallas grandes nada de esto se ve: el ticket va al lado, como antes. */
+  let hojaAbierta = false;
+
+  function abrirHoja(abrir) {
+    hojaAbierta = !!abrir && ticket.length > 0;
+    const t = $('#cajaTicket');
+    if (t) t.classList.toggle('is-abierto', hojaAbierta);
+    const pos = $('#cajaVender');
+    if (pos) pos.classList.toggle('hoja-abierta', hojaAbierta);
+  }
+
   function pintarTicket() {
     const caja = $('#cajaTicket');
     // Repintar no puede devolver la lista arriba del todo cada vez que se toca + o −
@@ -379,6 +401,8 @@ NASCAR.Caja = (function () {
     const n = ticket.reduce((s, x) => s + x.cantidad, 0);
 
     caja.innerHTML =
+      // (celular) bajar la hoja y volver a la carta
+      '<button type="button" class="caja-ticket__cerrar" data-caja-hoja="cerrar">▼ Seguir agregando productos</button>' +
       '<div class="caja-ticket__lista">' +
       (ticket.length
         ? ticket
@@ -449,6 +473,10 @@ NASCAR.Caja = (function () {
         ? '<b id="cajaTotalDiv">' + U.money(subtotalTicket()) + '</b>'
         : '<b>' + U.money(total()) + '</b>') +
       '</div>' +
+      // (celular) la barra de abajo: abre la hoja con el pedido y el pago
+      '<button type="button" class="btn caja-ticket__abrir" data-caja-hoja="abrir"' +
+      (ticket.length ? '' : ' disabled') + '>' +
+      (ticket.length ? 'Ver pedido y cobrar ▲' : 'Toca un producto') + '</button>' +
       '<div class="caja-ticket__botones">' +
       (ticket.length
         ? '<button class="btn btn--fantasma" id="cajaVaciar" title="Quitar todo del ticket">Vaciar</button>'
@@ -458,6 +486,7 @@ NASCAR.Caja = (function () {
       '</div>' +
       '</div>';
 
+    abrirHoja(hojaAbierta); // se conserva al repintar (+/−, método…)
     ajustarAltoTicket();
     const lista = caja.querySelector('.caja-ticket__lista');
     const pie = caja.querySelector('.caja-ticket__pie');
@@ -591,6 +620,7 @@ NASCAR.Caja = (function () {
     }
     ticket = [];
     claveVenta = '';
+    hojaAbierta = false;        // en celular, de vuelta a la carta para el siguiente
     recibidoMostrador = null;   // lo del cliente anterior no es lo del siguiente
     dividido = false;           // la siguiente venta arranca con un solo método
     U.toast(

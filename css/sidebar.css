@@ -552,8 +552,25 @@
 
 @media (max-width: 560px) {
   .app-top {
-    gap: 10px;
-    padding: 10px 14px;
+    gap: 8px 10px;
+    padding: 8px 14px;
+  }
+  /* En el celular la cabecera va pegada arriba todo el tiempo: antes eran
+     cuatro pisos (menú y usuario, «Unidad / Local», fecha, hora) y se
+     comían un tercio de la pantalla. Ahora son dos: menú, usuario y avisos;
+     debajo, la sede a todo el ancho. El reloj ya lo tiene el teléfono. */
+  .app-top .derecha {
+    display: none;
+  }
+  #campoSucursalGlobal {
+    order: 10;
+    flex: 1 1 100%;
+  }
+  #campoSucursalGlobal > span {
+    display: none;
+  }
+  #campoSucursalGlobal .select {
+    width: 100%;
   }
 }
 
